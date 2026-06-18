@@ -87,8 +87,28 @@
       <!-- TAB 1: ANALISIS PENJUALAN (DASHBOARD) -->
       <section id="pane-analytics" class="tab-pane active">
         <div class="analytics-header">
-          <h2>Analisis Penjualan & Dashboard</h2>
-          <div class="table-actions">
+          <h2>Analisis Penjualan &amp; Dashboard</h2>
+          <div class="table-actions" style="flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+            <!-- Filter Tanggal/Bulan/Tahun untuk Analisis -->
+            <div style="display:flex; align-items:center; gap:0.5rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 0.35rem 0.75rem;">
+              <svg viewBox="0 0 24 24" class="icon-sm" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <select id="analytics-filter-type" onchange="onAnalyticsFilterTypeChange()" style="border:none; background:transparent; font-family: var(--font-main); font-size:0.85rem; outline:none; cursor:pointer; color: var(--text-main);">
+                <option value="hari">Per Hari</option>
+                <option value="bulan">Per Bulan</option>
+                <option value="tahun">Per Tahun</option>
+                <option value="semua">Semua Waktu</option>
+              </select>
+            </div>
+            <div id="analytics-filter-date-wrap" style="display:flex; align-items:center;">
+              <input type="date" id="analytics-filter-date" value="" oninput="updateAnalytics()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-size: 0.85rem; background: var(--bg-card); color: var(--text-main);">
+            </div>
+            <div id="analytics-filter-month-wrap" style="display:none; align-items:center; gap:0.35rem;">
+              <input type="month" id="analytics-filter-month" value="" oninput="updateAnalytics()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-size: 0.85rem; background: var(--bg-card); color: var(--text-main);">
+            </div>
+            <div id="analytics-filter-year-wrap" style="display:none; align-items:center; gap:0.35rem;">
+              <select id="analytics-filter-year" onchange="updateAnalytics()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-size: 0.85rem; background: var(--bg-card); color: var(--text-main); cursor:pointer;">
+              </select>
+            </div>
             <button class="btn btn-primary btn-sm" onclick="printDailyReport()">
               <svg viewBox="0 0 24 24" class="icon-sm" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2m-10 0v4h8v-4"/></svg>
               <span>Cetak Laporan Hari Ini</span>
@@ -103,14 +123,14 @@
         <!-- Metrics Grid -->
         <div class="metrics-grid" style="grid-template-columns: repeat(4, 1fr) !important;">
           <div class="metric-card income">
-            <span class="metric-title">TOTAL OMZET HARI INI</span>
+            <span class="metric-title">TOTAL OMZET (TUNAI)</span>
             <h3 class="metric-value" id="stat-revenue">Rp 0</h3>
-            <span class="metric-sub">Berdasarkan data hari ini</span>
+            <span class="metric-sub">Hanya transaksi tunai</span>
           </div>
           <div class="metric-card gross-profit">
-            <span class="metric-title">LABA KOTOR HARI INI</span>
+            <span class="metric-title">TOTAL PENJUALAN HARI INI</span>
             <h3 class="metric-value" id="stat-gross-profit">Rp 0</h3>
-            <span class="metric-sub">Total penjualan</span>
+            <span class="metric-sub">Omset dikurang Laba Bersih</span>
           </div>
           <div class="metric-card net-profit">
             <span class="metric-title">LABA BERSIH HARI INI</span>
@@ -742,13 +762,25 @@
             <span>Total Tagihan Baru</span>
             <span id="edit-tx-total-amount">Rp 0</span>
           </div>
-          <div class="form-group" style="margin-top: 0.5rem;">
-            <label for="edit-tx-cash-received">Uang Diterima (Rp)*</label>
-            <input type="text" id="edit-tx-cash-received" placeholder="Masukkan jumlah uang..." autocomplete="off" oninput="formatAndCalculateChangeEditTx()">
+          <!-- Metode Pembayaran -->
+          <div class="form-group" style="margin-top: 0.75rem;">
+            <label for="edit-tx-payment-method">Metode Pembayaran</label>
+            <select id="edit-tx-payment-method" onchange="onEditTxPaymentMethodChange(this.value)" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-size: 0.9rem; font-family: var(--font-main); outline: none; background-color: var(--bg-card); cursor: pointer; color: var(--text-main);">
+              <option value="Tunai">Tunai</option>
+              <option value="QRIS">QRIS</option>
+              <option value="Transfer">Transfer Bank</option>
+              <option value="Debit">Debit Card</option>
+            </select>
           </div>
-          <div class="summary-row total-row" style="margin-top: 0.5rem;">
-            <span>Kembalian Baru</span>
-            <span id="edit-tx-change-amount" style="color: var(--color-success);">Rp 0</span>
+          <div id="edit-tx-cash-section">
+            <div class="form-group" style="margin-top: 0.5rem;">
+              <label for="edit-tx-cash-received">Uang Diterima (Rp)*</label>
+              <input type="text" id="edit-tx-cash-received" placeholder="Masukkan jumlah uang..." autocomplete="off" oninput="formatAndCalculateChangeEditTx()">
+            </div>
+            <div class="summary-row total-row" style="margin-top: 0.5rem;">
+              <span>Kembalian Baru</span>
+              <span id="edit-tx-change-amount" style="color: var(--color-success);">Rp 0</span>
+            </div>
           </div>
         </div>
       </div>
@@ -985,7 +1017,7 @@
       <h4 style="border-bottom: 1px solid #444; padding-bottom: 0.25rem;">METRIK KEUANGAN HARI INI</h4>
       <table style="width: 100%; font-family: monospace; font-size: 0.9rem; margin-top: 0.5rem; border-collapse: collapse;">
         <tr>
-          <td style="padding: 0.25rem 0;">Total Omzet (Laba Kotor):</td>
+          <td style="padding: 0.25rem 0;">Total Omzet (Tunai):</td>
           <td id="print-rep-revenue" style="text-align: right; font-weight: bold;">Rp 0</td>
         </tr>
         <tr>

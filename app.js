@@ -147,10 +147,12 @@ document.addEventListener('DOMContentLoaded', () => {
       syncTransactionsFromCloud();
     } else {
       updateSyncStatus('offline', `Offline (${offlineQueue.length} transaksi tertunda)`);
+      initAnalyticsFilter();
       updateAnalytics();
     }
   } else {
     updateSyncStatus('offline', 'Belum Terhubung');
+    initAnalyticsFilter();
     updateAnalytics();
   }
   
@@ -371,6 +373,7 @@ function switchTab(tabName) {
     renderProductsTable();
     resetProductForm();
   } else if (tabName === 'analytics') {
+    initAnalyticsFilter();
     updateAnalytics();
   } else if (tabName === 'kulak') {
     closeKulakForm();
@@ -526,17 +529,66 @@ function parseTransactionItemsString(itemsStr) {
 }
 
 // --- TAB 1: MODUL ANALISIS PENJUALAN ---
+
+// Inisialisasi filter analisis (hari ini by default)
+function initAnalyticsFilter() {
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const thisMonth = todayStr.slice(0, 7); // YYYY-MM
+  const thisYear = now.getFullYear();
+  
+  // Set default date filter to today
+  const dateInput = document.getElementById('analytics-filter-date');
+  if (dateInput && !dateInput.value) dateInput.value = todayStr;
+  
+  const monthInput = document.getElementById('analytics-filter-month');
+  if (monthInput && !monthInput.value) monthInput.value = thisMonth;
+  
+  // Populate year dropdown from transaction years + current year
+  const yearSelect = document.getElementById('analytics-filter-year');
+  if (yearSelect) {
+    const years = new Set([thisYear]);
+    transactions.forEach(tx => {
+      if (tx.waktu) years.add(parseInt(tx.waktu.slice(0, 4)));
+    });
+    const sortedYears = [...years].sort((a, b) => b - a);
+    yearSelect.innerHTML = sortedYears.map(y => 
+      `<option value="${y}" ${y === thisYear ? 'selected' : ''}>${y}</option>`
+    ).join('');
+  }
+}
+
+function onAnalyticsFilterTypeChange() {
+  const filterType = document.getElementById('analytics-filter-type').value;
+  document.getElementById('analytics-filter-date-wrap').style.display = filterType === 'hari' ? 'flex' : 'none';
+  document.getElementById('analytics-filter-month-wrap').style.display = filterType === 'bulan' ? 'flex' : 'none';
+  document.getElementById('analytics-filter-year-wrap').style.display = filterType === 'tahun' ? 'flex' : 'none';
+  updateAnalytics();
+}
+
+function getAnalyticsFilteredTxs() {
+  const filterType = document.getElementById('analytics-filter-type')?.value || 'hari';
+  if (filterType === 'hari') {
+    const dateVal = document.getElementById('analytics-filter-date')?.value || new Date().toISOString().slice(0, 10);
+    return transactions.filter(tx => tx.waktu && tx.waktu.slice(0, 10) === dateVal);
+  } else if (filterType === 'bulan') {
+    const monthVal = document.getElementById('analytics-filter-month')?.value || new Date().toISOString().slice(0, 7);
+    return transactions.filter(tx => tx.waktu && tx.waktu.slice(0, 7) === monthVal);
+  } else if (filterType === 'tahun') {
+    const yearVal = document.getElementById('analytics-filter-year')?.value || String(new Date().getFullYear());
+    return transactions.filter(tx => tx.waktu && tx.waktu.slice(0, 4) === yearVal);
+  } else {
+    return [...transactions];
+  }
+}
+
 function updateAnalytics() {
   const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10); // Format YYYY-MM-DD
   
-  // Filter transaksi hari ini
-  const todayTxs = transactions.filter(tx => {
-    return tx.waktu && tx.waktu.slice(0, 10) === todayStr;
-  });
+  // Filter transaksi sesuai filter yang dipilih
+  const todayTxs = getAnalyticsFilteredTxs();
   
   let revenue = 0;
-  let grossProfit = 0;
   let netProfit = 0;
   
   // Rincian Metode Pembayaran Hari Ini
@@ -547,9 +599,12 @@ function updateAnalytics() {
     'Transfer': 0
   };
   
+  // Metode non-tunai: uang tidak langsung masuk laci (hanya laba bersih dihitung ke stat revenue)
+  const nonCashMethods = ['QRIS', 'Transfer', 'Debit'];
+  
   todayTxs.forEach(tx => {
-    revenue += tx.total;
-    grossProfit += tx.total;
+    const metode = tx.metode_pembayaran || 'Tunai';
+    const isNonCash = nonCashMethods.includes(metode);
     
     // Hitung Laba Bersih sebelum diskon transaksi
     let txSubtotal = 0;
@@ -563,11 +618,16 @@ function updateAnalytics() {
     
     // Kurangi laba bersih dengan diskon transaksi
     const txDiscount = Math.max(0, txSubtotal - tx.total);
-    netProfit += (txNetProfitBeforeDiscount - txDiscount);
+    const txNetProfit = txNetProfitBeforeDiscount - txDiscount;
+    netProfit += txNetProfit;
+    
+    // Omset/revenue hanya dari transaksi tunai (non-cash tidak masuk laci)
+    if (!isNonCash) {
+      revenue += tx.total;
+    }
     
     // Akumulasi metode pembayaran
-    const m = tx.metode_pembayaran || 'Tunai';
-    methodsBreakdown[m] = (methodsBreakdown[m] || 0) + tx.total;
+    methodsBreakdown[metode] = (methodsBreakdown[metode] || 0) + tx.total;
   });
   
   // Hitung total piutang aktif secara kumulatif (semua transaksi belum lunas)
@@ -576,9 +636,12 @@ function updateAnalytics() {
     totalDebt += (tx.sisa_piutang || 0);
   });
   
+  // Total Penjualan = Omset (tunai) - Laba Bersih = HPP/Harga Pokok
+  const totalPenjualan = revenue - netProfit;
+  
   // Update Metrik Hari Ini di UI
   document.getElementById('stat-revenue').textContent = `Rp ${formatRupiah(revenue)}`;
-  document.getElementById('stat-gross-profit').textContent = `Rp ${formatRupiah(grossProfit)}`;
+  document.getElementById('stat-gross-profit').textContent = `Rp ${formatRupiah(totalPenjualan)}`;
   document.getElementById('stat-net-profit').textContent = `Rp ${formatRupiah(netProfit)}`;
   
   const statDebtEl = document.getElementById('stat-debt');
@@ -2528,6 +2591,16 @@ function openEditTransactionModal(txId) {
   editTxItems = JSON.parse(JSON.stringify(tx.items || []));
   editTxOriginalItems = JSON.parse(JSON.stringify(tx.items || []));
   
+  // Set metode pembayaran
+  const metode = tx.metode_pembayaran || 'Tunai';
+  const methodSelect = document.getElementById('edit-tx-payment-method');
+  if (methodSelect) methodSelect.value = metode;
+  
+  // Tampilkan/sembunyikan seksi cash berdasarkan metode
+  const cashSection = document.getElementById('edit-tx-cash-section');
+  const nonCashMethods = ['QRIS', 'Transfer', 'Debit'];
+  if (cashSection) cashSection.style.display = nonCashMethods.includes(metode) ? 'none' : 'block';
+  
   // Set nilai uang bayar terformat
   const cashInput = document.getElementById('edit-tx-cash-received');
   cashInput.value = formatRupiah(tx.bayar);
@@ -2756,6 +2829,13 @@ function formatAndCalculateChangeEditTx() {
   calculateChangeEditTx();
 }
 
+function onEditTxPaymentMethodChange(value) {
+  const nonCashMethods = ['QRIS', 'Transfer', 'Debit'];
+  const cashSection = document.getElementById('edit-tx-cash-section');
+  if (cashSection) cashSection.style.display = nonCashMethods.includes(value) ? 'none' : 'block';
+  calculateChangeEditTx();
+}
+
 function calculateChangeEditTx() {
   const cashInput = document.getElementById('edit-tx-cash-received');
   const changeVal = document.getElementById('edit-tx-change-amount');
@@ -2765,6 +2845,15 @@ function calculateChangeEditTx() {
   editTxItems.forEach(item => {
     total += item.harga * item.qty;
   });
+  
+  // Cek apakah metode non-tunai (tidak perlu hitung kembalian)
+  const metode = document.getElementById('edit-tx-payment-method')?.value || 'Tunai';
+  const nonCashMethods = ['QRIS', 'Transfer', 'Debit'];
+  if (nonCashMethods.includes(metode)) {
+    // Non-cash: langsung enable tombol simpan
+    btnSave.disabled = false;
+    return;
+  }
   
   const cashText = cashInput.value.replace(/\./g, "");
   const cash = parseFloat(cashText) || 0;
@@ -2791,18 +2880,29 @@ function saveEditedTransaction() {
     return;
   }
   
-  const cashInput = document.getElementById('edit-tx-cash-received');
-  const cashText = cashInput.value.replace(/\./g, "");
-  const cash = parseFloat(cashText) || 0;
+  // Baca metode pembayaran
+  const metode = document.getElementById('edit-tx-payment-method')?.value || 'Tunai';
+  const nonCashMethods = ['QRIS', 'Transfer', 'Debit'];
+  const isNonCash = nonCashMethods.includes(metode);
   
   let total = 0;
   editTxItems.forEach(item => {
     total += item.harga * item.qty;
   });
   
-  if (cash < total) {
-    alert("Pembayaran kurang!");
-    return;
+  let cash = total; // untuk non-cash, bayar = total (tidak ada kembalian)
+  let kembalian = 0;
+  
+  if (!isNonCash) {
+    const cashInput = document.getElementById('edit-tx-cash-received');
+    const cashText = cashInput.value.replace(/\./g, "");
+    cash = parseFloat(cashText) || 0;
+    
+    if (cash < total) {
+      alert("Pembayaran kurang!");
+      return;
+    }
+    kembalian = cash - total;
   }
   
   const tx = transactions.find(t => t.id === currentEditingTxId);
@@ -2836,7 +2936,8 @@ function saveEditedTransaction() {
   tx.items = [...editTxItems];
   tx.total = total;
   tx.bayar = cash;
-  tx.kembalian = cash - total;
+  tx.kembalian = kembalian;
+  tx.metode_pembayaran = metode;
   
   saveProductsLocally();
   localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
@@ -2932,6 +3033,7 @@ async function syncTransactionsFromCloud() {
       
       localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
       renderTransactionsTable();
+      initAnalyticsFilter();
       updateAnalytics();
       updateSyncStatus('online', 'Tersinkronisasi');
     }
