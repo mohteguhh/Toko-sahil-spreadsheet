@@ -192,11 +192,33 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('online', () => {
     console.log("Koneksi internet terdeteksi aktif. Memulai sinkronisasi otomatis ke cloud...");
     if (gasUrl) {
-      processOfflineQueue();
-      syncProductsToCloudBackground();
-      syncTransactionsToCloudBackground();
+      processOfflineQueue().then(() => {
+        syncFromCloud();
+        syncTransactionsFromCloud();
+      });
     }
   });
+
+  // Sinkronisasi otomatis saat pengguna kembali membuka tab/aplikasi (sangat berguna di HP)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && navigator.onLine && gasUrl) {
+      console.log("Aplikasi kembali aktif, menyinkronkan data dari cloud...");
+      processOfflineQueue().then(() => {
+        syncFromCloud();
+        syncTransactionsFromCloud();
+      });
+    }
+  });
+
+  // Sinkronisasi background berkala setiap 5 menit jika aplikasi dibiarkan menyala terus
+  setInterval(() => {
+    if (navigator.onLine && gasUrl) {
+      processOfflineQueue().then(() => {
+        syncFromCloud();
+        syncTransactionsFromCloud();
+      });
+    }
+  }, 5 * 60 * 1000);
   
   // Event listeners
   window.addEventListener('keydown', handleGlobalKeydowns);
