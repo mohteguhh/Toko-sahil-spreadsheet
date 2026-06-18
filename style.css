@@ -2189,43 +2189,6 @@ tr:hover td {
   color: var(--text-main);
   pointer-events: none;
 }
-.metric-card {
-  background-color: var(--bg-surface);
-  border-radius: var(--border-radius-lg);
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.metric-title {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.metric-value {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: var(--text-main);
-  letter-spacing: -0.02em;
-}
-
-.metric-sub {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
 /* DEBT CARD STYLING */
 .debt-card {
   border-left: 4px solid #f59e0b;
@@ -2237,7 +2200,6 @@ tr:hover td {
 }
 .debt-value {
   color: #d97706;
-  font-size: 1.75rem; /* Will be responsive down to 1.15rem on mobile due to .metric-value base */
 }
 
 .promo-marquee-item.active {
