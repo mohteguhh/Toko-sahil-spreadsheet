@@ -1541,6 +1541,7 @@ tr:hover td {
   }
   .pos-right-section {
     position: fixed;
+    top: auto !important; /* Mencegah bentrok dengan top: 80px di desktop yang membuat area checkout melar semeter penuh */
     bottom: 0;
     left: 0;
     right: 0;
