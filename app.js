@@ -49,6 +49,13 @@ let gasUrl = localStorage.getItem('kasir_gas_url') || '';
 let syncStatus = 'offline'; 
 let offlineQueue = JSON.parse(localStorage.getItem('kasir_offline_queue')) || [];
 
+// Pengaturan Sistem Aplikasi
+let appConfig = JSON.parse(localStorage.getItem('kasir_app_config')) || {
+  strictShift: false,
+  allowZeroStock: false,
+  customerMode: true
+};
+
 // Pengaturan Nota / Struk Toko (Default)
 let receiptSettings = JSON.parse(localStorage.getItem('kasir_receipt_settings')) || {
   logo: '',
@@ -57,6 +64,12 @@ let receiptSettings = JSON.parse(localStorage.getItem('kasir_receipt_settings'))
   address: 'Jl. Utama No. 123, Indonesia',
   fontSize: 12
 };
+// Kompatibilitas mundur
+if (receiptSettings.showLogo === undefined) receiptSettings.showLogo = true;
+if (receiptSettings.showName === undefined) receiptSettings.showName = true;
+if (receiptSettings.showAddress === undefined) receiptSettings.showAddress = true;
+if (receiptSettings.showPhone === undefined) receiptSettings.showPhone = true;
+if (receiptSettings.showCashier === undefined) receiptSettings.showCashier = true;
 
 // Contoh Data Awal (Produk)
 const defaultProducts = [
@@ -139,6 +152,7 @@ const seedTransactions = () => {
 // --- Inisialisasi Aplikasi ---
 document.addEventListener('DOMContentLoaded', () => {
   initClock();
+  loadAppConfig();
   loadReceiptSettings();
   loadData();
   initCashiers();
@@ -301,7 +315,27 @@ function loadReceiptSettings() {
   document.getElementById('receipt-font-slider').value = receiptSettings.fontSize;
   document.getElementById('font-size-preview-val').textContent = `${receiptSettings.fontSize}px`;
   
+  document.getElementById('chk-show-logo').checked = receiptSettings.showLogo;
+  document.getElementById('chk-show-name').checked = receiptSettings.showName;
+  document.getElementById('chk-show-address').checked = receiptSettings.showAddress;
+  document.getElementById('chk-show-phone').checked = receiptSettings.showPhone;
+  document.getElementById('chk-show-cashier').checked = receiptSettings.showCashier;
+  
   applyReceiptSettings();
+}
+
+function saveAppConfig() {
+  appConfig.strictShift = document.getElementById('chk-strict-shift').checked;
+  appConfig.allowZeroStock = document.getElementById('chk-allow-zero-stock').checked;
+  appConfig.customerMode = document.getElementById('chk-customer-mode').checked;
+  localStorage.setItem('kasir_app_config', JSON.stringify(appConfig));
+  alert('Pengaturan Sistem Aplikasi berhasil disimpan!');
+}
+
+function loadAppConfig() {
+  document.getElementById('chk-strict-shift').checked = appConfig.strictShift;
+  document.getElementById('chk-allow-zero-stock').checked = appConfig.allowZeroStock;
+  document.getElementById('chk-customer-mode').checked = appConfig.customerMode;
 }
 
 function applyReceiptSettings() {
@@ -327,11 +361,22 @@ function applyReceiptSettings() {
   document.getElementById('rec-store-address').textContent = receiptSettings.address;
   document.getElementById('rec-store-phone').textContent = `Telp: ${receiptSettings.phone}`;
   
+  document.getElementById('rec-store-name').style.display = receiptSettings.showName ? 'block' : 'none';
+  document.getElementById('rec-store-address').style.display = receiptSettings.showAddress ? 'block' : 'none';
+  document.getElementById('rec-store-phone').style.display = receiptSettings.showPhone ? 'block' : 'none';
+  
+  const cashierRow = document.getElementById('rec-cashier-row');
+  if (cashierRow) {
+    cashierRow.style.display = receiptSettings.showCashier ? 'flex' : 'none';
+  }
+  
   const recLogoContainer = document.getElementById('rec-logo-container');
-  if (receiptSettings.logo) {
+  if (receiptSettings.logo && receiptSettings.showLogo) {
     recLogoContainer.innerHTML = `<img src="${receiptSettings.logo}" alt="Logo" class="receipt-logo-img">`;
+    recLogoContainer.style.display = 'block';
   } else {
     recLogoContainer.innerHTML = '';
+    recLogoContainer.style.display = 'none';
   }
   
   // 3. Atur Font Size di Struk Cetak
@@ -377,10 +422,15 @@ function saveReceiptSettings() {
   receiptSettings.address = document.getElementById('store-address-input').value.trim() || '-';
   receiptSettings.fontSize = parseInt(document.getElementById('receipt-font-slider').value) || 12;
   
+  receiptSettings.showLogo = document.getElementById('chk-show-logo').checked;
+  receiptSettings.showName = document.getElementById('chk-show-name').checked;
+  receiptSettings.showAddress = document.getElementById('chk-show-address').checked;
+  receiptSettings.showPhone = document.getElementById('chk-show-phone').checked;
+  receiptSettings.showCashier = document.getElementById('chk-show-cashier').checked;
+  
   localStorage.setItem('kasir_receipt_settings', JSON.stringify(receiptSettings));
   applyReceiptSettings();
-  
-  alert("Pengaturan branding dan nota berhasil disimpan!");
+  alert('Pengaturan Branding & Nota berhasil disimpan!');
 }
 
 // --- NAVIGASI TAB ---
@@ -907,7 +957,7 @@ function onScanSuccess(decodedText, decodedResult) {
   const p = products.find(prod => prod.barcode === searchVal || prod.id.toLowerCase() === searchVal.toLowerCase());
   
   if (p) {
-    if (p.stok > 0) {
+    if (p.stok > 0 || appConfig.allowZeroStock) {
       addToCart(p);
       closeCameraScanner();
       renderCart();
@@ -1048,7 +1098,7 @@ function handleSearchInputKeydowns(e) {
     );
     
     if (exactMatch) {
-      if (exactMatch.stok > 0) {
+      if (exactMatch.stok > 0 || appConfig.allowZeroStock) {
         addToCart(exactMatch);
         searchInput.value = '';
         closeFloatingResults();
@@ -1061,7 +1111,7 @@ function handleSearchInputKeydowns(e) {
     // 2. Jika tidak ada exact match, gunakan hasil pilihan dropdown
     if (filteredProducts.length > 0 && selectedFloatIndex > -1 && selectedFloatIndex < filteredProducts.length) {
       const prod = filteredProducts[selectedFloatIndex];
-      if (prod.stok > 0) {
+      if (prod.stok > 0 || appConfig.allowZeroStock) {
         addToCart(prod);
         searchInput.value = '';
         closeFloatingResults();
@@ -1088,6 +1138,10 @@ function handleSearchInputKeydowns(e) {
 
 // --- TAB POS: KERANJANG ---
 function addToCart(product) {
+  if (appConfig.strictShift && !activeShift) {
+    alert("Wajib buka shift terlebih dahulu untuk melakukan transaksi!");
+    return;
+  }
   let totalQty = cart.filter(i => i.id === product.id).reduce((sum, i) => sum + i.qty, 0);
   totalQty += 1;
   recalculateCartSplit(product.id, totalQty);
@@ -1128,7 +1182,7 @@ function recalculateCartSplit(baseId, totalQty) {
   const localProd = products.find(p => p.id === baseId);
   if (!localProd) return;
   
-  if (totalQty > localProd.stok) {
+  if (totalQty > localProd.stok && !appConfig.allowZeroStock) {
     alert(`Stok tidak mencukupi! Hanya tersisa ${localProd.stok} barang.`);
     totalQty = localProd.stok;
   }
@@ -1299,9 +1353,15 @@ function openPaymentModal() {
     datalist.innerHTML = customers.map(c => `<option value="${c.nama}">`).join('');
   }
   
-  document.getElementById('customer-name-input').value = '';
-  document.getElementById('customer-points-info').style.display = 'none';
-  document.getElementById('redeem-points-input').value = '';
+  const customerNameGroup = document.getElementById('customer-name-group');
+  if (appConfig.customerMode) {
+    customerNameGroup.style.display = 'block';
+    document.getElementById('customer-name-input').value = '';
+    document.getElementById('customer-points-info').style.display = 'none';
+    document.getElementById('redeem-points-input').value = '';
+  } else {
+    customerNameGroup.style.display = 'none';
+  }
   
   const cashInput = document.getElementById('cash-received');
   cashInput.value = '';

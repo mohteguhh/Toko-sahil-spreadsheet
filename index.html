@@ -627,6 +627,29 @@
       <section id="pane-settings" class="tab-pane">
         <div class="settings-layout">
           
+          <!-- PENGATURAN SISTEM APLIKASI (FITUR BARU) -->
+          <div class="card settings-card">
+            <h2>Pengaturan Sistem Aplikasi</h2>
+            <p class="settings-desc">Atur perilaku utama aplikasi kasir, seperti validasi stok dan mode transaksi.</p>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+              <label style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.95rem; font-weight: 500; cursor: pointer;">
+                <input type="checkbox" id="chk-strict-shift" style="width: 1.25rem; height: 1.25rem; accent-color: var(--primary-color);">
+                Wajib buka Shift Kasir untuk melakukan transaksi
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.95rem; font-weight: 500; cursor: pointer;">
+                <input type="checkbox" id="chk-allow-zero-stock" style="width: 1.25rem; height: 1.25rem; accent-color: var(--primary-color);">
+                Izinkan jual barang walau Stok Kosong (Minus)
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.95rem; font-weight: 500; cursor: pointer;">
+                <input type="checkbox" id="chk-customer-mode" style="width: 1.25rem; height: 1.25rem; accent-color: var(--primary-color);">
+                Aktifkan Mode Pelanggan & CRM (Poin Loyalitas)
+              </label>
+            </div>
+            <div class="settings-actions" style="margin-top: 1.5rem;">
+              <button class="btn btn-primary" onclick="saveAppConfig()">Simpan Pengaturan Sistem</button>
+            </div>
+          </div>
+          
           <!-- BRANDING & RECEIPT SETTINGS (FITUR BARU) -->
           <div class="card settings-card">
             <h2>Pengaturan Branding & Nota / Struk</h2>
@@ -641,6 +664,15 @@
                 </div>
                 <button class="btn btn-secondary btn-sm" onclick="triggerLogoUpload()">Unggah Logo Baru</button>
                 <input type="file" id="logo-file-input" accept="image/*" style="display: none;" onchange="handleLogoUpload(event)">
+                
+                <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+                  <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Tampilkan di Struk:</label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;"><input type="checkbox" id="chk-show-logo"> Logo Toko</label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;"><input type="checkbox" id="chk-show-name"> Nama Toko</label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;"><input type="checkbox" id="chk-show-address"> Alamat Toko</label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;"><input type="checkbox" id="chk-show-phone"> Nomor Telepon</label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;"><input type="checkbox" id="chk-show-cashier"> Nama Kasir</label>
+                </div>
               </div>
               
               <div class="branding-inputs">
@@ -968,7 +1000,7 @@
           <span>Waktu</span>
           <span id="rec-time">18/06/2026 13:40</span>
         </div>
-        <div class="receipt-detail-row">
+        <div class="receipt-detail-row" id="rec-cashier-row">
           <span>Kasir</span>
           <span id="rec-cashier">Kasir Utama</span>
         </div>
