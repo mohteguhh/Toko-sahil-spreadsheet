@@ -1505,6 +1505,13 @@ tr:hover td {
   .content-area {
     padding: 0.75rem;
   }
+  
+  /* Hilangkan scroll mandiri keranjang belanja di mobile agar halaman bergulir alami */
+  .cart-list {
+    max-height: none !important;
+    min-height: auto !important;
+    overflow-y: visible !important;
+  }
   .admin-layout, .settings-branding-grid {
     grid-template-columns: 1fr;
   }

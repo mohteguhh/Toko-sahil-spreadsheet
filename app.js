@@ -122,13 +122,30 @@ document.addEventListener('DOMContentLoaded', () => {
   // Isi input URL di pengaturan jika sudah ada
   if (gasUrl) {
     document.getElementById('gas-url-input').value = gasUrl;
-    // Tarik data cloud secara asinkronus
-    syncFromCloud();
-    syncTransactionsFromCloud();
+    
+    // Sinkronisasi otomatis jika perangkat online saat halaman dibuka
+    if (navigator.onLine) {
+      processOfflineQueue();
+      syncFromCloud();
+      syncTransactionsFromCloud();
+    } else {
+      updateSyncStatus('offline', `Offline (${offlineQueue.length} transaksi tertunda)`);
+      updateAnalytics();
+    }
   } else {
     updateSyncStatus('offline', 'Belum Terhubung');
     updateAnalytics();
   }
+  
+  // Event listener untuk memicu sinkronisasi otomatis ketika laptop beralih dari offline ke online
+  window.addEventListener('online', () => {
+    console.log("Koneksi internet terdeteksi aktif. Memulai sinkronisasi otomatis ke cloud...");
+    if (gasUrl) {
+      processOfflineQueue();
+      syncProductsToCloudBackground();
+      syncTransactionsToCloudBackground();
+    }
+  });
   
   // Event listeners
   window.addEventListener('keydown', handleGlobalKeydowns);
