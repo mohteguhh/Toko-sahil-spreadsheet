@@ -2866,22 +2866,22 @@ function saveEditedTransaction() {
   let cash = total; // untuk non-cash, bayar = total (tidak ada kembalian)
   let kembalian = 0;
   
+  const tx = transactions.find(t => t.id === currentEditingTxId);
+  if (!tx) {
+    alert("Transaksi tidak ditemukan!");
+    return;
+  }
+  
   if (!isNonCash) {
     const cashInput = document.getElementById('edit-tx-cash-received');
     const cashText = cashInput.value.replace(/\./g, "");
     cash = parseFloat(cashText) || 0;
     
-    if (cash < total) {
+    if (tx.status_pembayaran !== 'Bon' && cash < total) {
       alert("Pembayaran kurang!");
       return;
     }
-    kembalian = cash - total;
-  }
-  
-  const tx = transactions.find(t => t.id === currentEditingTxId);
-  if (!tx) {
-    alert("Transaksi tidak ditemukan!");
-    return;
+    kembalian = cash >= total ? cash - total : 0;
   }
   
   // Update stok produk
@@ -2911,6 +2911,14 @@ function saveEditedTransaction() {
   tx.bayar = cash;
   tx.kembalian = kembalian;
   tx.metode_pembayaran = metode;
+  
+  if (isNonCash) {
+    tx.sisa_piutang = 0;
+    tx.status_pembayaran = 'Lunas';
+  } else {
+    tx.sisa_piutang = cash < total ? total - cash : 0;
+    tx.status_pembayaran = tx.sisa_piutang > 0 ? 'Bon' : 'Lunas';
+  }
   
   saveProductsLocally();
   localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
