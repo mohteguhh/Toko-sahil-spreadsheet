@@ -2731,6 +2731,9 @@ function deleteTransaction(txId) {
         const product = products.find(p => p.id === item.id);
         if (product) {
           product.stok += item.qty;
+          if (item.isPromo) {
+            product.kuota_diskon = (parseInt(product.kuota_diskon) || 0) + item.qty;
+          }
         }
       });
     }
@@ -2991,12 +2994,17 @@ function addEditTxItem(product) {
       alert("Stok barang habis!");
       return;
     }
+    const hargaDiskon = parseFloat(product.harga_diskon) || 0;
+    const kuotaDiskon = parseInt(product.kuota_diskon) || 0;
+    const hasPromo = hargaDiskon > 0 && kuotaDiskon > 0;
+    
     editTxItems.push({
       id: product.id,
-      nama: product.nama,
-      harga: product.harga_jual,
-      harga_beli: product.harga_beli,
-      qty: 1
+      nama: hasPromo ? product.nama + ' (Promo)' : product.nama,
+      harga: hasPromo ? hargaDiskon : product.harga_jual,
+      harga_beli: parseFloat(product.harga_beli) || 0,
+      qty: 1,
+      isPromo: hasPromo
     });
   }
   
@@ -3116,6 +3124,9 @@ function saveEditedTransaction() {
       const product = products.find(p => p.id === id);
       if (product) {
         product.stok = Math.max(0, product.stok - delta);
+        if ((origItem && origItem.isPromo) || (newItem && newItem.isPromo)) {
+          product.kuota_diskon = Math.max(0, (parseInt(product.kuota_diskon) || 0) - delta);
+        }
       }
     }
   });
