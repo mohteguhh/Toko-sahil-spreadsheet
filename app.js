@@ -17,7 +17,8 @@ function handleImageError(img) {
   img.onerror = null; // Mencegah loop tak terbatas
   img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="%23cbd5e1" stroke-width="2"><rect width="100" height="100" fill="%23f8fafc"/><circle cx="50" cy="45" r="15"/><path d="M20,80 C20,60 80,60 80,80"/></svg>';
 }
-let cart = [];
+let cart = JSON.parse(localStorage.getItem('kasir_active_cart')) || [];
+let heldCarts = JSON.parse(localStorage.getItem('kasir_held_carts')) || [];
 let transactions = []; // Riwayat transaksi lokal untuk analisis
 let categories = ['All'];
 let activeTab = 'analytics'; // Default active tab
@@ -62,7 +63,9 @@ let receiptSettings = JSON.parse(localStorage.getItem('kasir_receipt_settings'))
   name: 'KasirKilat',
   phone: '0812-3456-7890',
   address: 'Jl. Utama No. 123, Indonesia',
-  fontSize: 12
+  fontSizeHeader: 14,
+  fontSizeItems: 12,
+  fontSizeFooter: 12
 };
 // Kompatibilitas mundur
 if (receiptSettings.showLogo === undefined) receiptSettings.showLogo = true;
@@ -70,6 +73,12 @@ if (receiptSettings.showName === undefined) receiptSettings.showName = true;
 if (receiptSettings.showAddress === undefined) receiptSettings.showAddress = true;
 if (receiptSettings.showPhone === undefined) receiptSettings.showPhone = true;
 if (receiptSettings.showCashier === undefined) receiptSettings.showCashier = true;
+if (receiptSettings.showSubtotal === undefined) receiptSettings.showSubtotal = true;
+if (receiptSettings.showDiscount === undefined) receiptSettings.showDiscount = true;
+if (receiptSettings.showMethod === undefined) receiptSettings.showMethod = true;
+if (receiptSettings.fontSizeHeader === undefined) receiptSettings.fontSizeHeader = receiptSettings.fontSize || 14;
+if (receiptSettings.fontSizeItems === undefined) receiptSettings.fontSizeItems = receiptSettings.fontSize || 12;
+if (receiptSettings.fontSizeFooter === undefined) receiptSettings.fontSizeFooter = receiptSettings.fontSize || 12;
 
 // Contoh Data Awal (Produk)
 const defaultProducts = [
@@ -312,16 +321,28 @@ function loadReceiptSettings() {
   document.getElementById('store-name-input').value = receiptSettings.name;
   document.getElementById('store-phone-input').value = receiptSettings.phone;
   document.getElementById('store-address-input').value = receiptSettings.address;
-  document.getElementById('receipt-font-slider').value = receiptSettings.fontSize;
-  document.getElementById('font-size-preview-val').textContent = `${receiptSettings.fontSize}px`;
+  
+  document.getElementById('receipt-font-header').value = receiptSettings.fontSizeHeader;
+  document.getElementById('font-preview-header-val').textContent = `${receiptSettings.fontSizeHeader}px`;
+  document.getElementById('receipt-font-items').value = receiptSettings.fontSizeItems;
+  document.getElementById('font-preview-items-val').textContent = `${receiptSettings.fontSizeItems}px`;
+  document.getElementById('receipt-font-footer').value = receiptSettings.fontSizeFooter;
+  document.getElementById('font-preview-footer-val').textContent = `${receiptSettings.fontSizeFooter}px`;
   
   document.getElementById('chk-show-logo').checked = receiptSettings.showLogo;
   document.getElementById('chk-show-name').checked = receiptSettings.showName;
   document.getElementById('chk-show-address').checked = receiptSettings.showAddress;
   document.getElementById('chk-show-phone').checked = receiptSettings.showPhone;
   document.getElementById('chk-show-cashier').checked = receiptSettings.showCashier;
+  document.getElementById('chk-show-subtotal').checked = receiptSettings.showSubtotal;
+  document.getElementById('chk-show-discount').checked = receiptSettings.showDiscount;
+  document.getElementById('chk-show-method').checked = receiptSettings.showMethod;
   
   applyReceiptSettings();
+}
+
+function updateFontPreview(type, val) {
+  document.getElementById(`font-preview-${type}-val`).textContent = `${val}px`;
 }
 
 function saveAppConfig() {
@@ -380,7 +401,26 @@ function applyReceiptSettings() {
   }
   
   // 3. Atur Font Size di Struk Cetak
-  document.getElementById('receipt-card-print').style.fontSize = `${receiptSettings.fontSize}px`;
+  const receiptCard = document.getElementById('receipt-card-print');
+  
+  const receiptHeader = receiptCard.querySelector('.receipt-header');
+  if (receiptHeader) receiptHeader.style.fontSize = `${receiptSettings.fontSizeHeader}px`;
+  
+  const receiptItems = receiptCard.querySelector('.receipt-items');
+  if (receiptItems) receiptItems.style.fontSize = `${receiptSettings.fontSizeItems}px`;
+  
+  const receiptTotals = receiptCard.querySelector('.receipt-totals');
+  if (receiptTotals) receiptTotals.style.fontSize = `${receiptSettings.fontSizeFooter}px`;
+  
+  // Sembunyikan Subtotal, Diskon, Metode
+  const subtotalRow = document.getElementById('rec-subtotal-row');
+  if (subtotalRow) subtotalRow.style.display = receiptSettings.showSubtotal ? 'flex' : 'none';
+  
+  const discountRow = document.getElementById('rec-discount-row');
+  if (discountRow) discountRow.style.display = receiptSettings.showDiscount ? 'flex' : 'none';
+  
+  const methodRow = document.getElementById('rec-method-row');
+  if (methodRow) methodRow.style.display = receiptSettings.showMethod ? 'flex' : 'none';
   
   // 4. Update logo preview box di pengaturan
   const previewBox = document.getElementById('logo-preview-box');
@@ -420,13 +460,19 @@ function saveReceiptSettings() {
   receiptSettings.name = document.getElementById('store-name-input').value.trim() || 'KasirKilat';
   receiptSettings.phone = document.getElementById('store-phone-input').value.trim() || '-';
   receiptSettings.address = document.getElementById('store-address-input').value.trim() || '-';
-  receiptSettings.fontSize = parseInt(document.getElementById('receipt-font-slider').value) || 12;
+  
+  receiptSettings.fontSizeHeader = parseInt(document.getElementById('receipt-font-header').value) || 14;
+  receiptSettings.fontSizeItems = parseInt(document.getElementById('receipt-font-items').value) || 12;
+  receiptSettings.fontSizeFooter = parseInt(document.getElementById('receipt-font-footer').value) || 12;
   
   receiptSettings.showLogo = document.getElementById('chk-show-logo').checked;
   receiptSettings.showName = document.getElementById('chk-show-name').checked;
   receiptSettings.showAddress = document.getElementById('chk-show-address').checked;
   receiptSettings.showPhone = document.getElementById('chk-show-phone').checked;
   receiptSettings.showCashier = document.getElementById('chk-show-cashier').checked;
+  receiptSettings.showSubtotal = document.getElementById('chk-show-subtotal').checked;
+  receiptSettings.showDiscount = document.getElementById('chk-show-discount').checked;
+  receiptSettings.showMethod = document.getElementById('chk-show-method').checked;
   
   localStorage.setItem('kasir_receipt_settings', JSON.stringify(receiptSettings));
   applyReceiptSettings();
@@ -1262,6 +1308,10 @@ function checkPromoBanner() {
   marqueeContent.innerHTML = html + html + html;
 }
 
+function saveCart() {
+  localStorage.setItem('kasir_active_cart', JSON.stringify(cart));
+}
+
 function clearCart() {
   if (cart.length === 0) return;
   if (confirm("Apakah Anda yakin ingin mengosongkan keranjang belanja?")) {
@@ -1271,6 +1321,7 @@ function clearCart() {
 }
 
 function renderCart() {
+  saveCart();
   const container = document.getElementById('cart-list');
   container.innerHTML = '';
   
@@ -4188,3 +4239,112 @@ function saveLoyaltySettings() {
   alert('Pengaturan Poin Pelanggan berhasil disimpan!');
 }
 
+// --- MANAJEMEN ANTREAN / JEDA KERANJANG ---
+function saveHeldCarts() {
+  localStorage.setItem('kasir_held_carts', JSON.stringify(heldCarts));
+}
+
+function holdCurrentCart() {
+  if (cart.length === 0) {
+    alert('Keranjang saat ini kosong, tidak ada yang perlu dijeda.');
+    return;
+  }
+  
+  const customerName = prompt('Masukkan nama pelanggan atau catatan untuk antrean ini (Opsional):', `Antrean ${heldCarts.length + 1}`);
+  if (customerName === null) return; // Batal
+  
+  const heldItem = {
+    id: 'HOLD-' + Date.now().toString().slice(-6),
+    name: customerName || `Antrean ${heldCarts.length + 1}`,
+    time: new Date().toISOString(),
+    items: [...cart]
+  };
+  
+  heldCarts.push(heldItem);
+  saveHeldCarts();
+  
+  cart = [];
+  renderCart();
+  updateHeldCartsUI();
+  alert('Keranjang berhasil dijeda dan masuk ke daftar antrean.');
+}
+
+function updateHeldCartsUI() {
+  const badge = document.getElementById('held-carts-badge');
+  if (badge) {
+    badge.textContent = heldCarts.length;
+    badge.style.display = heldCarts.length > 0 ? 'flex' : 'none';
+  }
+}
+
+function openHeldCartsModal() {
+  const tbody = document.getElementById('held-carts-tbody');
+  tbody.innerHTML = '';
+  
+  if (heldCarts.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 2rem;">Tidak ada antrean keranjang.</td></tr>`;
+  } else {
+    heldCarts.forEach((h, index) => {
+      const dateObj = new Date(h.time);
+      const timeStr = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      
+      let totalItems = h.items.reduce((sum, i) => sum + i.qty, 0);
+      let totalHarga = h.items.reduce((sum, i) => sum + (i.harga * i.qty), 0);
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="padding: 0.5rem; border-bottom: 1px solid var(--border-color);"><strong>${h.name}</strong><br><small style="color: var(--text-muted)">${timeStr}</small></td>
+        <td style="padding: 0.5rem; border-bottom: 1px solid var(--border-color);">${totalItems} item</td>
+        <td style="padding: 0.5rem; border-bottom: 1px solid var(--border-color);">Rp ${formatRupiah(totalHarga)}</td>
+        <td style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); text-align: right;">
+          <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <button class="btn btn-primary btn-sm" onclick="restoreHeldCart(${index})" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Lanjutkan</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteHeldCart(${index})" style="padding: 0.25rem 0.5rem;">
+              <svg viewBox="0 0 24 24" class="icon-sm" style="margin:0"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></svg>
+            </button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+  
+  document.getElementById('held-carts-modal').classList.add('active');
+}
+
+function closeHeldCartsModal() {
+  document.getElementById('held-carts-modal').classList.remove('active');
+}
+
+function restoreHeldCart(index) {
+  if (cart.length > 0) {
+    if (!confirm('Keranjang saat ini tidak kosong. Menarik antrean akan MENGGANTI keranjang saat ini. Lanjutkan?')) {
+      return;
+    }
+  }
+  
+  const h = heldCarts[index];
+  cart = [...h.items];
+  heldCarts.splice(index, 1);
+  saveHeldCarts();
+  
+  renderCart();
+  updateHeldCartsUI();
+  closeHeldCartsModal();
+}
+
+function deleteHeldCart(index) {
+  if (confirm('Yakin ingin menghapus antrean keranjang ini permanen?')) {
+    heldCarts.splice(index, 1);
+    saveHeldCarts();
+    openHeldCartsModal();
+    updateHeldCartsUI();
+  }
+}
+
+// Inisialisasi awal UI antrean saat memuat
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    updateHeldCartsUI();
+  }, 500);
+});

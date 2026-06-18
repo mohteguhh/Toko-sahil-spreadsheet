@@ -247,11 +247,22 @@
             <!-- Cart Card -->
             <div class="cart-card-left">
               <div class="cart-header">
-                <h2>Keranjang Belanja</h2>
-                <button class="clear-cart-btn" onclick="clearCart()">
-                  <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></svg>
-                  <span>Kosongkan</span>
-                </button>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <h2>Keranjang</h2>
+                  <button class="btn btn-secondary btn-sm" onclick="openHeldCartsModal()" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; position: relative;">
+                    Antrean <span id="held-carts-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: var(--danger-color); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; align-items: center; justify-content: center;">0</span>
+                  </button>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button class="btn btn-secondary btn-sm" onclick="holdCurrentCart()" style="padding: 0.25rem 0.5rem; display: flex; align-items: center; gap: 0.25rem;">
+                    <svg viewBox="0 0 24 24" class="icon-sm" style="margin:0"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5v2l4 9v4"/></svg>
+                    Jeda
+                  </button>
+                  <button class="clear-cart-btn" onclick="clearCart()">
+                    <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></svg>
+                    <span>Kosong</span>
+                  </button>
+                </div>
               </div>
               
               <div class="cart-list" id="cart-list">
@@ -672,6 +683,9 @@
                   <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;"><input type="checkbox" id="chk-show-address"> Alamat Toko</label>
                   <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;"><input type="checkbox" id="chk-show-phone"> Nomor Telepon</label>
                   <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;"><input type="checkbox" id="chk-show-cashier"> Nama Kasir</label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;"><input type="checkbox" id="chk-show-subtotal"> Subtotal Belanja</label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;"><input type="checkbox" id="chk-show-discount"> Nilai Diskon</label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;"><input type="checkbox" id="chk-show-method"> Metode Pembayaran</label>
                 </div>
               </div>
               
@@ -691,11 +705,27 @@
               </div>
             </div>
             
-            <div class="form-group" style="margin-top: 1rem;">
-              <label for="receipt-font-slider">Ukuran Font Nota (Struk Belanja)</label>
-              <div class="slider-group">
-                <input type="range" id="receipt-font-slider" min="10" max="18" value="12" step="1" oninput="updateReceiptFontSizePreview(this.value)">
-                <span id="font-size-preview-val">12px</span>
+            <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+              <div class="form-group" style="margin: 0;">
+                <label for="receipt-font-header">Ukuran Font Header Toko</label>
+                <div class="slider-group">
+                  <input type="range" id="receipt-font-header" min="10" max="24" value="14" step="1" oninput="updateFontPreview('header', this.value)">
+                  <span id="font-preview-header-val">14px</span>
+                </div>
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label for="receipt-font-items">Ukuran Font Daftar Belanja</label>
+                <div class="slider-group">
+                  <input type="range" id="receipt-font-items" min="8" max="20" value="12" step="1" oninput="updateFontPreview('items', this.value)">
+                  <span id="font-preview-items-val">12px</span>
+                </div>
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label for="receipt-font-footer">Ukuran Font Total & Footer</label>
+                <div class="slider-group">
+                  <input type="range" id="receipt-font-footer" min="10" max="20" value="12" step="1" oninput="updateFontPreview('footer', this.value)">
+                  <span id="font-preview-footer-val">12px</span>
+                </div>
               </div>
             </div>
             
@@ -1017,11 +1047,11 @@
       
       <!-- Receipt Calc -->
       <div class="receipt-totals">
-        <div class="receipt-total-row">
+        <div class="receipt-total-row" id="rec-subtotal-row">
           <span>Subtotal</span>
           <span id="rec-subtotal">Rp 0</span>
         </div>
-        <div class="receipt-total-row">
+        <div class="receipt-total-row" id="rec-discount-row">
           <span>Diskon</span>
           <span id="rec-discount">0%</span>
         </div>
@@ -1163,6 +1193,34 @@
       <div class="modal-footer flex-end">
         <button class="btn btn-secondary" onclick="closePriceChangeModal()">Abaikan</button>
         <button class="btn btn-success" id="btn-print-change-label">Cetak Label Rak</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- MODAL: ANTREAN / JEDA KERANJANG (FITUR BARU) -->
+  <div class="modal-overlay" id="held-carts-modal">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h2 style="display: flex; align-items: center; gap: 0.5rem;">
+          <svg viewBox="0 0 24 24" class="icon-sm" style="margin:0"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5v2l4 9v4"/></svg>
+          <span>Daftar Keranjang Tertunda</span>
+        </h2>
+        <button class="close-modal-btn" onclick="closeHeldCartsModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1rem;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border-color);">
+              <th style="padding: 0.5rem;">Informasi Pelanggan</th>
+              <th style="padding: 0.5rem;">Total Item</th>
+              <th style="padding: 0.5rem;">Nilai Belanja</th>
+              <th style="padding: 0.5rem; text-align: right;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="held-carts-tbody">
+            <!-- Diisi dinamis -->
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
