@@ -353,6 +353,12 @@ function saveAppConfig() {
   appConfig.customerMode = document.getElementById('chk-customer-mode').checked;
   appConfig.enablePromo = document.getElementById('chk-enable-promo').checked;
   localStorage.setItem('kasir_app_config', JSON.stringify(appConfig));
+  
+  const promoContainer = document.getElementById('promo-fields-container');
+  if (promoContainer) {
+    promoContainer.style.display = appConfig.enablePromo ? 'grid' : 'none';
+  }
+  
   alert('Pengaturan Sistem Aplikasi berhasil disimpan!');
 }
 
@@ -361,6 +367,11 @@ function loadAppConfig() {
   document.getElementById('chk-allow-zero-stock').checked = appConfig.allowZeroStock;
   document.getElementById('chk-customer-mode').checked = appConfig.customerMode;
   document.getElementById('chk-enable-promo').checked = appConfig.enablePromo;
+  
+  const promoContainer = document.getElementById('promo-fields-container');
+  if (promoContainer) {
+    promoContainer.style.display = appConfig.enablePromo ? 'grid' : 'none';
+  }
 }
 
 function applyReceiptSettings() {
