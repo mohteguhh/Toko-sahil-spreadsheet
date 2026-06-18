@@ -468,35 +468,8 @@ async function fetchFromGAS(action, postData = null) {
   }
 }
 
-// Tarik data riwayat transaksi dari Google Sheets
-async function syncTransactionsFromCloud() {
-  if (!gasUrl) return;
-  
-  updateSyncStatus('syncing', 'Menarik Transaksi...');
-  const result = await fetchFromGAS('getTransactions');
-  
-  if (result && result.status === 'success') {
-    if (result.data) {
-      // Rekonstruksi data transaksi dari string
-      transactions = result.data.map(tx => {
-        return {
-          id: tx.id_transaksi || tx.id,
-          waktu: tx.waktu,
-          total: parseFloat(tx.total) || 0,
-          bayar: parseFloat(tx.uang_bayar) || parseFloat(tx.bayar) || 0,
-          kembalian: parseFloat(tx.kembalian) || 0,
-          items: parseTransactionItemsString(tx.daftar_item || tx.items || "")
-        };
-      });
-      
-      localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
-      updateAnalytics();
-      updateSyncStatus('online', 'Tersinkronisasi');
-    }
-  } else {
-    updateSyncStatus('offline', 'Koneksi Terputus');
-  }
-}
+// Fungsi syncTransactionsFromCloud ada di bawah (baris ~2987) agar field piutang tidak hilang
+
 
 // Parsing daftar item string "Teh Manis (2x @4000)" kembali ke objek
 function parseTransactionItemsString(itemsStr) {
@@ -3025,9 +2998,15 @@ async function syncTransactionsFromCloud() {
           kembalian: parseFloat(tx.kembalian) || 0,
           metode_pembayaran: tx.metode_pembayaran || "Tunai",
           kasir: tx.kasir || "Kasir Utama",
-          status_pembayaran: tx.status_pembayaran || "Lunas",
+          // Gunakan sisa_piutang sebagai patokan utama — jika > 0 maka statusnya pasti Bon
+          sisa_piutang: parseFloat(tx.sisa_piutang) || 0,
           nama_pelanggan: tx.nama_pelanggan || "",
-          sisa_piutang: parseFloat(tx.sisa_piutang) || 0
+          status_pembayaran: (() => {
+            const sisa = parseFloat(tx.sisa_piutang) || 0;
+            if (sisa > 0) return 'Bon'; // ada sisa hutang = pasti Bon
+            // Kalau sisa 0, percayai field status_pembayaran dari cloud jika ada
+            return tx.status_pembayaran || 'Lunas';
+          })()
         };
       });
       
