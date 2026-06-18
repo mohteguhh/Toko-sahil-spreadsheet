@@ -54,8 +54,10 @@ let offlineQueue = JSON.parse(localStorage.getItem('kasir_offline_queue')) || []
 let appConfig = JSON.parse(localStorage.getItem('kasir_app_config')) || {
   strictShift: false,
   allowZeroStock: false,
-  customerMode: true
+  customerMode: true,
+  enablePromo: true
 };
+if (appConfig.enablePromo === undefined) appConfig.enablePromo = true;
 
 // Pengaturan Nota / Struk Toko (Default)
 let receiptSettings = JSON.parse(localStorage.getItem('kasir_receipt_settings')) || {
@@ -349,6 +351,7 @@ function saveAppConfig() {
   appConfig.strictShift = document.getElementById('chk-strict-shift').checked;
   appConfig.allowZeroStock = document.getElementById('chk-allow-zero-stock').checked;
   appConfig.customerMode = document.getElementById('chk-customer-mode').checked;
+  appConfig.enablePromo = document.getElementById('chk-enable-promo').checked;
   localStorage.setItem('kasir_app_config', JSON.stringify(appConfig));
   alert('Pengaturan Sistem Aplikasi berhasil disimpan!');
 }
@@ -357,6 +360,7 @@ function loadAppConfig() {
   document.getElementById('chk-strict-shift').checked = appConfig.strictShift;
   document.getElementById('chk-allow-zero-stock').checked = appConfig.allowZeroStock;
   document.getElementById('chk-customer-mode').checked = appConfig.customerMode;
+  document.getElementById('chk-enable-promo').checked = appConfig.enablePromo;
 }
 
 function applyReceiptSettings() {
@@ -1235,7 +1239,7 @@ function recalculateCartSplit(baseId, totalQty) {
   
   const hargaDiskon = parseFloat(localProd.harga_diskon) || 0;
   const kuotaDiskon = (parseInt(localProd.kuota_diskon) || 0) > 0 ? parseInt(localProd.kuota_diskon) : Infinity;
-  const hasPromo = hargaDiskon > 0;
+  const hasPromo = appConfig.enablePromo && hargaDiskon > 0;
   
   if (hasPromo) {
     const promoQty = Math.min(totalQty, kuotaDiskon);
@@ -1284,7 +1288,7 @@ function checkPromoBanner() {
   const marqueeContent = document.getElementById('promo-marquee-content');
   if (!container || !marqueeContent) return;
   
-  const promos = products.filter(p => parseFloat(p.harga_diskon) > 0);
+  const promos = appConfig.enablePromo ? products.filter(p => parseFloat(p.harga_diskon) > 0) : [];
   
   if (promos.length === 0) {
     container.style.display = 'none';
@@ -1299,7 +1303,7 @@ function checkPromoBanner() {
     html += `
       <div class="promo-marquee-item ${i === 0 ? 'active' : ''}">
         ${p.nama}: <span class="highlight">Rp ${formatRupiah(p.harga_diskon)}</span> 
-        <span class="stock">(Harga Asli: <s style="opacity: 0.7;">Rp ${formatRupiah(p.harga_jual)}</s>)</span>
+        <s style="color: var(--color-danger); opacity: 0.8; margin-left: 0.25rem;">Rp ${formatRupiah(p.harga_jual)}</s>
       </div>
     `;
   });
