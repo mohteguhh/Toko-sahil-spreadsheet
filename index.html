@@ -13,7 +13,7 @@
   <!-- HTML5 QR Code Library for Camera Scanning -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   
-  <link rel="stylesheet" href="style.css?v=2.1">
+  <link rel="stylesheet" href="style.css?v=2.2">
 </head>
 <body>
 
@@ -332,7 +332,7 @@
           <!-- Form Kulak -->
           <div class="card kulak-form-card" id="kulak-form-card" style="display: none;">
             <div class="kulak-prod-preview">
-              <img id="kulak-prod-img" src="" alt="Pratinjau" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=100'">
+              <img id="kulak-prod-img" src="" alt="Pratinjau" onerror="handleImageError(this)">
               <div class="kulak-prod-detail">
                 <h3 id="kulak-prod-name">Nama Barang</h3>
                 <span id="kulak-prod-id">ID: P001</span>
@@ -754,6 +754,74 @@
       </div>
     </div>
   </div>
+
+  <!-- MODAL: CETAK LABEL HARGA (FITUR BARU) -->
+  <div class="modal-overlay" id="print-label-modal">
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2>Cetak Label Harga</h2>
+        <button class="close-modal-btn" onclick="closePrintLabelModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="print-label-prod-id">
+        
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="print-label-type">Tipe Label</label>
+          <select id="print-label-type" onchange="updateLabelPreview()" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-weight: 600; outline: none;">
+            <option value="product">Label Produk (Dengan Barcode, Tempel di Produk)</option>
+            <option value="shelf">Label Rak (Nama & Harga Besar, Tempel di Rak)</option>
+          </select>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="print-label-qty">Jumlah Lembar Cetak</label>
+          <input type="number" id="print-label-qty" min="1" max="100" value="1" oninput="updateLabelPreview()" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-weight: 600; outline: none;">
+        </div>
+
+        <div class="form-group">
+          <label>Pratinjau Label</label>
+          <div id="label-preview-container" style="display: flex; justify-content: center; padding: 1.5rem; background-color: var(--bg-surface-elevated); border: 1px dashed var(--border-color); border-radius: var(--border-radius-sm); margin-top: 0.5rem; overflow: auto;">
+            <!-- Pratinjau label dirender dinamis -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer flex-end">
+        <button class="btn btn-secondary" onclick="closePrintLabelModal()">Batal</button>
+        <button class="btn btn-primary" onclick="printLabels()">Cetak Sekarang</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NOTIFIKASI KENAIKAN HARGA (FITUR BARU) -->
+  <div class="modal-overlay" id="price-change-modal">
+    <div class="modal-card" style="max-width: 450px;">
+      <div class="modal-header">
+        <h2 style="color: var(--color-warning); display: flex; align-items: center; gap: 0.5rem;">
+          <svg viewBox="0 0 24 24" style="width: 1.5rem; height: 1.5rem; stroke: currentColor; fill: none; stroke-width: 2;"><path d="m10.29 3.86 7.22 12.53A2 2 0 0 1 15.78 19H4.22a2 2 0 0 1-1.73-3.11L9.71 3.3a2 2 0 0 1 3.5 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+          <span>Kenaikan Harga Terdeteksi!</span>
+        </h2>
+        <button class="close-modal-btn" onclick="closePriceChangeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Harga jual produk <strong id="price-change-prod-name">Produk</strong> telah dinaikkan:</p>
+        <div style="background-color: var(--color-primary-light); border: 1px solid rgba(217,119,6,0.2); border-radius: var(--border-radius-sm); padding: 1rem; margin: 1rem 0; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+          <span style="text-decoration: line-through; color: var(--text-muted); font-size: 1.1rem;" id="price-change-old">Rp 0</span>
+          <span style="font-size: 1.5rem; font-weight: 800; color: var(--color-primary);">&rarr;</span>
+          <span style="font-size: 1.5rem; font-weight: 800; color: var(--color-success); font-family: var(--font-main);" id="price-change-new">Rp 0</span>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--text-muted);">Apakah Anda ingin mencetak label harga rak yang baru sekarang agar harga fisik di rak toko tetap sinkron dengan sistem?</p>
+      </div>
+      <div class="modal-footer flex-end">
+        <button class="btn btn-secondary" onclick="closePriceChangeModal()">Abaikan</button>
+        <button class="btn btn-success" id="btn-print-change-label">Cetak Label Rak</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYOUT PRINT LABEL HARGA (HANYA MUNCUL SAAT DI-PRINT) -->
+  <div id="labels-print-area" class="labels-print-area" style="display: none;">
+    <!-- Isi label dirender secara dinamis saat tombol cetak ditekan -->
+  </div>
   
   <!-- DAILY REPORT PRINT LAYOUT (HANYA MUNCUL SAAT DI-PRINT) -->
   <div id="daily-report-print-area" class="daily-report-print-area" style="display: none;">
@@ -816,6 +884,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=2.1"></script>
+  <script src="app.js?v=2.2"></script>
 </body>
 </html>

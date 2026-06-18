@@ -4,6 +4,12 @@
 
 // --- State Aplikasi ---
 let products = [];
+
+// --- Helper Gambar Offline (Flicker-Free) ---
+function handleImageError(img) {
+  img.onerror = null; // Mencegah loop tak terbatas
+  img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="%23cbd5e1" stroke-width="2"><rect width="100" height="100" fill="%23f8fafc"/><circle cx="50" cy="45" r="15"/><path d="M20,80 C20,60 80,60 80,80"/></svg>';
+}
 let cart = [];
 let transactions = []; // Riwayat transaksi lokal untuk analisis
 let categories = ['All'];
@@ -871,7 +877,7 @@ function renderFloatingDropdown() {
     const imgUrl = p.gambar || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=100';
     
     div.innerHTML = `
-      <img src="${imgUrl}" alt="${p.nama}" class="floating-item-img" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=100'">
+      <img src="${imgUrl}" alt="${p.nama}" class="floating-item-img" onerror="handleImageError(this)">
       <div class="floating-item-info">
         <span class="floating-item-name">${p.nama} (${p.id})</span>
         <div class="floating-item-meta">
@@ -1353,7 +1359,7 @@ function renderKulakFloatingDropdown() {
     const imgUrl = p.gambar || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=100';
     
     div.innerHTML = `
-      <img src="${imgUrl}" alt="${p.nama}" class="floating-item-img" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=100'">
+      <img src="${imgUrl}" alt="${p.nama}" class="floating-item-img" onerror="handleImageError(this)">
       <div class="floating-item-info">
         <span class="floating-item-name">${p.nama} (${p.id})</span>
         <div class="floating-item-meta">
@@ -1437,6 +1443,9 @@ function saveKulak(e) {
   
   const p = products.find(prod => prod.id === id);
   if (p) {
+    const oldPrice = p.harga_jual;
+    const isPriceIncreased = newSellPrice > oldPrice;
+
     p.stok = p.stok + qtyAdd;
     p.harga_beli = newBuyPrice;
     p.harga_jual = newSellPrice;
@@ -1448,6 +1457,10 @@ function saveKulak(e) {
     
     // Sinkronkan ke cloud secara massal di latar belakang (tanpa lag)
     syncProductsToCloudBackground();
+
+    if (isPriceIncreased) {
+      showPriceChangeNotification(p, oldPrice, newSellPrice);
+    }
   }
 }
 
@@ -1518,7 +1531,7 @@ function renderProductsTable() {
     
     tr.innerHTML = `
       <td>
-        <img src="${imgUrl}" alt="${p.nama}" class="prod-table-img" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=100'">
+        <img src="${imgUrl}" alt="${p.nama}" class="prod-table-img" onerror="handleImageError(this)">
       </td>
       <td><strong>${p.id}</strong></td>
       <td>${p.nama}</td>
@@ -1529,12 +1542,17 @@ function renderProductsTable() {
       <td><span style="font-family: monospace;">${p.barcode || '-'}</span></td>
       <td>${expBadge}</td>
       <td>
-        <button class="action-icon-btn btn-edit" onclick="editProduct(${originalIndex})" title="Edit">
-          <svg viewBox="0 0 24 24" class="icon-sm"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-        </button>
-        <button class="action-icon-btn btn-delete" onclick="deleteProduct(${originalIndex})" title="Hapus">
-          <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
-        </button>
+        <div style="display: flex; gap: 0.35rem;">
+          <button class="action-icon-btn btn-edit" onclick="editProduct(${originalIndex})" title="Edit">
+            <svg viewBox="0 0 24 24" class="icon-sm"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="action-icon-btn btn-edit" onclick="openPrintLabelModal('${p.id}')" title="Cetak Label Harga" style="color: var(--color-success); background-color: rgba(16,185,129,0.1);">
+            <svg viewBox="0 0 24 24" class="icon-sm" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2m-10 0v4h8v-4"/></svg>
+          </button>
+          <button class="action-icon-btn btn-delete" onclick="deleteProduct(${originalIndex})" title="Hapus">
+            <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+          </button>
+        </div>
       </td>
     `;
     tbody.appendChild(tr);
@@ -1567,6 +1585,16 @@ function saveProduct(event) {
     }
   }
   
+  let isPriceIncreased = false;
+  let oldPrice = 0;
+  if (editIndex > -1) {
+    const oldProduct = products[editIndex];
+    if (priceSellInput > oldProduct.harga_jual) {
+      isPriceIncreased = true;
+      oldPrice = oldProduct.harga_jual;
+    }
+  }
+  
   const productData = {
     id: idInput,
     nama: nameInput,
@@ -1592,6 +1620,10 @@ function saveProduct(event) {
   
   alert("Produk berhasil disimpan!");
   syncProductsToCloudBackground();
+  
+  if (isPriceIncreased) {
+    showPriceChangeNotification(productData, oldPrice, priceSellInput);
+  }
 }
 
 function editProduct(index) {
@@ -1925,6 +1957,55 @@ function formatRupiah(number) {
   return new Intl.NumberFormat('id-ID').format(number);
 }
 
+// --- Generator Barcode Code 39 Offline ---
+const CODE39_MAP = {
+  '0': '000110100', '1': '100100001', '2': '001100001', '3': '101100000',
+  '4': '000110001', '5': '100110000', '6': '001110000', '7': '000100101',
+  '8': '100100100', '9': '001100100', 'A': '100001001', 'B': '001001001',
+  'C': '101001000', 'D': '000011001', 'E': '100011000', 'F': '001011000',
+  'G': '000001101', 'H': '100001100', 'I': '001001100', 'J': '000011100',
+  'K': '100000011', 'L': '001000011', 'M': '101000010', 'N': '000010011',
+  'O': '100010010', 'P': '001010010', 'Q': '000000111', 'R': '100000110',
+  'S': '001000110', 'T': '000010110', 'U': '110000001', 'V': '011000001',
+  'W': '111000000', 'X': '010010001', 'Y': '110010000', 'Z': '011010000',
+  '-': '010000101', '.': '110000100', ' ': '011000100', '$': '010101000',
+  '/': '010100010', '+': '010001010', '%': '000101010', '*': '010010100'
+};
+
+function generateCode39SVG(text) {
+  if (!text) return '';
+  const cleanText = text.toUpperCase().split('').filter(c => CODE39_MAP[c]).join('');
+  if (!cleanText) return '';
+
+  const fullText = '*' + cleanText + '*';
+  const N_WIDTH = 1.5; 
+  const W_WIDTH = 3.5; 
+  const GAP = 1.5;     
+  const height = 45;   
+
+  let currentX = 0;
+  const rects = [];
+
+  for (let i = 0; i < fullText.length; i++) {
+    const char = fullText[i];
+    const pattern = CODE39_MAP[char];
+
+    for (let j = 0; j < 9; j++) {
+      const isWide = pattern[j] === '1';
+      const width = isWide ? W_WIDTH : N_WIDTH;
+      const isBar = j % 2 === 0;
+
+      if (isBar) {
+        rects.push(`<rect x="${currentX.toFixed(1)}" y="0" width="${width.toFixed(1)}" height="${height}" fill="black" />`);
+      }
+      currentX += width;
+    }
+    currentX += GAP;
+  }
+
+  return `<svg width="${currentX.toFixed(1)}" height="${height}" viewBox="0 0 ${currentX.toFixed(1)} ${height}" xmlns="http://www.w3.org/2000/svg">${rects.join('')}</svg>`;
+}
+
 // State Riwayat Transaksi & Edit Transaksi
 let editTxItems = [];
 let editTxOriginalItems = [];
@@ -2222,7 +2303,7 @@ function renderEditTxFloatingDropdown() {
     const imgUrl = p.gambar || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=100';
     
     div.innerHTML = `
-      <img src="${imgUrl}" alt="${p.nama}" class="floating-item-img" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=100'">
+      <img src="${imgUrl}" alt="${p.nama}" class="floating-item-img" onerror="handleImageError(this)">
       <div class="floating-item-info">
         <span class="floating-item-name">${p.nama} (${p.id})</span>
         <div class="floating-item-meta">
@@ -2572,3 +2653,141 @@ function printDailyReport() {
   document.body.classList.add('printing-daily-report');
   window.print();
 }
+
+// --- MODUL CETAK LABEL HARGA & BARCODE (FITUR BARU) ---
+function openPrintLabelModal(productId, defaultType = 'product') {
+  const p = products.find(prod => prod.id === productId);
+  if (!p) {
+    alert("Produk tidak ditemukan!");
+    return;
+  }
+  
+  document.getElementById('print-label-prod-id').value = productId;
+  document.getElementById('print-label-type').value = defaultType;
+  document.getElementById('print-label-qty').value = 1;
+  
+  updateLabelPreview();
+  document.getElementById('print-label-modal').classList.add('active');
+}
+
+function closePrintLabelModal() {
+  document.getElementById('print-label-modal').classList.remove('active');
+}
+
+function updateLabelPreview() {
+  const productId = document.getElementById('print-label-prod-id').value;
+  const p = products.find(prod => prod.id === productId);
+  if (!p) return;
+  
+  const labelType = document.getElementById('print-label-type').value;
+  const previewContainer = document.getElementById('label-preview-container');
+  previewContainer.innerHTML = '';
+  
+  const storeName = receiptSettings.name || 'KasirKilat';
+  const priceFormatted = `Rp ${formatRupiah(p.harga_jual)}`;
+  
+  if (labelType === 'product') {
+    // Render label produk (ada barcode)
+    const barcodeVal = p.barcode || p.id;
+    const barcodeSVG = generateCode39SVG(barcodeVal);
+    
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'label-item-print product-label';
+    labelDiv.innerHTML = `
+      <div class="label-store">${storeName}</div>
+      <div class="label-name">${p.nama}</div>
+      <div class="label-price">${priceFormatted}</div>
+      <div class="label-barcode-svg">${barcodeSVG}</div>
+      <div class="label-barcode-text">${barcodeVal}</div>
+    `;
+    previewContainer.appendChild(labelDiv);
+  } else {
+    // Render label rak (nama & harga besar)
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'label-item-print shelf-label';
+    labelDiv.innerHTML = `
+      <div class="label-store">${storeName}</div>
+      <div class="label-name">${p.nama}</div>
+      <div class="label-price-box">
+        <span class="label-price-label">Harga</span>
+        <span class="label-price">${priceFormatted}</span>
+      </div>
+    `;
+    previewContainer.appendChild(labelDiv);
+  }
+}
+
+function printLabels() {
+  const productId = document.getElementById('print-label-prod-id').value;
+  const p = products.find(prod => prod.id === productId);
+  if (!p) return;
+  
+  const labelType = document.getElementById('print-label-type').value;
+  const qty = parseInt(document.getElementById('print-label-qty').value) || 1;
+  const printArea = document.getElementById('labels-print-area');
+  printArea.innerHTML = '';
+  
+  const storeName = receiptSettings.name || 'KasirKilat';
+  const priceFormatted = `Rp ${formatRupiah(p.harga_jual)}`;
+  
+  const container = document.createElement('div');
+  container.className = 'labels-print-container';
+  
+  for (let i = 0; i < qty; i++) {
+    const labelDiv = document.createElement('div');
+    if (labelType === 'product') {
+      const barcodeVal = p.barcode || p.id;
+      const barcodeSVG = generateCode39SVG(barcodeVal);
+      labelDiv.className = 'label-item-print product-label';
+      labelDiv.innerHTML = `
+        <div class="label-store">${storeName}</div>
+        <div class="label-name">${p.nama}</div>
+        <div class="label-price">${priceFormatted}</div>
+        <div class="label-barcode-svg">${barcodeSVG}</div>
+        <div class="label-barcode-text">${barcodeVal}</div>
+      `;
+    } else {
+      labelDiv.className = 'label-item-print shelf-label';
+      labelDiv.innerHTML = `
+        <div class="label-store">${storeName}</div>
+        <div class="label-name">${p.nama}</div>
+        <div class="label-price-box">
+          <span class="label-price-label">Harga</span>
+          <span class="label-price">${priceFormatted}</span>
+        </div>
+      `;
+    }
+    container.appendChild(labelDiv);
+  }
+  
+  printArea.appendChild(container);
+  closePrintLabelModal();
+  
+  document.body.classList.add('printing-labels');
+  window.print();
+}
+
+// Deteksi cetak label selesai
+window.addEventListener('afterprint', () => {
+  document.body.classList.remove('printing-labels');
+});
+
+// --- NOTIFIKASI KENAIKAN HARGA (FITUR BARU) ---
+function showPriceChangeNotification(p, oldPrice, newPrice) {
+  document.getElementById('price-change-prod-name').textContent = p.nama;
+  document.getElementById('price-change-old').textContent = `Rp ${formatRupiah(oldPrice)}`;
+  document.getElementById('price-change-new').textContent = `Rp ${formatRupiah(newPrice)}`;
+  
+  const btnPrint = document.getElementById('btn-print-change-label');
+  btnPrint.onclick = () => {
+    closePriceChangeModal();
+    openPrintLabelModal(p.id, 'shelf');
+  };
+  
+  document.getElementById('price-change-modal').classList.add('active');
+}
+
+function closePriceChangeModal() {
+  document.getElementById('price-change-modal').classList.remove('active');
+}
+
