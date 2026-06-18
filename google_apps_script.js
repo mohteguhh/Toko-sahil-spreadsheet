@@ -99,9 +99,17 @@ function setupSheets() {
   
   // 2. Sheet Transaksi
   var sheetTransaksi = ss.getSheetByName("Transaksi");
+  var txHeaders = ["ID Transaksi", "Waktu", "Daftar Item", "Total", "Uang Bayar", "Kembalian", "Metode Pembayaran", "Kasir", "Status Pembayaran", "Nama Pelanggan", "Sisa Piutang"];
   if (!sheetTransaksi) {
     sheetTransaksi = ss.insertSheet("Transaksi");
-    sheetTransaksi.appendRow(["ID Transaksi", "Waktu", "Daftar Item", "Total", "Uang Bayar", "Kembalian"]);
+    sheetTransaksi.appendRow(txHeaders);
+  } else {
+    // Perbaikan Header jika kolom baru belum ada
+    var currentLastCol = Math.max(1, sheetTransaksi.getLastColumn());
+    var existingHeaders = sheetTransaksi.getRange(1, 1, 1, currentLastCol).getValues()[0];
+    if (existingHeaders.length < txHeaders.length) {
+      sheetTransaksi.getRange(1, 1, 1, txHeaders.length).setValues([txHeaders]);
+    }
   }
 }
 
@@ -164,7 +172,12 @@ function saveTransaction(tx) {
     itemsString,
     tx.total,
     tx.bayar,
-    tx.kembalian
+    tx.kembalian,
+    tx.metode_pembayaran || "Tunai",
+    tx.kasir || "Kasir Utama",
+    tx.status_pembayaran || "Lunas",
+    tx.nama_pelanggan || "",
+    tx.sisa_piutang || 0
   ]);
   
   // Kurangi stok di sheet "Produk" (Kolom ke-6 / Stok / indeks ke-5)
@@ -243,7 +256,7 @@ function updateTransactions(transactionsList) {
   // Bersihkan data lama mulai baris kedua ke bawah
   var lastRow = sheet.getLastRow();
   if (lastRow > 1) {
-    sheet.getRange(2, 1, lastRow - 1, 6).clearContent();
+    sheet.getRange(2, 1, lastRow - 1, 11).clearContent();
   }
   
   if (!transactionsList || transactionsList.length === 0) {
@@ -270,10 +283,15 @@ function updateTransactions(transactionsList) {
       itemsString,
       Number(tx.total) || 0,
       Number(tx.bayar) || Number(tx.uang_bayar) || 0,
-      Number(tx.kembalian) || 0
+      Number(tx.kembalian) || 0,
+      tx.metode_pembayaran || "Tunai",
+      tx.kasir || "Kasir Utama",
+      tx.status_pembayaran || "Lunas",
+      tx.nama_pelanggan || "",
+      Number(tx.sisa_piutang) || 0
     ]);
   }
   
-  sheet.getRange(2, 1, values.length, 6).setValues(values);
+  sheet.getRange(2, 1, values.length, 11).setValues(values);
   return { status: "success", message: "Sinkronisasi transaksi (" + transactionsList.length + " data) sukses secara instan!" };
 }

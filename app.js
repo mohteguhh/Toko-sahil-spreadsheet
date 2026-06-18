@@ -33,6 +33,10 @@ let selectedReceiptButtonIndex = 0; // 0 = Cetak Nota, 1 = Tidak
 // State Cetak Label Harga Massal (Terpilih)
 let selectedProductIds = new Set();
 
+// State Kasir & Multi-user (Fitur Baru)
+let cashiers = JSON.parse(localStorage.getItem('kasir_cashiers')) || ['Kasir Utama', 'Kasir Shift 2', 'Kasir Shift 3'];
+let activeCashier = localStorage.getItem('kasir_active_cashier') || 'Kasir Utama';
+
 // URL Google Apps Script & Offline Sync
 let gasUrl = localStorage.getItem('kasir_gas_url') || '';
 let syncStatus = 'offline'; 
@@ -130,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initClock();
   loadReceiptSettings();
   loadData();
+  initCashiers();
   
   // Isi input URL di pengaturan jika sudah ada
   if (gasUrl) {
@@ -534,22 +539,74 @@ function updateAnalytics() {
   let grossProfit = 0;
   let netProfit = 0;
   
+  // Rincian Metode Pembayaran Hari Ini
+  const methodsBreakdown = {
+    'Tunai': 0,
+    'QRIS': 0,
+    'Debit': 0,
+    'Transfer': 0
+  };
+  
   todayTxs.forEach(tx => {
     revenue += tx.total;
     grossProfit += tx.total;
     
-    // Hitung Laba Bersih
+    // Hitung Laba Bersih sebelum diskon transaksi
+    let txSubtotal = 0;
+    let txNetProfitBeforeDiscount = 0;
     tx.items.forEach(item => {
       const buyPrice = item.harga_beli || 0;
       const sellPrice = item.harga || 0;
-      netProfit += (sellPrice - buyPrice) * item.qty;
+      txNetProfitBeforeDiscount += (sellPrice - buyPrice) * item.qty;
+      txSubtotal += sellPrice * item.qty;
     });
+    
+    // Kurangi laba bersih dengan diskon transaksi
+    const txDiscount = Math.max(0, txSubtotal - tx.total);
+    netProfit += (txNetProfitBeforeDiscount - txDiscount);
+    
+    // Akumulasi metode pembayaran
+    const m = tx.metode_pembayaran || 'Tunai';
+    methodsBreakdown[m] = (methodsBreakdown[m] || 0) + tx.total;
+  });
+  
+  // Hitung total piutang aktif secara kumulatif (semua transaksi belum lunas)
+  let totalDebt = 0;
+  transactions.forEach(tx => {
+    totalDebt += (tx.sisa_piutang || 0);
   });
   
   // Update Metrik Hari Ini di UI
   document.getElementById('stat-revenue').textContent = `Rp ${formatRupiah(revenue)}`;
   document.getElementById('stat-gross-profit').textContent = `Rp ${formatRupiah(grossProfit)}`;
   document.getElementById('stat-net-profit').textContent = `Rp ${formatRupiah(netProfit)}`;
+  
+  const statDebtEl = document.getElementById('stat-debt');
+  if (statDebtEl) {
+    statDebtEl.textContent = `Rp ${formatRupiah(totalDebt)}`;
+  }
+  
+  // Render rincian metode pembayaran di panel kanan
+  const breakdownContainer = document.getElementById('payment-method-breakdown');
+  if (breakdownContainer) {
+    breakdownContainer.innerHTML = '';
+    Object.keys(methodsBreakdown).forEach(m => {
+      const amt = methodsBreakdown[m];
+      const div = document.createElement('div');
+      div.style.display = 'flex';
+      div.style.justify = 'space-between';
+      div.style.alignItems = 'center';
+      div.style.padding = '0.35rem 0.5rem';
+      div.style.backgroundColor = 'var(--bg-body)';
+      div.style.borderRadius = 'var(--border-radius-sm)';
+      div.style.fontSize = '0.85rem';
+      div.innerHTML = `
+        <span style="font-weight:600; color:var(--text-main);">${m}</span>
+        <span style="font-weight:700; color:var(--text-main);">Rp ${formatRupiah(amt)}</span>
+      `;
+      breakdownContainer.appendChild(div);
+    });
+  }
   
   // 1. Hitung Stok Menipis (0 s.d. 2 pcs)
   const stockAlerts = products.filter(p => p.stok <= 2);
@@ -1063,14 +1120,76 @@ function openPaymentModal() {
   
   document.getElementById('pay-total-amount').textContent = `Rp ${formatRupiah(globalTotal)}`;
   
+  // Reset payment method and status
+  const methodSelect = document.getElementById('payment-method-select');
+  const statusSelect = document.getElementById('payment-status-select');
+  
+  methodSelect.value = 'Tunai';
+  methodSelect.disabled = false;
+  statusSelect.value = 'Lunas';
+  statusSelect.disabled = false;
+  
+  document.getElementById('customer-name-group').style.display = 'none';
+  document.getElementById('customer-name-input').value = '';
+  
   const cashInput = document.getElementById('cash-received');
   cashInput.value = '';
+  document.getElementById('cash-received-group').style.display = 'block';
+  document.getElementById('quick-cash-grid-container').style.display = 'grid';
+  document.getElementById('cash-received-label').textContent = "Uang Diterima dari Konsumen (Rp)*";
+  
   calculateChange();
   
   document.getElementById('payment-modal').classList.add('active');
   setTimeout(() => {
     cashInput.focus();
   }, 100);
+}
+
+function onPaymentMethodChange(val) {
+  const cashInput = document.getElementById('cash-received');
+  const cashGroup = document.getElementById('cash-received-group');
+  const quickCashGrid = document.getElementById('quick-cash-grid-container');
+  const statusSelect = document.getElementById('payment-status-select');
+  
+  if (val !== 'Tunai') {
+    // Non-tunai otomatis Lunas dan Uang Pas
+    statusSelect.value = 'Lunas';
+    onPaymentStatusChange('Lunas');
+    statusSelect.disabled = true; // non-tunai tidak bisa Bon
+    
+    cashInput.value = formatRupiah(globalTotal);
+    cashGroup.style.display = 'none';
+    quickCashGrid.style.display = 'none';
+  } else {
+    statusSelect.disabled = false;
+    cashInput.value = '';
+    cashGroup.style.display = 'block';
+    quickCashGrid.style.display = 'grid';
+  }
+  calculateChange();
+}
+
+function onPaymentStatusChange(val) {
+  const customerGroup = document.getElementById('customer-name-group');
+  const cashInput = document.getElementById('cash-received');
+  const cashLabel = document.getElementById('cash-received-label');
+  const quickCashGrid = document.getElementById('quick-cash-grid-container');
+  
+  if (val === 'Bon') {
+    customerGroup.style.display = 'block';
+    cashLabel.textContent = "Uang Muka / DP dibayarkan (Rp)";
+    cashInput.placeholder = "Bisa dikosongkan (Rp 0)...";
+    cashInput.value = '';
+    quickCashGrid.style.display = 'none'; // sembunyikan quick cash karena bayar bebas/DP
+  } else {
+    customerGroup.style.display = 'none';
+    cashLabel.textContent = "Uang Diterima dari Konsumen (Rp)*";
+    cashInput.placeholder = "Masukkan jumlah uang...";
+    cashInput.value = '';
+    quickCashGrid.style.display = 'grid';
+  }
+  calculateChange();
 }
 
 function closePaymentModal() {
@@ -1093,28 +1212,50 @@ function calculateChange() {
   const cashInput = document.getElementById('cash-received');
   const changeVal = document.getElementById('change-val');
   const btnSubmit = document.getElementById('btn-submit-payment');
+  const method = document.getElementById('payment-method-select').value;
+  const status = document.getElementById('payment-status-select').value;
   
   const cashText = cashInput.value.replace(/\./g, ""); // Hapus titik ribuan
   const cash = parseFloat(cashText) || 0;
   const change = cash - globalTotal;
   
   const changeBox = changeVal.parentElement;
+  const changeLabel = changeBox.querySelector('.bill-label');
   
-  if (cashInput.value === '') {
-    changeVal.textContent = 'Rp 0';
-    changeVal.className = 'bill-amount change-neutral';
-    if (changeBox) changeBox.className = 'payment-bill-box change-box-large change-neutral';
-    btnSubmit.disabled = true;
-  } else if (change >= 0) {
-    changeVal.textContent = `Rp ${formatRupiah(change)}`;
-    changeVal.className = 'bill-amount change-ok';
-    if (changeBox) changeBox.className = 'payment-bill-box change-box-large change-ok';
-    btnSubmit.disabled = false;
+  if (status === 'Bon') {
+    if (changeLabel) changeLabel.textContent = "SISA BON PIUTANG (DEBT)";
+    
+    if (change >= 0) {
+      changeVal.textContent = 'Rp 0 (Lunas)';
+      changeVal.className = 'bill-amount change-ok';
+      if (changeBox) changeBox.className = 'payment-bill-box change-box-large change-ok';
+      btnSubmit.disabled = false;
+    } else {
+      const sisaPiutang = Math.abs(change);
+      changeVal.textContent = `Rp ${formatRupiah(sisaPiutang)}`;
+      changeVal.className = 'bill-amount change-neutral';
+      if (changeBox) changeBox.className = 'payment-bill-box change-box-large change-neutral';
+      btnSubmit.disabled = false; // Bon diperbolehkan bayar kurang atau Rp 0
+    }
   } else {
-    changeVal.textContent = `Kurang Rp ${formatRupiah(Math.abs(change))}`;
-    changeVal.className = 'bill-amount change-insufficient';
-    if (changeBox) changeBox.className = 'payment-bill-box change-box-large change-insufficient';
-    btnSubmit.disabled = true;
+    if (changeLabel) changeLabel.textContent = "KEMBALIAN";
+    
+    if (cashInput.value === '' && method === 'Tunai') {
+      changeVal.textContent = 'Rp 0';
+      changeVal.className = 'bill-amount change-neutral';
+      if (changeBox) changeBox.className = 'payment-bill-box change-box-large change-neutral';
+      btnSubmit.disabled = true;
+    } else if (change >= 0) {
+      changeVal.textContent = `Rp ${formatRupiah(change)}`;
+      changeVal.className = 'bill-amount change-ok';
+      if (changeBox) changeBox.className = 'payment-bill-box change-box-large change-ok';
+      btnSubmit.disabled = false;
+    } else {
+      changeVal.textContent = `Kurang Rp ${formatRupiah(Math.abs(change))}`;
+      changeVal.className = 'bill-amount change-insufficient';
+      if (changeBox) changeBox.className = 'payment-bill-box change-box-large change-insufficient';
+      btnSubmit.disabled = true;
+    }
   }
 }
 
@@ -1133,15 +1274,27 @@ function setQuickCash(amount) {
 async function processCheckout() {
   if (cart.length === 0) return;
   
+  const method = document.getElementById('payment-method-select').value;
+  const status = document.getElementById('payment-status-select').value;
+  const customerName = document.getElementById('customer-name-input').value.trim();
+  
+  if (status === 'Bon' && customerName === '') {
+    alert("Untuk pembayaran Bon, Nama Pelanggan wajib diisi!");
+    return;
+  }
+  
   const cashInput = document.getElementById('cash-received');
   const cashText = cashInput.value.replace(/\./g, ""); // Hapus titik ribuan
   const cash = parseFloat(cashText) || 0;
-  if (cash < globalTotal) {
+  
+  if (status !== 'Bon' && cash < globalTotal) {
     alert("Pembayaran kurang!");
     return;
   }
   
-  const change = cash - globalTotal;
+  const change = status === 'Bon' ? (cash >= globalTotal ? cash - globalTotal : 0) : cash - globalTotal;
+  const sisaPiutang = status === 'Bon' ? (cash < globalTotal ? globalTotal - cash : 0) : 0;
+  
   const txId = 'TX-' + Date.now().toString().slice(-8);
   const now = new Date();
   
@@ -1151,7 +1304,12 @@ async function processCheckout() {
     items: [...cart],
     total: globalTotal,
     bayar: cash,
-    kembalian: change
+    kembalian: change,
+    metode_pembayaran: method,
+    kasir: activeCashier,
+    status_pembayaran: sisaPiutang > 0 ? 'Bon' : 'Lunas',
+    nama_pelanggan: status === 'Bon' ? customerName : '',
+    sisa_piutang: sisaPiutang
   };
   
   // 1. Kurangi stok produk secara lokal
@@ -1193,6 +1351,9 @@ function showReceipt(tx, items) {
   const timeStr = dateObj.toLocaleDateString('id-ID') + ' ' + dateObj.toLocaleTimeString('id-ID', { hour12: false });
   document.getElementById('rec-time').textContent = timeStr;
   
+  const cashierEl = document.getElementById('rec-cashier');
+  if (cashierEl) cashierEl.textContent = tx.kasir || 'Kasir Utama';
+  
   const recItems = document.getElementById('rec-items');
   recItems.innerHTML = '';
   
@@ -1213,13 +1374,33 @@ function showReceipt(tx, items) {
     recItems.appendChild(row);
   });
   
-  const discountPercent = Math.round(((subtotal - tx.total) / subtotal) * 100);
+  const discountPercent = subtotal > 0 ? Math.round(((subtotal - tx.total) / subtotal) * 100) : 0;
   
   document.getElementById('rec-subtotal').textContent = `Rp ${formatRupiah(subtotal)}`;
   document.getElementById('rec-discount').textContent = `${discountPercent}%`;
   document.getElementById('rec-total').textContent = `Rp ${formatRupiah(tx.total)}`;
   document.getElementById('rec-cash').textContent = `Rp ${formatRupiah(tx.bayar)}`;
   document.getElementById('rec-change').textContent = `Rp ${formatRupiah(tx.kembalian)}`;
+  
+  // Rincian Metode & Piutang (Fitur Baru)
+  const methodEl = document.getElementById('rec-method');
+  if (methodEl) {
+    methodEl.textContent = tx.metode_pembayaran || 'Tunai';
+    if (tx.status_pembayaran === 'Bon') {
+      methodEl.textContent += ' (Bon)';
+    }
+  }
+  
+  const debtRow = document.getElementById('rec-debt-row');
+  const debtVal = document.getElementById('rec-debt');
+  if (debtRow && debtVal) {
+    if (tx.sisa_piutang > 0) {
+      debtVal.textContent = `Rp ${formatRupiah(tx.sisa_piutang)}`;
+      debtRow.style.display = 'flex';
+    } else {
+      debtRow.style.display = 'none';
+    }
+  }
   
   document.getElementById('receipt-modal').classList.add('active');
   
@@ -1907,6 +2088,130 @@ function clearLocalCache() {
   }
 }
 
+// --- LOGIKA KASIR MULTI-USER (FITUR BARU) ---
+function initCashiers() {
+  const selectSelect = document.getElementById('active-cashier-select');
+  if (selectSelect) {
+    selectSelect.innerHTML = '';
+    cashiers.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      if (c === activeCashier) opt.selected = true;
+      selectSelect.appendChild(opt);
+    });
+  }
+  renderCashierSettingsList();
+}
+
+function setActiveCashier(name) {
+  activeCashier = name;
+  localStorage.setItem('kasir_active_cashier', name);
+  initCashiers(); // Render ulang daftar pengaturan agar label (Aktif) ter-update
+}
+
+function renderCashierSettingsList() {
+  const listContainer = document.getElementById('cashier-settings-list');
+  if (!listContainer) return;
+  listContainer.innerHTML = '';
+  
+  cashiers.forEach(c => {
+    const item = document.createElement('div');
+    item.style.display = 'flex';
+    item.style.justify = 'space-between';
+    item.style.alignItems = 'center';
+    item.style.padding = '0.35rem 0.5rem';
+    item.style.backgroundColor = 'var(--bg-card)';
+    item.style.border = '1px solid var(--border-color)';
+    item.style.borderRadius = 'var(--border-radius-sm)';
+    item.style.marginBottom = '0.25rem';
+    
+    // Jangan izinkan hapus jika hanya ada 1 kasir tersisa
+    const deleteBtnHtml = cashiers.length > 1 
+      ? `<button class="action-icon-btn btn-delete" onclick="deleteCashier('${c}')" title="Hapus Kasir" style="padding: 2px 4px;">
+           <svg viewBox="0 0 24 24" class="icon-sm" style="width:14px; height:14px;"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+         </button>` 
+      : '';
+      
+    const editBtnHtml = `<button class="action-icon-btn btn-edit" onclick="renameCashier('${c}')" title="Ubah Nama Kasir" style="padding: 2px 4px; color: var(--color-primary); background-color: rgba(59,130,246,0.1);">
+                           <svg viewBox="0 0 24 24" class="icon-sm" style="width:14px; height:14px;"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                         </button>`;
+      
+    item.innerHTML = `
+      <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">${c} ${c === activeCashier ? '<small style="color:var(--color-success); font-weight:700; margin-left:0.25rem;">(Aktif)</small>' : ''}</span>
+      <div style="display: flex; gap: 0.35rem; align-items: center;">
+        ${editBtnHtml}
+        ${deleteBtnHtml}
+      </div>
+    `;
+    listContainer.appendChild(item);
+  });
+}
+
+function addCashier() {
+  const input = document.getElementById('new-cashier-name');
+  const name = input.value.trim();
+  if (name === '') {
+    alert("Nama kasir tidak boleh kosong!");
+    return;
+  }
+  if (cashiers.includes(name)) {
+    alert("Nama kasir sudah ada!");
+    return;
+  }
+  
+  cashiers.push(name);
+  localStorage.setItem('kasir_cashiers', JSON.stringify(cashiers));
+  input.value = '';
+  
+  initCashiers();
+  alert(`Kasir "${name}" berhasil ditambahkan!`);
+}
+
+function deleteCashier(name) {
+  if (confirm(`Apakah Anda yakin ingin menghapus kasir "${name}"?`)) {
+    cashiers = cashiers.filter(c => c !== name);
+    localStorage.setItem('kasir_cashiers', JSON.stringify(cashiers));
+    
+    if (activeCashier === name) {
+      activeCashier = cashiers[0];
+      localStorage.setItem('kasir_active_cashier', activeCashier);
+    }
+    
+    initCashiers();
+    alert(`Kasir "${name}" berhasil dihapus.`);
+  }
+}
+
+function renameCashier(oldName) {
+  const newName = prompt(`Ubah nama kasir "${oldName}" menjadi:`, oldName);
+  if (newName === null) return; // Batal
+  const cleanName = newName.trim();
+  if (cleanName === '') {
+    alert("Nama kasir tidak boleh kosong!");
+    return;
+  }
+  if (cleanName === oldName) return;
+  if (cashiers.includes(cleanName)) {
+    alert("Nama kasir sudah terdaftar!");
+    return;
+  }
+  
+  const idx = cashiers.indexOf(oldName);
+  if (idx !== -1) {
+    cashiers[idx] = cleanName;
+    localStorage.setItem('kasir_cashiers', JSON.stringify(cashiers));
+    
+    if (activeCashier === oldName) {
+      activeCashier = cleanName;
+      localStorage.setItem('kasir_active_cashier', activeCashier);
+    }
+    
+    initCashiers();
+    alert(`Nama kasir "${oldName}" berhasil diubah menjadi "${cleanName}".`);
+  }
+}
+
 // --- PINTASAN KEYBOARD GLOBAL ---
 
 function handleGlobalKeydowns(e) {
@@ -2044,6 +2349,7 @@ function renderTransactionsTable() {
   tbody.innerHTML = '';
   
   const searchVal = document.getElementById('transaction-list-search').value.toLowerCase().trim();
+  const statusFilter = document.getElementById('tx-filter-status').value;
   
   // Urutkan transaksi dari yang terbaru ke terlama
   const sortedTxs = [...transactions].sort((a, b) => {
@@ -2070,6 +2376,10 @@ function renderTransactionsTable() {
                           
     if (!matchesSearch) return false;
     
+    // Filter status pembayaran
+    if (statusFilter === 'Lunas' && tx.status_pembayaran === 'Bon') return false;
+    if (statusFilter === 'Bon' && tx.status_pembayaran !== 'Bon') return false;
+    
     if (tx.waktu) {
       const txDate = new Date(tx.waktu);
       if (startLimit && txDate < startLimit) return false;
@@ -2085,7 +2395,7 @@ function renderTransactionsTable() {
   }
   
   if (filteredTxs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">Tidak ada transaksi ditemukan.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Tidak ada transaksi ditemukan.</td></tr>`;
     return;
   }
   
@@ -2101,15 +2411,40 @@ function renderTransactionsTable() {
     
     const timeStr = new Date(tx.waktu).toLocaleString('id-ID', { hour12: false });
     
+    // Status Pembayaran badge & kembalian display
+    let statusBadge = '';
+    let changeOrDebtDisplay = '';
+    let settleBtnHtml = '';
+    
+    if (tx.status_pembayaran === 'Bon') {
+      statusBadge = `<span class="cat-btn" style="background-color: rgba(239,68,68,0.1); color: var(--color-danger); border-color: rgba(239,68,68,0.2); cursor: default; margin: 0; font-size: 0.75rem;">Bon</span>`;
+      changeOrDebtDisplay = `<span style="color: var(--color-danger); font-weight: 700;">Sisa: Rp ${formatRupiah(tx.sisa_piutang)}</span>`;
+      if (tx.sisa_piutang > 0) {
+        settleBtnHtml = `
+          <button class="action-icon-btn btn-edit" onclick="openSettleDebtModal('${tx.id}')" title="Pelunasan Bon" style="color: var(--color-success); background-color: rgba(16,185,129,0.1);">
+            <svg viewBox="0 0 24 24" class="icon-sm" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </button>
+        `;
+      }
+    } else {
+      statusBadge = `<span class="cat-btn" style="background-color: rgba(16,185,129,0.1); color: var(--color-success); border-color: rgba(16,185,129,0.2); cursor: default; margin: 0; font-size: 0.75rem;">Lunas</span>`;
+      changeOrDebtDisplay = `<span style="color: var(--color-success); font-weight: 700;">Rp ${formatRupiah(tx.kembalian)}</span>`;
+    }
+    
+    const customerDisplay = tx.nama_pelanggan ? `<br><small style="color: var(--text-muted); font-size: 0.75rem;">Pelanggan: <strong>${tx.nama_pelanggan}</strong></small>` : '';
+    
     tr.innerHTML = `
-      <td><strong>${tx.id}</strong></td>
+      <td><strong>${tx.id}</strong>${customerDisplay}</td>
       <td>${timeStr}</td>
+      <td><span style="font-weight: 600; font-size: 0.85rem;">${tx.kasir || 'Kasir Utama'}</span></td>
       <td><span class="text-muted" style="font-size: 0.8rem;">${itemsDisplay}</span></td>
       <td style="font-weight: 700;">Rp ${formatRupiah(tx.total)}</td>
+      <td><span style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.25rem;">${tx.metode_pembayaran || 'Tunai'} ${statusBadge}</span></td>
       <td>Rp ${formatRupiah(tx.bayar)}</td>
-      <td style="color: var(--color-success); font-weight: 700;">Rp ${formatRupiah(tx.kembalian)}</td>
+      <td>${changeOrDebtDisplay}</td>
       <td>
         <div style="display: flex; gap: 0.35rem;">
+          ${settleBtnHtml}
           <button class="action-icon-btn btn-edit" onclick="openEditTransactionModal('${tx.id}')" title="Edit Transaksi">
             <svg viewBox="0 0 24 24" class="icon-sm"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           </button>
@@ -2548,6 +2883,63 @@ async function syncTransactionsToCloudBackground() {
   }
 }
 
+async function syncTransactionsFromCloud() {
+  if (!gasUrl) return;
+  
+  updateSyncStatus('syncing', 'Menarik transaksi...');
+  const result = await fetchFromGAS('getTransactions');
+  
+  if (result && result.status === 'success') {
+    if (result.data) {
+      transactions = result.data.map(tx => {
+        let itemsList = [];
+        const itemsStr = tx.daftar_item || tx.items || "";
+        if (itemsStr) {
+          const parts = itemsStr.split(", ");
+          parts.forEach(part => {
+            const match = part.match(/(.+) \((\d+)x @(\d+)\)/);
+            if (match) {
+              const nama = match[1].trim();
+              const qty = parseInt(match[2]) || 1;
+              const harga = parseFloat(match[3]) || 0;
+              
+              const prod = products.find(p => p.nama.toLowerCase() === nama.toLowerCase());
+              itemsList.push({
+                id: prod ? prod.id : '',
+                nama: nama,
+                harga: harga,
+                harga_beli: prod ? prod.harga_beli : Math.round(harga * 0.7),
+                qty: qty
+              });
+            }
+          });
+        }
+        
+        return {
+          id: tx.id_transaksi ? tx.id_transaksi.toString() : (tx.id ? tx.id.toString() : ''),
+          waktu: tx.waktu || '',
+          items: itemsList,
+          total: parseFloat(tx.total) || 0,
+          bayar: parseFloat(tx.uang_bayar) || parseFloat(tx.bayar) || 0,
+          kembalian: parseFloat(tx.kembalian) || 0,
+          metode_pembayaran: tx.metode_pembayaran || "Tunai",
+          kasir: tx.kasir || "Kasir Utama",
+          status_pembayaran: tx.status_pembayaran || "Lunas",
+          nama_pelanggan: tx.nama_pelanggan || "",
+          sisa_piutang: parseFloat(tx.sisa_piutang) || 0
+        };
+      });
+      
+      localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
+      renderTransactionsTable();
+      updateAnalytics();
+      updateSyncStatus('online', 'Tersinkronisasi');
+    }
+  } else {
+    updateSyncStatus('offline', 'Koneksi Terputus');
+  }
+}
+
 function clearTransactionFilters() {
   document.getElementById('transaction-list-search').value = '';
   document.getElementById('tx-filter-start-date').value = '';
@@ -2979,6 +3371,97 @@ function printBulkLabels() {
   // Bersihkan pilihan setelah print sukses dipicu
   selectedProductIds.clear();
   renderProductsTable();
+}
+
+// --- LOGIKA PELUNASAN PIUTANG / BON (FITUR BARU) ---
+function openSettleDebtModal(txId) {
+  const tx = transactions.find(t => t.id === txId);
+  if (!tx) {
+    alert("Transaksi tidak ditemukan!");
+    return;
+  }
+  
+  document.getElementById('settle-debt-tx-id').value = txId;
+  document.getElementById('settle-debt-customer-name').textContent = tx.nama_pelanggan || 'Pelanggan Tanpa Nama';
+  document.getElementById('settle-debt-remaining-amount').textContent = `Rp ${formatRupiah(tx.sisa_piutang)}`;
+  
+  const amountInput = document.getElementById('settle-debt-amount');
+  amountInput.value = '';
+  document.getElementById('btn-submit-settle-debt').disabled = true;
+  
+  document.getElementById('settle-debt-modal').classList.add('active');
+  setTimeout(() => {
+    amountInput.focus();
+  }, 100);
+}
+
+function closeSettleDebtModal() {
+  document.getElementById('settle-debt-modal').classList.remove('active');
+}
+
+function formatSettleDebtAmount(input) {
+  const cleanVal = input.value.replace(/\D/g, "");
+  if (cleanVal === "") {
+    input.value = "";
+  } else {
+    input.value = new Intl.NumberFormat('id-ID').format(cleanVal);
+  }
+  
+  const amount = parseFloat(cleanVal) || 0;
+  const btnSubmit = document.getElementById('btn-submit-settle-debt');
+  if (amount > 0) {
+    btnSubmit.disabled = false;
+  } else {
+    btnSubmit.disabled = true;
+  }
+}
+
+function submitSettleDebt() {
+  const txId = document.getElementById('settle-debt-tx-id').value;
+  const tx = transactions.find(t => t.id === txId);
+  if (!tx) {
+    alert("Transaksi tidak ditemukan!");
+    return;
+  }
+  
+  const amountInput = document.getElementById('settle-debt-amount');
+  const cleanVal = amountInput.value.replace(/\./g, "");
+  const payAmount = parseFloat(cleanVal) || 0;
+  
+  if (payAmount <= 0) {
+    alert("Masukkan nominal pembayaran yang valid!");
+    return;
+  }
+  
+  const originalSisa = tx.sisa_piutang || 0;
+  const originalBayar = tx.bayar || 0;
+  
+  if (payAmount >= originalSisa) {
+    // Lunas
+    tx.sisa_piutang = 0;
+    tx.status_pembayaran = 'Lunas';
+    tx.kembalian = payAmount - originalSisa;
+    tx.bayar = originalBayar + originalSisa;
+    alert(`Pelunasan berhasil! Bon lunas. Kembalian: Rp ${formatRupiah(tx.kembalian)}`);
+  } else {
+    // Cicil / bayar sebagian
+    tx.sisa_piutang = originalSisa - payAmount;
+    tx.status_pembayaran = 'Bon';
+    tx.kembalian = 0;
+    tx.bayar = originalBayar + payAmount;
+    alert(`Pembayaran cicilan berhasil! Sisa piutang sekarang: Rp ${formatRupiah(tx.sisa_piutang)}`);
+  }
+  
+  // Simpan ke LocalStorage
+  localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
+  
+  // Update UI
+  closeSettleDebtModal();
+  renderTransactionsTable();
+  updateAnalytics();
+  
+  // Sinkronkan ke cloud
+  syncTransactionsToCloudBackground();
 }
 
 
