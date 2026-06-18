@@ -57,6 +57,10 @@
           <svg viewBox="0 0 24 24" class="icon"><path d="m7.5 4.27 9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.27 6.96 8.73 5 8.73-5M12 22.08V12"/></svg>
           <span>Produk & Stok</span>
         </button>
+        <button class="tab-btn" id="tab-customers" onclick="switchTab('customers')">
+          <svg viewBox="0 0 24 24" class="icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Pelanggan</span>
+        </button>
         <button class="tab-btn" id="tab-settings" onclick="switchTab('settings')">
           <svg viewBox="0 0 24 24" class="icon"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span>Pengaturan</span>
@@ -65,12 +69,12 @@
       
       <!-- System Indicators -->
       <div class="indicators">
-        <!-- PEMILIH KASIR (FITUR BARU) -->
+        <!-- STATUS SHIFT -->
         <div class="cashier-selector-wrapper" style="display: flex; align-items: center; gap: 0.35rem; margin-right: 0.5rem;">
-          <svg viewBox="0 0 24 24" class="icon-sm" style="color: var(--text-muted); width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <select id="active-cashier-select" onchange="setActiveCashier(this.value)" style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-size: 0.8rem; font-weight: 600; color: var(--text-main); background-color: var(--bg-card); cursor: pointer; outline: none; font-family: var(--font-main);">
-            <!-- Di-render dinamis dari JS -->
-          </select>
+          <button id="btn-shift-status" onclick="openShiftModal()" class="btn btn-secondary btn-sm" style="background: var(--bg-card); border-color: var(--border-color); color: var(--text-main); font-weight: 600; font-family: var(--font-main);">
+            <svg viewBox="0 0 24 24" class="icon-sm" style="margin-right: 0.25rem;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span id="shift-status-text">Shift: Tutup</span>
+          </button>
         </div>
         
         <div class="sync-status offline" id="sync-status">
@@ -239,6 +243,9 @@
                 </div>
               </div>
             </div>
+            
+            <!-- Banner Promo (Dinamis) -->
+            <div id="promo-banner-container"></div>
             
             <!-- Cart Card -->
             <div class="cart-card-left">
@@ -425,6 +432,63 @@
         </div>
       </section>
       
+      <!-- TAB: PELANGGAN (CRM) -->
+      <section id="pane-customers" class="tab-pane">
+        <div class="admin-layout">
+          
+          <!-- Form Pelanggan -->
+          <div class="card form-card">
+            <h2 id="customer-form-title">Tambah Pelanggan Baru</h2>
+            <form id="customer-form" onsubmit="saveCustomer(event)">
+              <input type="hidden" id="edit-customer-id" value="">
+              <div class="form-group">
+                <label for="cust-name">Nama Pelanggan*</label>
+                <input type="text" id="cust-name" class="form-control" placeholder="Contoh: Budi Santoso" required>
+              </div>
+              <div class="form-group">
+                <label for="cust-phone">Nomor Telepon (WA)</label>
+                <input type="text" id="cust-phone" class="form-control" placeholder="0812...">
+              </div>
+              <div class="form-group">
+                <label for="cust-points">Saldo Poin</label>
+                <input type="number" id="cust-points" class="form-control" value="0" min="0">
+              </div>
+              <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Simpan Pelanggan</button>
+                <button type="button" class="btn btn-secondary" onclick="resetCustomerForm()">Batal</button>
+              </div>
+            </form>
+          </div>
+          
+          <!-- Tabel Pelanggan -->
+          <div class="card table-card">
+            <div class="table-actions" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+              <h2>Daftar Pelanggan</h2>
+              <div style="display: flex; gap: 0.5rem; flex: 1; max-width: 300px;">
+                <input type="text" id="customer-search" class="form-control" placeholder="Cari pelanggan..." oninput="renderCustomersTable()">
+              </div>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Nama</th>
+                    <th>No. Telepon</th>
+                    <th>Poin</th>
+                    <th style="width: 100px;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="customer-table-body">
+                  <!-- Di-render oleh JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+        </div>
+      </section>
+      
       <!-- TAB 4: PRODUK & STOK -->
       <section id="pane-products" class="tab-pane">
         <div class="admin-layout">
@@ -470,6 +534,16 @@
               <div class="form-group">
                 <label for="prod-expiry">Tanggal Kadaluarsa</label>
                 <input type="date" id="prod-expiry">
+              </div>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="prod-promo-price">Harga Diskon Promo (Opsional)</label>
+                  <input type="number" id="prod-promo-price" min="0" placeholder="Contoh: 8000">
+                </div>
+                <div class="form-group">
+                  <label for="prod-promo-quota">Kuota Promo</label>
+                  <input type="number" id="prod-promo-quota" min="0" placeholder="Contoh: 5">
+                </div>
               </div>
               <div class="form-group">
                 <label for="prod-image">Tautan Gambar (Link URL)</label>
@@ -610,6 +684,26 @@
           </div>
           
           <div class="card settings-card">
+            <h2>Pengaturan Poin Pelanggan (Loyalitas)</h2>
+            <p class="settings-desc">Atur nilai tukar dan pendapatan poin pelanggan untuk fitur CRM.</p>
+            
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="setting-points-per-rp">Belanja Rp x Dapat 1 Poin</label>
+                <input type="number" id="setting-points-per-rp" min="1" placeholder="Contoh: 50000">
+              </div>
+              <div class="form-group">
+                <label for="setting-rp-per-point">1 Poin Bernilai Rp x</label>
+                <input type="number" id="setting-rp-per-point" min="1" placeholder="Contoh: 1000">
+              </div>
+            </div>
+            
+            <div class="settings-actions">
+              <button class="btn btn-primary" onclick="saveLoyaltySettings()">Simpan Pengaturan Poin</button>
+            </div>
+          </div>
+          
+          <div class="card settings-card">
             <h2>Koneksi Database (Google Sheets)</h2>
             <p class="settings-desc">Integrasikan aplikasi kasir Anda dengan Google Sheets untuk memantau data transaksi secara real-time dan sinkronisasi produk.</p>
             
@@ -659,6 +753,19 @@
   </div>
 
   <!-- MODAL: PROSES PEMBAYARAN (STEP 2) -->
+  <!-- MODAL BUKA/TUTUP SHIFT -->
+  <div class="modal-overlay" id="shift-modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 id="shift-modal-title">Buka Shift Kasir</h3>
+        <button class="btn-close" onclick="closeShiftModal()"><svg viewBox="0 0 24 24" class="icon-sm"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="modal-body" id="shift-modal-body">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="payment-modal">
     <div class="modal-card">
       <div class="modal-header">
@@ -698,10 +805,21 @@
             </div>
           </div>
           
-          <!-- Input Nama Pelanggan (Jika Bon) -->
-          <div class="form-group" id="customer-name-group" style="display: none; margin-bottom: 0.75rem;">
-            <label for="customer-name-input">Nama Pelanggan (Wajib)*</label>
-            <input type="text" id="customer-name-input" placeholder="Masukkan nama pelanggan..." autocomplete="off" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); outline: none;">
+          <!-- Input Nama Pelanggan (CRM) -->
+          <div class="form-group" id="customer-name-group" style="margin-bottom: 0.75rem;">
+            <label for="customer-name-input">Pelanggan (Pilih untuk Poin/Diskon)</label>
+            <input type="text" id="customer-name-input" list="customer-list" placeholder="Ketik nama pelanggan..." autocomplete="off" onchange="onCustomerSelectChange()" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); outline: none;">
+            <datalist id="customer-list">
+              <!-- Rendered by JS -->
+            </datalist>
+            
+            <div id="customer-points-info" style="display: none; margin-top: 0.5rem; background: var(--bg-body); padding: 0.5rem; border-radius: var(--border-radius-sm); font-size: 0.85rem;">
+               <span style="color: var(--text-muted)">Saldo Poin:</span> <strong id="customer-points-balance" style="color: var(--primary-color)">0</strong> (<span id="customer-points-rp">Rp 0</span>)
+               <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; align-items: center;">
+                 <input type="number" id="redeem-points-input" class="form-control" style="padding: 0.25rem 0.5rem; width: 100px; font-size: 0.85rem;" placeholder="Tukar..." oninput="calculateChange()">
+                 <span style="font-size: 0.8rem; color: var(--text-muted)">poin = Potongan <strong id="redeem-points-discount">Rp 0</strong></span>
+               </div>
+            </div>
           </div>
           
           <div class="form-group" id="cash-received-group">
@@ -865,6 +983,10 @@
           <span>Diskon</span>
           <span id="rec-discount">0%</span>
         </div>
+        <div class="receipt-total-row" id="rec-point-discount-row" style="display: none;">
+          <span>Tukar Poin</span>
+          <span id="rec-point-discount">-Rp 0</span>
+        </div>
         <div class="receipt-total-row final-total">
           <span>Total</span>
           <span id="rec-total">Rp 0</span>
@@ -887,11 +1009,16 @@
         </div>
       </div>
       
-      <div class="divider-dashed"></div>
+      <div class="divider-dashed">
+        <div id="rec-crm-info" style="display: none; margin-top: 1rem; text-align: center; font-size: 0.8rem; border-top: 1px dashed var(--border-color); padding-top: 0.5rem;">
+          <div>Poin Didapat: <span id="rec-points-earned">0</span></div>
+          <div>Total Poin: <span id="rec-points-total">0</span></div>
+        </div>
+      </div>
       
       <div class="receipt-footer">
-        <p>Terima Kasih atas Kunjungan Anda!</p>
-        <p>Barang yang sudah dibeli tidak dapat ditukar.</p>
+        <p>Terima kasih atas kunjungan Anda!</p>
+        <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Barang yang sudah dibeli tidak dapat ditukar/dikembalikan.</p>
         <div class="divider-dashed no-print"></div>
         <p class="shortcut-tip no-print" style="margin-top: 10px; font-weight: bold; color: #555;">
           Gunakan tombol panah &larr; &rarr; untuk memilih tombol | [Enter] Konfirmasi

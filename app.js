@@ -4,6 +4,13 @@
 
 // --- State Aplikasi ---
 let products = [];
+let shifts = [];
+let activeShift = null; // null jika tidak ada shift aktif
+let customers = [];
+let loyaltySettings = JSON.parse(localStorage.getItem('kasir_loyalty_settings')) || {
+  pointsPerRp: 50000,
+  rpPerPoint: 100
+};
 
 // --- Helper Gambar Offline (Flicker-Free) ---
 function handleImageError(img) {
@@ -243,7 +250,35 @@ function loadData() {
     localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
   }
   
+  const cachedShifts = localStorage.getItem('kasir_shifts');
+  if (cachedShifts) shifts = JSON.parse(cachedShifts);
+  
+  const cachedActiveShift = localStorage.getItem('kasir_active_shift');
+  if (cachedActiveShift) activeShift = JSON.parse(cachedActiveShift);
+  
+  const cachedCustomers = localStorage.getItem('kasir_customers');
+  if (cachedCustomers) customers = JSON.parse(cachedCustomers);
+  
   updateCategoriesList();
+  
+  // Update Shift UI on load
+  if (typeof updateShiftStatusUI === 'function') {
+    updateShiftStatusUI();
+  }
+  
+  if (typeof renderCustomersTable === 'function') {
+    renderCustomersTable();
+  }
+  
+  if (typeof checkPromoBanner === 'function') {
+    checkPromoBanner();
+  }
+  
+  // Set UI inputs for Loyalty
+  const ptsInput = document.getElementById('setting-points-per-rp');
+  const rpInput = document.getElementById('setting-rp-per-point');
+  if (ptsInput) ptsInput.value = loyaltySettings.pointsPerRp;
+  if (rpInput) rpInput.value = loyaltySettings.rpPerPoint;
 }
 
 // Simpan data produk secara lokal
@@ -1030,54 +1065,119 @@ function handleSearchInputKeydowns(e) {
 
 // --- TAB POS: KERANJANG ---
 function addToCart(product) {
-  const localProd = products.find(p => p.id === product.id);
-  const cartItem = cart.find(item => item.id === product.id);
-  const currentQtyInCart = cartItem ? cartItem.qty : 0;
+  let totalQty = cart.filter(i => i.id === product.id).reduce((sum, i) => sum + i.qty, 0);
+  totalQty += 1;
+  recalculateCartSplit(product.id, totalQty);
+}
+
+function updateCartQty(cartId, delta) {
+  const itemIndex = cart.findIndex(item => item.cartId === cartId);
+  if (itemIndex === -1) return;
+  const baseId = cart[itemIndex].id;
   
-  if (currentQtyInCart >= localProd.stok) {
-    alert(`Stok tidak mencukupi! Hanya tersisa ${localProd.stok} barang.`);
+  let totalQty = cart.filter(i => i.id === baseId).reduce((sum, i) => sum + i.qty, 0);
+  totalQty += delta;
+  
+  recalculateCartSplit(baseId, totalQty);
+}
+
+function removeFromCart(cartId) {
+  const itemIndex = cart.findIndex(item => item.cartId === cartId);
+  if (itemIndex === -1) return;
+  const baseId = cart[itemIndex].id;
+  const itemToRemove = cart[itemIndex];
+  
+  let totalQty = cart.filter(i => i.id === baseId).reduce((sum, i) => sum + i.qty, 0);
+  totalQty -= itemToRemove.qty;
+  
+  recalculateCartSplit(baseId, totalQty);
+}
+
+function recalculateCartSplit(baseId, totalQty) {
+  // Hapus semua item lama dengan baseId yang sama
+  cart = cart.filter(i => i.id !== baseId);
+  
+  if (totalQty <= 0) {
+    renderCart();
     return;
   }
   
-  if (cartItem) {
-    cartItem.qty += 1;
+  const localProd = products.find(p => p.id === baseId);
+  if (!localProd) return;
+  
+  if (totalQty > localProd.stok) {
+    alert(`Stok tidak mencukupi! Hanya tersisa ${localProd.stok} barang.`);
+    totalQty = localProd.stok;
+  }
+  
+  const hasPromo = localProd.harga_diskon > 0 && localProd.kuota_diskon > 0;
+  
+  if (hasPromo) {
+    const promoQty = Math.min(totalQty, localProd.kuota_diskon);
+    const regQty = totalQty - promoQty;
+    
+    if (promoQty > 0) {
+      cart.push({
+        id: baseId,
+        cartId: baseId + '_promo',
+        nama: localProd.nama + ' (Promo)',
+        harga: localProd.harga_diskon,
+        harga_beli: localProd.harga_beli,
+        qty: promoQty,
+        isPromo: true
+      });
+    }
+    
+    if (regQty > 0) {
+      cart.push({
+        id: baseId,
+        cartId: baseId + '_reguler',
+        nama: localProd.nama,
+        harga: localProd.harga_jual,
+        harga_beli: localProd.harga_beli,
+        qty: regQty,
+        isPromo: false
+      });
+    }
   } else {
     cart.push({
-      id: product.id,
-      nama: product.nama,
-      harga: product.harga_jual, // Harga jual
-      harga_beli: product.harga_beli, // Harga beli untuk profit margin
-      qty: 1
+      id: baseId,
+      cartId: baseId + '_reguler',
+      nama: localProd.nama,
+      harga: localProd.harga_jual,
+      harga_beli: localProd.harga_beli,
+      qty: totalQty,
+      isPromo: false
     });
   }
   
   renderCart();
 }
 
-function updateCartQty(id, delta) {
-  const itemIndex = cart.findIndex(item => item.id === id);
-  if (itemIndex === -1) return;
+function checkPromoBanner() {
+  const container = document.getElementById('promo-banner-container');
+  if (!container) return;
   
-  const item = cart[itemIndex];
-  const localProd = products.find(p => p.id === id);
+  const promos = products.filter(p => p.harga_diskon > 0 && p.kuota_diskon > 0);
   
-  if (delta > 0 && item.qty >= localProd.stok) {
-    alert(`Stok tidak mencukupi! Hanya tersisa ${localProd.stok} barang.`);
+  if (promos.length === 0) {
+    container.innerHTML = '';
     return;
   }
   
-  item.qty += delta;
+  let html = `<div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 0.75rem 1rem; border-radius: var(--border-radius-sm); margin-bottom: 1rem; box-shadow: 0 4px 6px -1px rgba(16,185,129,0.2);">
+    <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: bold; margin-bottom: 0.5rem;">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      PROMO AKTIF HARI INI
+    </div>
+    <ul style="margin: 0; padding-left: 1.5rem; font-size: 0.85rem;">`;
+    
+  promos.forEach(p => {
+    html += `<li><strong>${p.nama}</strong>: Rp ${formatRupiah(p.harga_diskon)} (Sisa kuota: ${p.kuota_diskon})</li>`;
+  });
   
-  if (item.qty <= 0) {
-    cart.splice(itemIndex, 1);
-  }
-  
-  renderCart();
-}
-
-function removeFromCart(id) {
-  cart = cart.filter(item => item.id !== id);
-  renderCart();
+  html += `</ul></div>`;
+  container.innerHTML = html;
 }
 
 function clearCart() {
@@ -1115,10 +1215,10 @@ function renderCart() {
         <div class="cart-item-price">Rp ${formatRupiah(item.harga)}</div>
       </div>
       <div class="cart-item-controls">
-        <button class="qty-btn" onclick="updateCartQty('${item.id}', -1)">-</button>
+        <button class="qty-btn" onclick="updateCartQty('${item.cartId}', -1)">-</button>
         <span class="qty-val">${item.qty}</span>
-        <button class="qty-btn" onclick="updateCartQty('${item.id}', 1)">+</button>
-        <button class="remove-item-btn" onclick="removeFromCart('${item.id}')">
+        <button class="qty-btn" onclick="updateCartQty('${item.cartId}', 1)">+</button>
+        <button class="remove-item-btn" onclick="removeFromCart('${item.cartId}')">
           <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
         </button>
       </div>
@@ -1165,8 +1265,15 @@ function openPaymentModal() {
   statusSelect.value = 'Lunas';
   statusSelect.disabled = false;
   
-  document.getElementById('customer-name-group').style.display = 'none';
+  // Populate Customer Datalist
+  const datalist = document.getElementById('customer-list');
+  if (datalist) {
+    datalist.innerHTML = customers.map(c => `<option value="${c.nama}">`).join('');
+  }
+  
   document.getElementById('customer-name-input').value = '';
+  document.getElementById('customer-points-info').style.display = 'none';
+  document.getElementById('redeem-points-input').value = '';
   
   const cashInput = document.getElementById('cash-received');
   cashInput.value = '';
@@ -1207,19 +1314,16 @@ function onPaymentMethodChange(val) {
 }
 
 function onPaymentStatusChange(val) {
-  const customerGroup = document.getElementById('customer-name-group');
   const cashInput = document.getElementById('cash-received');
   const cashLabel = document.getElementById('cash-received-label');
   const quickCashGrid = document.getElementById('quick-cash-grid-container');
   
   if (val === 'Bon') {
-    customerGroup.style.display = 'block';
     cashLabel.textContent = "Uang Muka / DP dibayarkan (Rp)";
     cashInput.placeholder = "Bisa dikosongkan (Rp 0)...";
     cashInput.value = '';
     quickCashGrid.style.display = 'none'; // sembunyikan quick cash karena bayar bebas/DP
   } else {
-    customerGroup.style.display = 'none';
     cashLabel.textContent = "Uang Diterima dari Konsumen (Rp)*";
     cashInput.placeholder = "Masukkan jumlah uang...";
     cashInput.value = '';
@@ -1253,7 +1357,36 @@ function calculateChange() {
   
   const cashText = cashInput.value.replace(/\./g, ""); // Hapus titik ribuan
   const cash = parseFloat(cashText) || 0;
-  const change = cash - globalTotal;
+  // Hitung potongan poin
+  const redeemInput = document.getElementById('redeem-points-input');
+  let redeemPoints = parseInt(redeemInput ? redeemInput.value : 0) || 0;
+  
+  // Validasi max poin
+  const selectedCustomerName = document.getElementById('customer-name-input').value.trim();
+  const customer = customers.find(c => c.nama === selectedCustomerName);
+  if (customer && redeemPoints > customer.poin) {
+    redeemPoints = customer.poin;
+    if (redeemInput) redeemInput.value = redeemPoints;
+  }
+  
+  let pointDiscount = redeemPoints * loyaltySettings.rpPerPoint;
+  
+  // Jangan biarkan diskon poin melebihi total belanja
+  if (pointDiscount > globalTotal) {
+    pointDiscount = globalTotal;
+    redeemPoints = Math.floor(globalTotal / loyaltySettings.rpPerPoint);
+    if (redeemInput) redeemInput.value = redeemPoints;
+  }
+  
+  if (document.getElementById('redeem-points-discount')) {
+    document.getElementById('redeem-points-discount').textContent = `Rp ${formatRupiah(pointDiscount)}`;
+  }
+  
+  const finalTotalToPay = globalTotal - pointDiscount;
+  document.getElementById('pay-total-amount').textContent = `Rp ${formatRupiah(finalTotalToPay)}`;
+  
+  const cash = parseFloat(cashText) || 0;
+  const change = cash - finalTotalToPay;
   
   const changeBox = changeVal.parentElement;
   const changeLabel = changeBox.querySelector('.bill-label');
@@ -1319,17 +1452,32 @@ async function processCheckout() {
     return;
   }
   
+  // Ambil data pelanggan (jika ada)
+  const customer = customers.find(c => c.nama === customerName);
+  
+  // Kalkulasi poin
+  const redeemInput = document.getElementById('redeem-points-input');
+  let redeemPoints = parseInt(redeemInput ? redeemInput.value : 0) || 0;
+  if (customer && redeemPoints > customer.poin) redeemPoints = customer.poin;
+  let pointDiscount = redeemPoints * loyaltySettings.rpPerPoint;
+  if (pointDiscount > globalTotal) {
+    pointDiscount = globalTotal;
+    redeemPoints = Math.floor(globalTotal / loyaltySettings.rpPerPoint);
+  }
+  
+  const finalTotalToPay = globalTotal - pointDiscount;
+  
   const cashInput = document.getElementById('cash-received');
   const cashText = cashInput.value.replace(/\./g, ""); // Hapus titik ribuan
   const cash = parseFloat(cashText) || 0;
   
-  if (status !== 'Bon' && cash < globalTotal) {
+  if (status !== 'Bon' && cash < finalTotalToPay) {
     alert("Pembayaran kurang!");
     return;
   }
   
-  const change = status === 'Bon' ? (cash >= globalTotal ? cash - globalTotal : 0) : cash - globalTotal;
-  const sisaPiutang = status === 'Bon' ? (cash < globalTotal ? globalTotal - cash : 0) : 0;
+  const change = status === 'Bon' ? (cash >= finalTotalToPay ? cash - finalTotalToPay : 0) : cash - finalTotalToPay;
+  const sisaPiutang = status === 'Bon' ? (cash < finalTotalToPay ? finalTotalToPay - cash : 0) : 0;
   
   const txId = 'TX-' + Date.now().toString().slice(-8);
   const now = new Date();
@@ -1339,23 +1487,44 @@ async function processCheckout() {
     waktu: now.toISOString(),
     items: [...cart],
     total: globalTotal,
+    diskon_poin: pointDiscount, // Track diskon poin
+    poin_ditukar: redeemPoints, // Track poin ditukar
     bayar: cash,
     kembalian: change,
     metode_pembayaran: method,
     kasir: activeCashier,
     status_pembayaran: sisaPiutang > 0 ? 'Bon' : 'Lunas',
-    nama_pelanggan: status === 'Bon' ? customerName : '',
-    sisa_piutang: sisaPiutang
+    nama_pelanggan: customerName, // Selalu catat jika ada
+    sisa_piutang: sisaPiutang,
+    id_shift: activeShift ? activeShift.id_shift : null
   };
   
+  // Update poin pelanggan
+  if (customer) {
+    customer.poin -= redeemPoints; // Kurangi poin
+    // Tambah poin baru berdasarkan total bayar
+    const earnedPoints = Math.floor(finalTotalToPay / loyaltySettings.pointsPerRp);
+    customer.poin += earnedPoints;
+    
+    transaction.poin_didapat = earnedPoints; // Track poin didapat
+    
+    saveCustomersLocally();
+    renderCustomersTable(); // Refresh tabel pelanggan di background
+  }
+  
+  // 1. Kurangi stok produk secara lokal
   // 1. Kurangi stok produk secara lokal
   cart.forEach(cartItem => {
     const localProd = products.find(p => p.id === cartItem.id);
     if (localProd) {
       localProd.stok = Math.max(0, localProd.stok - cartItem.qty);
+      if (cartItem.isPromo) {
+        localProd.kuota_diskon = Math.max(0, (localProd.kuota_diskon || 0) - cartItem.qty);
+      }
     }
   });
   saveProductsLocally();
+  checkPromoBanner();
   
   // 2. Simpan transaksi ke riwayat lokal untuk dashboard analisis
   transactions.push(transaction);
@@ -1419,6 +1588,28 @@ function showReceipt(tx, items) {
   document.getElementById('rec-change').textContent = `Rp ${formatRupiah(tx.kembalian)}`;
   
   // Rincian Metode & Piutang (Fitur Baru)
+  
+  const ptRow = document.getElementById('rec-point-discount-row');
+  if (ptRow) {
+    if (tx.diskon_poin > 0) {
+      document.getElementById('rec-point-discount').textContent = `-Rp ${formatRupiah(tx.diskon_poin)}`;
+      ptRow.style.display = 'flex';
+    } else {
+      ptRow.style.display = 'none';
+    }
+  }
+  
+  const crmInfo = document.getElementById('rec-crm-info');
+  if (crmInfo) {
+    if (tx.nama_pelanggan) {
+      const customer = customers.find(c => c.nama === tx.nama_pelanggan);
+      crmInfo.style.display = 'block';
+      document.getElementById('rec-points-earned').textContent = tx.poin_didapat || 0;
+      document.getElementById('rec-points-total').textContent = customer ? (customer.poin || 0) : (tx.poin_didapat || 0);
+    } else {
+      crmInfo.style.display = 'none';
+    }
+  }
   const methodEl = document.getElementById('rec-method');
   if (methodEl) {
     methodEl.textContent = tx.metode_pembayaran || 'Tunai';
@@ -1814,6 +2005,8 @@ function saveProduct(event) {
   const barcodeInput = document.getElementById('prod-barcode').value.trim();
   const expiryInput = document.getElementById('prod-expiry').value;
   const imageInput = document.getElementById('prod-image').value.trim();
+  const promoPriceInput = parseFloat(document.getElementById('prod-promo-price').value) || 0;
+  const promoQuotaInput = parseInt(document.getElementById('prod-promo-quota').value) || 0;
   
   if (editIndex === -1) {
     const isDuplicate = products.some(p => p.id.toLowerCase() === idInput.toLowerCase());
@@ -1842,7 +2035,9 @@ function saveProduct(event) {
     stok: stockInput,
     barcode: barcodeInput,
     tanggal_kadaluarsa: expiryInput,
-    gambar: imageInput
+    gambar: imageInput,
+    harga_diskon: promoPriceInput,
+    kuota_diskon: promoQuotaInput
   };
   
   if (editIndex > -1) {
@@ -1878,6 +2073,8 @@ function editProduct(index) {
   document.getElementById('prod-barcode').value = p.barcode || '';
   document.getElementById('prod-expiry').value = p.tanggal_kadaluarsa || '';
   document.getElementById('prod-image').value = p.gambar || '';
+  document.getElementById('prod-promo-price').value = p.harga_diskon || '';
+  document.getElementById('prod-promo-quota').value = p.kuota_diskon || '';
   
   document.getElementById('form-title').textContent = "Edit Produk";
   document.getElementById('btn-save-product').textContent = "Perbarui Produk";
@@ -1937,6 +2134,8 @@ function resetProductForm() {
   document.getElementById('prod-barcode').value = "";
   document.getElementById('prod-expiry').value = "";
   document.getElementById('prod-image').value = "";
+  document.getElementById('prod-promo-price').value = "";
+  document.getElementById('prod-promo-quota').value = "";
   
   document.getElementById('form-title').textContent = "Tambah Produk Baru";
   document.getElementById('btn-save-product').textContent = "Simpan Produk";
@@ -3589,4 +3788,281 @@ function submitSettleDebt() {
   syncTransactionsToCloudBackground();
 }
 
+// --- MODUL SHIFT KASIR ---
+
+function updateShiftStatusUI() {
+  const btnText = document.getElementById('shift-status-text');
+  const btnStatus = document.getElementById('btn-shift-status');
+  if (!btnText || !btnStatus) return;
+  
+  if (activeShift) {
+    btnText.textContent = `Shift: Aktif (${activeShift.nama_kasir})`;
+    btnStatus.style.borderColor = 'var(--primary-color)';
+    btnStatus.style.color = 'var(--primary-color)';
+  } else {
+    btnText.textContent = 'Shift: Tutup';
+    btnStatus.style.borderColor = 'var(--border-color)';
+    btnStatus.style.color = 'var(--text-main)';
+  }
+}
+
+function openShiftModal() {
+  const modal = document.getElementById('shift-modal');
+  const body = document.getElementById('shift-modal-body');
+  const title = document.getElementById('shift-modal-title');
+  
+  if (!activeShift) {
+    title.textContent = 'Buka Shift Kasir';
+    let cashierOptions = cashiers.map(c => `<option value="${c}">${c}</option>`).join('');
+    
+    body.innerHTML = `
+      <div class="form-group">
+        <label>Nama Kasir</label>
+        <select id="shift-kasir" class="form-control">${cashierOptions}</select>
+      </div>
+      <div class="form-group">
+        <label>Jenis Shift</label>
+        <select id="shift-jenis" class="form-control">
+          <option value="Shift 1 (07:00 - 15:00)">Shift 1 (07:00 - 15:00)</option>
+          <option value="Shift 2 (15:00 - 21:00)">Shift 2 (15:00 - 21:00)</option>
+          <option value="Shift Custom">Shift Custom</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Modal Awal (Uang Laci) - Rp</label>
+        <input type="text" id="shift-modal-awal" class="form-control" placeholder="100.000" onkeyup="formatRupiahInput(this)">
+      </div>
+      <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="submitOpenShift()">Buka Shift</button>
+    `;
+  } else {
+    title.textContent = 'Tutup Shift Kasir';
+    
+    // Hitung estimasi uang di laci
+    const startTime = new Date(activeShift.waktu_buka).getTime();
+    let totalUangMasuk = 0;
+    
+    transactions.forEach(tx => {
+      const txTime = new Date(tx.waktu).getTime();
+      // Hanya hitung transaksi tunai yang terjadi selama shift ini
+      if (txTime >= startTime && tx.metode_pembayaran === 'Tunai') {
+        const cashMasuk = tx.bayar - tx.kembalian;
+        if (cashMasuk > 0) totalUangMasuk += cashMasuk;
+      }
+    });
+    
+    const estimasiLaci = activeShift.modal_awal + totalUangMasuk;
+    
+    body.innerHTML = `
+      <div style="background: var(--bg-body); padding: 1rem; border-radius: var(--border-radius-sm); margin-bottom: 1rem; text-align: center;">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">Estimasi Uang Laci Seharusnya</p>
+        <h3 style="color: var(--primary-color); font-size: 1.5rem; margin: 0;">Rp ${formatRupiah(estimasiLaci)}</h3>
+        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">(Modal Awal + Transaksi Tunai)</p>
+      </div>
+      
+      <div class="form-group">
+        <label>Hitungan Fisik Uang Laci (Rp)*</label>
+        <input type="text" id="shift-uang-fisik" class="form-control" placeholder="Hitung dan masukkan total uang laci..." onkeyup="formatRupiahInput(this)">
+      </div>
+      <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="submitCloseShift(${totalUangMasuk}, ${estimasiLaci})">Tutup Shift</button>
+    `;
+  }
+  
+  modal.classList.add('active');
+}
+
+function closeShiftModal() {
+  document.getElementById('shift-modal').classList.remove('active');
+}
+
+function submitOpenShift() {
+  const kasir = document.getElementById('shift-kasir').value;
+  const jenis = document.getElementById('shift-jenis').value;
+  const modalAwalInput = document.getElementById('shift-modal-awal').value.replace(/\./g, "");
+  const modalAwal = parseFloat(modalAwalInput) || 0;
+  
+  activeShift = {
+    id_shift: 'SH-' + Date.now().toString().slice(-8),
+    nama_kasir: kasir,
+    jenis_shift: jenis,
+    waktu_buka: new Date().toISOString(),
+    modal_awal: modalAwal,
+    status: 'aktif'
+  };
+  
+  localStorage.setItem('kasir_active_shift', JSON.stringify(activeShift));
+  
+  // Set active cashier in memory as well
+  activeCashier = kasir;
+  localStorage.setItem('kasir_active_cashier', activeCashier);
+  
+  updateShiftStatusUI();
+  closeShiftModal();
+  alert(`Shift ${jenis} berhasil dibuka oleh ${kasir}.`);
+}
+
+function submitCloseShift(totalUangMasuk, estimasiLaci) {
+  const fisikInput = document.getElementById('shift-uang-fisik').value.replace(/\./g, "");
+  if (!fisikInput) {
+    alert("Harap masukkan hitungan fisik uang laci!");
+    return;
+  }
+  
+  const uangFisik = parseFloat(fisikInput) || 0;
+  const selisih = uangFisik - estimasiLaci;
+  
+  const closedShift = {
+    ...activeShift,
+    waktu_tutup: new Date().toISOString(),
+    total_uang_masuk: totalUangMasuk,
+    uang_fisik: uangFisik,
+    selisih: selisih,
+    status: 'ditutup'
+  };
+  
+  shifts.push(closedShift);
+  localStorage.setItem('kasir_shifts', JSON.stringify(shifts));
+  
+  activeShift = null;
+  localStorage.removeItem('kasir_active_shift');
+  
+  updateShiftStatusUI();
+  closeShiftModal();
+  
+  let msg = `Shift berhasil ditutup.\nSelisih uang: Rp ${formatRupiah(selisih)}\n`;
+  if (selisih < 0) msg += "(Minus / Uang Kurang)";
+  else if (selisih > 0) msg += "(Lebih)";
+  else msg += "(Uang Pas)";
+  
+  alert(msg);
+}
+
+function formatRupiahInput(input) {
+  const cleanVal = input.value.replace(/\D/g, "");
+  if (cleanVal === "") {
+    input.value = "";
+  } else {
+    input.value = new Intl.NumberFormat('id-ID').format(cleanVal);
+  }
+}
+
+// --- MODUL PELANGGAN & CRM ---
+
+function renderCustomersTable() {
+  const tbody = document.getElementById('customer-table-body');
+  if (!tbody) return;
+  const search = document.getElementById('customer-search')?.value.toLowerCase() || '';
+  
+  tbody.innerHTML = '';
+  
+  const filtered = customers.filter(c => 
+    c.nama.toLowerCase().includes(search) || 
+    (c.telepon && c.telepon.toLowerCase().includes(search))
+  );
+  
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Tidak ada pelanggan.</td></tr>';
+    return;
+  }
+  
+  filtered.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${c.nama}</strong></td>
+      <td>${c.telepon || '-'}</td>
+      <td><span style="background: var(--bg-body); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600; color: var(--primary-color);">${c.poin || 0}</span></td>
+      <td>
+        <button class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.5rem;" onclick="editCustomer('${c.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" style="padding: 0.25rem 0.5rem;" onclick="deleteCustomer('${c.id}')">Hapus</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function saveCustomer(event) {
+  event.preventDefault();
+  
+  const id = document.getElementById('edit-customer-id').value;
+  const nama = document.getElementById('cust-name').value.trim();
+  const telepon = document.getElementById('cust-phone').value.trim();
+  const poin = parseInt(document.getElementById('cust-points').value) || 0;
+  
+  if (!nama) {
+    alert("Nama pelanggan wajib diisi!");
+    return;
+  }
+  
+  if (id) {
+    const index = customers.findIndex(c => c.id === id);
+    if (index !== -1) {
+      customers[index] = { ...customers[index], nama, telepon, poin };
+    }
+  } else {
+    customers.push({
+      id: 'CUST-' + Date.now(),
+      nama,
+      telepon,
+      poin
+    });
+  }
+  
+  saveCustomersLocally();
+  renderCustomersTable();
+  resetCustomerForm();
+}
+
+function editCustomer(id) {
+  const c = customers.find(x => x.id === id);
+  if (!c) return;
+  
+  document.getElementById('edit-customer-id').value = c.id;
+  document.getElementById('cust-name').value = c.nama;
+  document.getElementById('cust-phone').value = c.telepon || '';
+  document.getElementById('cust-points').value = c.poin || 0;
+  
+  document.getElementById('customer-form-title').textContent = 'Edit Pelanggan';
+}
+
+function deleteCustomer(id) {
+  if (confirm("Hapus pelanggan ini?")) {
+    customers = customers.filter(c => c.id !== id);
+    saveCustomersLocally();
+    renderCustomersTable();
+  }
+}
+
+function resetCustomerForm() {
+  document.getElementById('customer-form').reset();
+  document.getElementById('edit-customer-id').value = '';
+  document.getElementById('customer-form-title').textContent = 'Tambah Pelanggan Baru';
+}
+
+function saveCustomersLocally() {
+  localStorage.setItem('kasir_customers', JSON.stringify(customers));
+}
+
+function onCustomerSelectChange() {
+  const name = document.getElementById('customer-name-input').value.trim();
+  const customer = customers.find(c => c.nama === name);
+  const infoDiv = document.getElementById('customer-points-info');
+  
+  if (customer) {
+    infoDiv.style.display = 'block';
+    document.getElementById('customer-points-balance').textContent = customer.poin || 0;
+    document.getElementById('customer-points-rp').textContent = `Rp ${formatRupiah((customer.poin || 0) * loyaltySettings.rpPerPoint)}`;
+  } else {
+    infoDiv.style.display = 'none';
+    document.getElementById('redeem-points-input').value = '';
+  }
+  calculateChange();
+}
+
+function saveLoyaltySettings() {
+  const ptsPerRp = parseInt(document.getElementById('setting-points-per-rp').value) || 50000;
+  const rpPerPt = parseInt(document.getElementById('setting-rp-per-point').value) || 1000;
+  
+  loyaltySettings = { pointsPerRp: ptsPerRp, rpPerPoint: rpPerPt };
+  localStorage.setItem('kasir_loyalty_settings', JSON.stringify(loyaltySettings));
+  alert('Pengaturan Poin Pelanggan berhasil disimpan!');
+}
 
