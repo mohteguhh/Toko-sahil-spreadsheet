@@ -942,27 +942,14 @@ function filterProducts() {
     return;
   }
   
-  // Cek barcode scanners match
-  const barcodeMatch = products.find(p => p.barcode && p.barcode.toLowerCase() === searchVal);
-  if (barcodeMatch) {
-    if (barcodeMatch.stok > 0) {
-      addToCart(barcodeMatch);
-      searchInput.value = '';
-      closeFloatingResults();
-      return;
-    } else {
-      alert("Stok barang habis!");
-      searchInput.value = '';
-      closeFloatingResults();
-      return;
-    }
-  }
+  // Barcode exact match logic dipindah ke handleSearchInputKeydowns saat Enter ditekan
+  // untuk mencegah pemindaian sebagian jika scanner cepat.
   
   filteredProducts = products.filter(p => {
     return p.nama.toLowerCase().includes(searchVal) || 
            p.id.toLowerCase().includes(searchVal) ||
            (p.barcode && p.barcode.toLowerCase().includes(searchVal));
-  });
+  }).slice(0, 15);
   
   if (filteredProducts.length === 0) {
     dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
@@ -1036,6 +1023,43 @@ function closeFloatingResults() {
 }
 
 function handleSearchInputKeydowns(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const searchInput = document.getElementById('search-input');
+    const searchVal = searchInput.value.toLowerCase().trim();
+    if (!searchVal) return;
+    
+    // 1. Cek exact match barcode atau ID terlebih dahulu (untuk scanner)
+    const exactMatch = products.find(p => 
+      (p.barcode && p.barcode.toLowerCase() === searchVal) || 
+      p.id.toLowerCase() === searchVal
+    );
+    
+    if (exactMatch) {
+      if (exactMatch.stok > 0) {
+        addToCart(exactMatch);
+        searchInput.value = '';
+        closeFloatingResults();
+      } else {
+        alert("Stok barang habis!");
+      }
+      return;
+    }
+    
+    // 2. Jika tidak ada exact match, gunakan hasil pilihan dropdown
+    if (filteredProducts.length > 0 && selectedFloatIndex > -1 && selectedFloatIndex < filteredProducts.length) {
+      const prod = filteredProducts[selectedFloatIndex];
+      if (prod.stok > 0) {
+        addToCart(prod);
+        searchInput.value = '';
+        closeFloatingResults();
+      } else {
+        alert("Stok barang habis!");
+      }
+    }
+    return;
+  }
+  
   if (filteredProducts.length === 0) return;
   
   if (e.key === 'ArrowDown') {
@@ -1048,19 +1072,6 @@ function handleSearchInputKeydowns(e) {
     selectedFloatIndex = (selectedFloatIndex - 1 + filteredProducts.length) % filteredProducts.length;
     renderFloatingDropdown();
   } 
-  else if (e.key === 'Enter') {
-    e.preventDefault();
-    if (selectedFloatIndex > -1 && selectedFloatIndex < filteredProducts.length) {
-      const prod = filteredProducts[selectedFloatIndex];
-      if (prod.stok > 0) {
-        addToCart(prod);
-        document.getElementById('search-input').value = '';
-        closeFloatingResults();
-      } else {
-        alert("Stok barang habis!");
-      }
-    }
-  }
 }
 
 // --- TAB POS: KERANJANG ---
@@ -1755,7 +1766,7 @@ function filterKulakSearch() {
     return p.nama.toLowerCase().includes(val) || 
            p.id.toLowerCase().includes(val) ||
            (p.barcode && p.barcode.toLowerCase().includes(val));
-  });
+  }).slice(0, 15);
   
   if (kulakFilteredProducts.length === 0) {
     dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
@@ -2887,7 +2898,7 @@ function filterEditTxSearch() {
     return p.nama.toLowerCase().includes(val) || 
            p.id.toLowerCase().includes(val) ||
            (p.barcode && p.barcode.toLowerCase().includes(val));
-  });
+  }).slice(0, 15);
   
   if (editTxFilteredProducts.length === 0) {
     dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
