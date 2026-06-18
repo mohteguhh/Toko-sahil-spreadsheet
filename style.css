@@ -2070,7 +2070,7 @@ tr:hover td {
 }
 .label-item-print.shelf-label .label-name {
   font-weight: 800;
-  font-size: 14pt;
+  font-size: 16pt;
   margin-top: 6px;
   text-align: left;
   width: 100%;
@@ -2095,8 +2095,9 @@ tr:hover td {
 }
 .label-item-print.shelf-label .label-price {
   font-weight: 800;
-  font-size: 20pt;
+  font-size: 28pt;
   color: #000;
+  line-height: 1.1;
 }
 
 

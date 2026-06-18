@@ -13,7 +13,7 @@
   <!-- HTML5 QR Code Library for Camera Scanning -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   
-  <link rel="stylesheet" href="style.css?v=2.2">
+  <link rel="stylesheet" href="style.css?v=2.3">
 </head>
 <body>
 
@@ -439,6 +439,10 @@
             <div class="table-header">
               <h2>Daftar Inventaris Produk</h2>
               <div class="table-actions">
+                <button class="btn btn-primary btn-sm" id="btn-bulk-print-labels" onclick="openBulkPrintLabelModal()" style="display: none; background-color: var(--color-primary); border-color: var(--color-primary); align-items: center; gap: 0.35rem;">
+                  <svg viewBox="0 0 24 24" class="icon-sm" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2m-10 0v4h8v-4"/></svg>
+                  <span>Cetak Label Massal (<span id="bulk-select-count">0</span>)</span>
+                </button>
                 <button class="btn btn-accent btn-sm" onclick="syncProductsToCloud()">
                   <svg viewBox="0 0 24 24" class="icon-sm"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                   <span>Sync ke Google Sheets</span>
@@ -463,6 +467,7 @@
               <table id="products-table">
                 <thead>
                   <tr>
+                    <th style="width: 40px; text-align: center; padding: 0.5rem;"><input type="checkbox" id="select-all-products" onclick="toggleSelectAllProducts(this)" style="cursor: pointer; transform: scale(1.15);"></th>
                     <th>Gambar</th>
                     <th>ID</th>
                     <th>Nama Produk</th>
@@ -792,6 +797,36 @@
     </div>
   </div>
 
+  <!-- MODAL: CETAK LABEL MASSAL (FITUR BARU) -->
+  <div class="modal-overlay" id="bulk-print-label-modal">
+    <div class="modal-card" style="max-width: 600px; width: 90%;">
+      <div class="modal-header">
+        <h2>Cetak Label Harga Massal</h2>
+        <button class="close-modal-btn" onclick="closeBulkPrintLabelModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="bulk-print-label-type">Tipe Label</label>
+          <select id="bulk-print-label-type" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-weight: 600; outline: none;">
+            <option value="product">Label Produk (Dengan Barcode, Tempel di Produk)</option>
+            <option value="shelf">Label Rak (Nama & Harga Besar, Tempel di Rak)</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label style="font-weight: 700;">Daftar Produk & Jumlah Lembar Cetak</label>
+          <div id="bulk-print-products-list" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 0.25rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 0.5rem; background-color: var(--bg-surface-elevated);">
+            <!-- Diisi secara dinamis -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer flex-end" style="margin-top: 1rem;">
+        <button class="btn btn-secondary" onclick="closeBulkPrintLabelModal()">Batal</button>
+        <button class="btn btn-primary" onclick="printBulkLabels()">Cetak Massal</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: NOTIFIKASI KENAIKAN HARGA (FITUR BARU) -->
   <div class="modal-overlay" id="price-change-modal">
     <div class="modal-card" style="max-width: 450px;">
@@ -884,6 +919,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=2.2"></script>
+  <script src="app.js?v=2.3"></script>
 </body>
 </html>

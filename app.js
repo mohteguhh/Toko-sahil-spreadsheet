@@ -1483,6 +1483,11 @@ function renderProductsTable() {
   const tbody = document.getElementById('products-table-body');
   tbody.innerHTML = '';
   
+  // Reset checkbox master
+  const selectAllCb = document.getElementById('select-all-products');
+  if (selectAllCb) selectAllCb.checked = false;
+  updateBulkActionButtonState();
+  
   const searchVal = document.getElementById('product-list-search').value.toLowerCase().trim();
   
   // Filter produk
@@ -1507,7 +1512,7 @@ function renderProductsTable() {
   const itemsToRender = searchVal === '' ? matched.slice(0, 10) : matched;
   
   if (itemsToRender.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;">Barang tidak ditemukan.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;">Barang tidak ditemukan.</td></tr>`;
     return;
   }
   
@@ -1530,6 +1535,9 @@ function renderProductsTable() {
     }
     
     tr.innerHTML = `
+      <td style="text-align: center; padding: 0.5rem;">
+        <input type="checkbox" class="product-select-checkbox" data-id="${p.id}" onclick="updateBulkActionButtonState()" style="cursor: pointer; transform: scale(1.15);">
+      </td>
       <td>
         <img src="${imgUrl}" alt="${p.nama}" class="prod-table-img" onerror="handleImageError(this)">
       </td>
@@ -1978,9 +1986,9 @@ function generateCode39SVG(text) {
   if (!cleanText) return '';
 
   const fullText = '*' + cleanText + '*';
-  const N_WIDTH = 1.5; 
-  const W_WIDTH = 3.5; 
-  const GAP = 1.5;     
+  const N_WIDTH = 2.0; 
+  const W_WIDTH = 5.0; 
+  const GAP = 2.0;     
   const height = 45;   
 
   let currentX = 0;
@@ -2688,7 +2696,7 @@ function updateLabelPreview() {
   
   if (labelType === 'product') {
     // Render label produk (ada barcode)
-    const barcodeVal = p.barcode || p.id;
+    const barcodeVal = p.id;
     const barcodeSVG = generateCode39SVG(barcodeVal);
     
     const labelDiv = document.createElement('div');
@@ -2736,7 +2744,7 @@ function printLabels() {
   for (let i = 0; i < qty; i++) {
     const labelDiv = document.createElement('div');
     if (labelType === 'product') {
-      const barcodeVal = p.barcode || p.id;
+      const barcodeVal = p.id;
       const barcodeSVG = generateCode39SVG(barcodeVal);
       labelDiv.className = 'label-item-print product-label';
       labelDiv.innerHTML = `
@@ -2790,4 +2798,135 @@ function showPriceChangeNotification(p, oldPrice, newPrice) {
 function closePriceChangeModal() {
   document.getElementById('price-change-modal').classList.remove('active');
 }
+
+// --- FITUR CETAK LABEL MASSAL (BULK PRINTING - FITUR BARU) ---
+function toggleSelectAllProducts(masterCheckbox) {
+  const checkboxes = document.querySelectorAll('.product-select-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = masterCheckbox.checked;
+  });
+  updateBulkActionButtonState();
+}
+
+function updateBulkActionButtonState() {
+  const checkboxes = document.querySelectorAll('.product-select-checkbox');
+  const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+  const count = checkedBoxes.length;
+  
+  const btnBulk = document.getElementById('btn-bulk-print-labels');
+  const countEl = document.getElementById('bulk-select-count');
+  
+  if (btnBulk && countEl) {
+    if (count > 0) {
+      countEl.textContent = count;
+      btnBulk.style.display = 'inline-flex';
+    } else {
+      btnBulk.style.display = 'none';
+    }
+  }
+}
+
+function openBulkPrintLabelModal() {
+  const checkboxes = document.querySelectorAll('.product-select-checkbox');
+  const checkedProductIds = Array.from(checkboxes)
+    .filter(cb => cb.checked)
+    .map(cb => cb.getAttribute('data-id'));
+    
+  if (checkedProductIds.length === 0) {
+    alert("Pilih minimal satu produk!");
+    return;
+  }
+  
+  const listContainer = document.getElementById('bulk-print-products-list');
+  listContainer.innerHTML = '';
+  
+  checkedProductIds.forEach(id => {
+    const p = products.find(prod => prod.id === id);
+    if (p) {
+      const row = document.createElement('div');
+      row.className = 'bulk-print-row';
+      row.style.display = 'flex';
+      row.style.justify = 'space-between';
+      row.style.alignItems = 'center';
+      row.style.padding = '0.5rem 0';
+      row.style.borderBottom = '1px solid var(--border-color)';
+      row.innerHTML = `
+        <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-main);">${p.nama} (${p.id})</span>
+        <input type="number" class="bulk-print-qty-input" data-id="${p.id}" min="1" max="100" value="1" style="width: 70px; padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); text-align: center; font-weight: bold; outline: none; font-family: var(--font-main);">
+      `;
+      listContainer.appendChild(row);
+    }
+  });
+  
+  document.getElementById('bulk-print-label-type').value = 'product';
+  document.getElementById('bulk-print-label-modal').classList.add('active');
+}
+
+function closeBulkPrintLabelModal() {
+  document.getElementById('bulk-print-label-modal').classList.remove('active');
+}
+
+function printBulkLabels() {
+  const labelType = document.getElementById('bulk-print-label-type').value;
+  const printArea = document.getElementById('labels-print-area');
+  printArea.innerHTML = '';
+  
+  const qtyInputs = document.querySelectorAll('.bulk-print-qty-input');
+  const storeName = receiptSettings.name || 'KasirKilat';
+  
+  const container = document.createElement('div');
+  container.className = 'labels-print-container';
+  
+  let totalPrinted = 0;
+  
+  qtyInputs.forEach(input => {
+    const productId = input.getAttribute('data-id');
+    const qty = parseInt(input.value) || 0;
+    const p = products.find(prod => prod.id === productId);
+    
+    if (p && qty > 0) {
+      totalPrinted += qty;
+      const priceFormatted = `Rp ${formatRupiah(p.harga_jual)}`;
+      
+      for (let i = 0; i < qty; i++) {
+        const labelDiv = document.createElement('div');
+        if (labelType === 'product') {
+          const barcodeVal = p.id;
+          const barcodeSVG = generateCode39SVG(barcodeVal);
+          labelDiv.className = 'label-item-print product-label';
+          labelDiv.innerHTML = `
+            <div class="label-store">${storeName}</div>
+            <div class="label-name">${p.nama}</div>
+            <div class="label-price">${priceFormatted}</div>
+            <div class="label-barcode-svg">${barcodeSVG}</div>
+            <div class="label-barcode-text">${barcodeVal}</div>
+          `;
+        } else {
+          labelDiv.className = 'label-item-print shelf-label';
+          labelDiv.innerHTML = `
+            <div class="label-store">${storeName}</div>
+            <div class="label-name">${p.nama}</div>
+            <div class="label-price-box">
+              <span class="label-price-label">Harga</span>
+              <span class="label-price">${priceFormatted}</span>
+            </div>
+          `;
+        }
+        container.appendChild(labelDiv);
+      }
+    }
+  });
+  
+  if (totalPrinted === 0) {
+    alert("Tidak ada label yang dicetak!");
+    return;
+  }
+  
+  printArea.appendChild(container);
+  closeBulkPrintLabelModal();
+  
+  document.body.classList.add('printing-labels');
+  window.print();
+}
+
 
