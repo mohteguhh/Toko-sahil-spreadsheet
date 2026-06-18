@@ -1110,10 +1110,12 @@ function recalculateCartSplit(baseId, totalQty) {
     totalQty = localProd.stok;
   }
   
-  const hasPromo = localProd.harga_diskon > 0 && localProd.kuota_diskon > 0;
+  const hargaDiskon = parseFloat(localProd.harga_diskon) || 0;
+  const kuotaDiskon = parseInt(localProd.kuota_diskon) || 0;
+  const hasPromo = hargaDiskon > 0 && kuotaDiskon > 0;
   
   if (hasPromo) {
-    const promoQty = Math.min(totalQty, localProd.kuota_diskon);
+    const promoQty = Math.min(totalQty, kuotaDiskon);
     const regQty = totalQty - promoQty;
     
     if (promoQty > 0) {
@@ -1121,8 +1123,8 @@ function recalculateCartSplit(baseId, totalQty) {
         id: baseId,
         cartId: baseId + '_promo',
         nama: localProd.nama + ' (Promo)',
-        harga: localProd.harga_diskon,
-        harga_beli: localProd.harga_beli,
+        harga: hargaDiskon,
+        harga_beli: parseFloat(localProd.harga_beli) || 0,
         qty: promoQty,
         isPromo: true
       });
@@ -1156,28 +1158,41 @@ function recalculateCartSplit(baseId, totalQty) {
 
 function checkPromoBanner() {
   const container = document.getElementById('promo-banner-container');
-  if (!container) return;
+  if (container) container.innerHTML = ''; // Remove the old static banner if it exists
+  
+  const toastContainer = document.getElementById('toast-container');
+  if (!toastContainer) return;
   
   const promos = products.filter(p => p.harga_diskon > 0 && p.kuota_diskon > 0);
   
-  if (promos.length === 0) {
-    container.innerHTML = '';
-    return;
-  }
+  if (promos.length === 0) return;
   
-  let html = `<div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 0.75rem 1rem; border-radius: var(--border-radius-sm); margin-bottom: 1rem; box-shadow: 0 4px 6px -1px rgba(16,185,129,0.2);">
-    <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: bold; margin-bottom: 0.5rem;">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      PROMO AKTIF HARI INI
-    </div>
-    <ul style="margin: 0; padding-left: 1.5rem; font-size: 0.85rem;">`;
-    
+  let delay = 0;
   promos.forEach(p => {
-    html += `<li><strong>${p.nama}</strong>: Rp ${formatRupiah(p.harga_diskon)} (Sisa kuota: ${p.kuota_diskon})</li>`;
+    setTimeout(() => {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `
+        <svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span><strong>Promo: ${p.nama}</strong><br>Rp ${formatRupiah(p.harga_diskon)} (Sisa: ${p.kuota_diskon})</span>
+      `;
+      
+      toastContainer.appendChild(toast);
+      
+      // Trigger reflow to apply animation
+      void toast.offsetWidth;
+      toast.classList.add('show');
+      
+      // Remove after 5 seconds
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 5000);
+      
+    }, delay);
+    
+    delay += 1500; // Stagger toasts
   });
-  
-  html += `</ul></div>`;
-  container.innerHTML = html;
 }
 
 function clearCart() {
@@ -1518,7 +1533,7 @@ async function processCheckout() {
     if (localProd) {
       localProd.stok = Math.max(0, localProd.stok - cartItem.qty);
       if (cartItem.isPromo) {
-        localProd.kuota_diskon = Math.max(0, (localProd.kuota_diskon || 0) - cartItem.qty);
+        localProd.kuota_diskon = Math.max(0, (parseInt(localProd.kuota_diskon) || 0) - cartItem.qty);
       }
     }
   });
