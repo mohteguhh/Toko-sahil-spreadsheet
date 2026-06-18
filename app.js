@@ -1285,6 +1285,10 @@ function queueOfflineTransaction(tx) {
   updateSyncStatus('offline', `Offline (${offlineQueue.length} transaksi tertunda)`);
 }
 
+function saveOfflineQueue() {
+  localStorage.setItem('kasir_offline_queue', JSON.stringify(offlineQueue));
+}
+
 async function processOfflineQueue() {
   if (offlineQueue.length === 0 || !gasUrl) return;
   
