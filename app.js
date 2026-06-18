@@ -1168,42 +1168,32 @@ function recalculateCartSplit(baseId, totalQty) {
 }
 
 function checkPromoBanner() {
-  const container = document.getElementById('promo-banner-container');
-  if (container) container.innerHTML = ''; // Remove the old static banner if it exists
-  
-  const toastContainer = document.getElementById('toast-container');
-  if (!toastContainer) return;
+  const container = document.getElementById('promo-carousel-container');
+  const marqueeContent = document.getElementById('promo-marquee-content');
+  if (!container || !marqueeContent) return;
   
   const promos = products.filter(p => p.harga_diskon > 0 && p.kuota_diskon > 0);
   
-  if (promos.length === 0) return;
+  if (promos.length === 0) {
+    container.style.display = 'none';
+    marqueeContent.innerHTML = '';
+    return;
+  }
   
-  let delay = 0;
+  container.style.display = 'block';
+  let html = '';
+  
   promos.forEach(p => {
-    setTimeout(() => {
-      const toast = document.createElement('div');
-      toast.className = 'toast';
-      toast.innerHTML = `
-        <svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        <span><strong>Promo: ${p.nama}</strong><br>Rp ${formatRupiah(p.harga_diskon)} (Sisa: ${p.kuota_diskon})</span>
-      `;
-      
-      toastContainer.appendChild(toast);
-      
-      // Trigger reflow to apply animation
-      void toast.offsetWidth;
-      toast.classList.add('show');
-      
-      // Remove after 5 seconds
-      setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-      }, 5000);
-      
-    }, delay);
-    
-    delay += 1500; // Stagger toasts
+    html += `
+      <div class="promo-marquee-item">
+        ${p.nama}: <span class="highlight">Rp ${formatRupiah(p.harga_diskon)}</span> 
+        <span class="stock">(Sisa: ${p.kuota_diskon})</span>
+      </div>
+    `;
   });
+  
+  // Duplikat konten beberapa kali agar marquee mulus dan panjang
+  marqueeContent.innerHTML = html + html + html;
 }
 
 function clearCart() {

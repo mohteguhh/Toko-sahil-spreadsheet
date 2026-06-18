@@ -244,9 +244,6 @@
               </div>
             </div>
             
-            <!-- Banner Promo (Dinamis) -->
-            <div id="promo-banner-container"></div>
-            
             <!-- Cart Card -->
             <div class="cart-card-left">
               <div class="cart-header">
@@ -299,6 +296,19 @@
                   <li><strong>Shift</strong> : Lanjutkan Pembayaran</li>
                   <li><strong>Esc</strong> : Tutup Dialog / Reset Kasir</li>
                 </ul>
+              </div>
+              
+              <!-- PROMO CAROUSEL -->
+              <div id="promo-carousel-container" class="promo-carousel-container" style="display: none;">
+                <div class="promo-carousel-header">
+                  <svg viewBox="0 0 24 24" class="icon-sm"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                  <span>Sedang Diskon</span>
+                </div>
+                <div class="promo-marquee">
+                  <div class="promo-marquee-content" id="promo-marquee-content">
+                    <!-- Dinamis -->
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1190,9 +1200,6 @@
       <p id="print-rep-timestamp">Waktu Cetak: --</p>
     </div>
   </div>
-
-  <!-- TOAST NOTIFICATION CONTAINER -->
-  <div id="toast-container" class="toast-container"></div>
 
   <script src="app.js?v=2.3"></script>
 </body>

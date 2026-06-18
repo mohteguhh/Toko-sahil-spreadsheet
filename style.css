@@ -2100,46 +2100,66 @@ tr:hover td {
   line-height: 1.1;
 }
 
-/* TOAST NOTIFICATIONS */
-.toast-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  pointer-events: none;
+
+/* PROMO CAROUSEL */
+.promo-carousel-container {
+  margin-top: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-.toast {
+.promo-carousel-header {
   background: linear-gradient(135deg, #10b981, #059669);
   color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  padding: 0.5rem 0.75rem;
+  font-weight: 700;
+  font-size: 0.85rem;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0.5rem;
+}
+
+.promo-carousel-header svg {
+  stroke: white;
+}
+
+.promo-marquee {
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-surface);
+  padding: 0.75rem 0;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.promo-marquee-content {
+  display: inline-block;
+  animation: marquee 15s linear infinite;
+}
+
+.promo-marquee-item {
+  display: inline-block;
+  margin-right: 2rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  font-size: 0.9rem;
-  transform: translateX(120%);
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
-  opacity: 0;
-  max-width: 300px;
-  pointer-events: auto;
+  color: var(--text-main);
 }
 
-.toast.show {
-  transform: translateX(0);
-  opacity: 1;
+.promo-marquee-item .highlight {
+  color: #10b981;
+  font-weight: 800;
 }
 
-.toast svg {
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  flex-shrink: 0;
+.promo-marquee-item .stock {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+@keyframes marquee {
+  0%   { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
 }
