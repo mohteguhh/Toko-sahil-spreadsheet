@@ -1507,11 +1507,15 @@ function renderProductsTable() {
   if (searchVal === '') {
     countHelpEl.textContent = `Menampilkan 10 data teratas dari total ${products.length} barang. Gunakan pencarian untuk menyaring barang lain.`;
   } else {
-    countHelpEl.textContent = `Ditemukan ${totalCount} barang yang cocok.`;
+    if (totalCount > 50) {
+      countHelpEl.textContent = `Ditemukan ${totalCount} barang yang cocok. Menampilkan 50 barang teratas (ketik kata kunci lebih spesifik untuk mempersempit).`;
+    } else {
+      countHelpEl.textContent = `Ditemukan ${totalCount} barang yang cocok.`;
+    }
   }
   
-  // Ambil hanya 10 barang jika tidak sedang menyaring (menghindari lag browser)
-  const itemsToRender = searchVal === '' ? matched.slice(0, 10) : matched;
+  // Batasi maksimal 50 barang yang di-render saat pencarian untuk menghindari lag browser (DOM thrashing)
+  const itemsToRender = searchVal === '' ? matched.slice(0, 10) : matched.slice(0, 50);
   
   if (itemsToRender.length === 0) {
     tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;">Barang tidak ditemukan.</td></tr>`;
@@ -1572,8 +1576,12 @@ function renderProductsTable() {
   updateBulkActionButtonState();
 }
 
+let productListSearchTimeout;
 function filterProductListTable() {
-  renderProductsTable();
+  clearTimeout(productListSearchTimeout);
+  productListSearchTimeout = setTimeout(() => {
+    renderProductsTable();
+  }, 250); // Debounce 250ms agar mengetik terasa sangat ringan dan lancar
 }
 
 function saveProduct(event) {
