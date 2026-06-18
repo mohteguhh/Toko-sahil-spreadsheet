@@ -2157,21 +2157,39 @@ tr:hover td {
   overflow: hidden;
   background: var(--bg-surface);
   padding: 0.75rem 0;
-  white-space: nowrap;
   box-sizing: border-box;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .promo-marquee-content {
-  display: inline-block;
-  animation: marquee 15s linear infinite;
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .promo-marquee-item {
-  display: inline-block;
-  margin-right: 2rem;
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  transform: translateY(10px);
+  text-align: center;
+  width: 100%;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-main);
+  pointer-events: none;
+}
+
+.promo-marquee-item.active {
+  opacity: 1;
+  transform: translateY(0);
+  position: relative;
+  pointer-events: auto;
 }
 
 .promo-marquee-item .highlight {
@@ -2183,9 +2201,4 @@ tr:hover td {
   color: var(--text-muted);
   font-size: 0.75rem;
   font-weight: 500;
-}
-
-@keyframes marquee {
-  0%   { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
 }

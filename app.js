@@ -1295,17 +1295,30 @@ function checkPromoBanner() {
   container.style.display = 'block';
   let html = '';
   
-  promos.forEach(p => {
+  promos.forEach((p, i) => {
     html += `
-      <div class="promo-marquee-item">
+      <div class="promo-marquee-item ${i === 0 ? 'active' : ''}">
         ${p.nama}: <span class="highlight">Rp ${formatRupiah(p.harga_diskon)}</span> 
         <span class="stock">(Harga Asli: <s style="opacity: 0.7;">Rp ${formatRupiah(p.harga_jual)}</s>)</span>
       </div>
     `;
   });
   
-  // Duplikat konten beberapa kali agar marquee mulus dan panjang
-  marqueeContent.innerHTML = html + html + html;
+  marqueeContent.innerHTML = html;
+  
+  if (window.promoCarouselInterval) {
+    clearInterval(window.promoCarouselInterval);
+  }
+  
+  if (promos.length > 1) {
+    let currentIndex = 0;
+    const items = marqueeContent.querySelectorAll('.promo-marquee-item');
+    window.promoCarouselInterval = setInterval(() => {
+      items[currentIndex].classList.remove('active');
+      currentIndex = (currentIndex + 1) % items.length;
+      items[currentIndex].classList.add('active');
+    }, 3000);
+  }
 }
 
 function saveCart() {
