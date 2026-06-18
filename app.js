@@ -1234,8 +1234,8 @@ function recalculateCartSplit(baseId, totalQty) {
   }
   
   const hargaDiskon = parseFloat(localProd.harga_diskon) || 0;
-  const kuotaDiskon = parseInt(localProd.kuota_diskon) || 0;
-  const hasPromo = hargaDiskon > 0 && kuotaDiskon > 0;
+  const kuotaDiskon = (parseInt(localProd.kuota_diskon) || 0) > 0 ? parseInt(localProd.kuota_diskon) : Infinity;
+  const hasPromo = hargaDiskon > 0;
   
   if (hasPromo) {
     const promoQty = Math.min(totalQty, kuotaDiskon);
@@ -1284,7 +1284,7 @@ function checkPromoBanner() {
   const marqueeContent = document.getElementById('promo-marquee-content');
   if (!container || !marqueeContent) return;
   
-  const promos = products.filter(p => p.harga_diskon > 0 && p.kuota_diskon > 0);
+  const promos = products.filter(p => parseFloat(p.harga_diskon) > 0);
   
   if (promos.length === 0) {
     container.style.display = 'none';
@@ -2188,6 +2188,7 @@ function saveProduct(event) {
   updateCategoriesList();
   renderProductsTable();
   resetProductForm();
+  checkPromoBanner();
   
   alert("Produk berhasil disimpan!");
   syncProductsToCloudBackground();
