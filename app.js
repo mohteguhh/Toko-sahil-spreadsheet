@@ -1739,12 +1739,12 @@ function showReceipt(tx, items) {
     const row = document.createElement('div');
     row.className = 'receipt-item-row';
     row.innerHTML = `
-      <div class="receipt-item-row-top">
-        <span>${item.nama}</span>
-        <span>Rp ${formatRupiah(item.harga * item.qty)}</span>
-      </div>
-      <div class="receipt-item-row-bottom">
-        <span>${item.qty}x @Rp ${formatRupiah(item.harga)}</span>
+      <div class="receipt-item-row-top" style="align-items: flex-start;">
+        <span style="flex: 1; padding-right: 0.5rem;">${item.nama}</span>
+        <div style="text-align: right; display: flex; flex-direction: column;">
+          <span>Rp ${formatRupiah(item.harga * item.qty)}</span>
+          <span style="font-size: 0.9em; font-weight: 500; color: #444; margin-top: 2px;">${item.qty}x @Rp ${formatRupiah(item.harga)}</span>
+        </div>
       </div>
     `;
     recItems.appendChild(row);
@@ -3287,7 +3287,13 @@ function saveEditedTransaction() {
       if (product) {
         product.stok = Math.max(0, product.stok - delta);
         if ((origItem && origItem.isPromo) || (newItem && newItem.isPromo)) {
-          product.kuota_diskon = Math.max(0, (parseInt(product.kuota_diskon) || 0) - delta);
+          let prevKuota = parseInt(product.kuota_diskon) || 0;
+          if (prevKuota > 0) {
+            product.kuota_diskon = Math.max(0, prevKuota - delta);
+            if (product.kuota_diskon === 0) {
+              product.harga_diskon = 0;
+            }
+          }
         }
       }
     }
