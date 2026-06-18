@@ -21,6 +21,9 @@ let selectedKulakFloatIndex = -1;
 // State Kamera Scanner
 let html5QrcodeScanner = null;
 
+// State Pemilihan Tombol Cetak Nota
+let selectedReceiptButtonIndex = 0; // 0 = Cetak Nota, 1 = Tidak
+
 // URL Google Apps Script & Offline Sync
 let gasUrl = localStorage.getItem('kasir_gas_url') || '';
 let syncStatus = 'offline'; 
@@ -180,11 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
       closeEditTxFloatingResults();
     }
     
-    // Hentikan countdown struk jika ada aktivitas klik
-    const receiptModal = document.getElementById('receipt-modal');
-    if (receiptModal && receiptModal.classList.contains('active')) {
-      stopReceiptCountdown();
-    }
+
   });
   
   // Deteksi event cetak untuk toggle body class
@@ -1175,44 +1174,7 @@ async function processCheckout() {
   syncTransactionToCloud(transaction);
 }
 
-// State Countdown Struk (FITUR BARU)
-let receiptCountdownInterval = null;
-let receiptCountdownVal = 3;
-
-function startReceiptCountdown() {
-  stopReceiptCountdown();
-  
-  receiptCountdownVal = 3;
-  const textEl = document.getElementById('receipt-countdown-text');
-  const numEl = document.getElementById('receipt-countdown');
-  
-  if (textEl && numEl) {
-    textEl.style.display = 'block';
-    numEl.textContent = receiptCountdownVal;
-  }
-  
-  receiptCountdownInterval = setInterval(() => {
-    receiptCountdownVal--;
-    if (numEl) {
-      numEl.textContent = receiptCountdownVal;
-    }
-    if (receiptCountdownVal <= 0) {
-      stopReceiptCountdown();
-      closeReceiptModal();
-    }
-  }, 1000);
-}
-
-function stopReceiptCountdown() {
-  if (receiptCountdownInterval) {
-    clearInterval(receiptCountdownInterval);
-    receiptCountdownInterval = null;
-  }
-  const textEl = document.getElementById('receipt-countdown-text');
-  if (textEl) {
-    textEl.style.display = 'none';
-  }
-}
+// (Logika Countdown Struk Belanja Dihilangkan)
 
 // Tampilkan Struk Belanja
 function showReceipt(tx, items) {
@@ -1252,12 +1214,32 @@ function showReceipt(tx, items) {
   
   document.getElementById('receipt-modal').classList.add('active');
   
-  // Jalankan countdown 3 detik
-  startReceiptCountdown();
+  // Set default pemilihan tombol struk ke "Cetak Nota" (index 0)
+  selectedReceiptButtonIndex = 0;
+  updateReceiptButtonsHighlight();
+  
+
+}
+
+function updateReceiptButtonsHighlight() {
+  const btnPrint = document.getElementById('btn-print-receipt');
+  const btnSkip = document.getElementById('btn-skip-receipt');
+  if (!btnPrint || !btnSkip) return;
+  
+  if (selectedReceiptButtonIndex === 0) {
+    // Highlight Cetak Nota (Primary)
+    btnPrint.className = 'btn btn-primary';
+    btnSkip.className = 'btn btn-secondary';
+    btnPrint.focus();
+  } else {
+    // Highlight Tidak (Primary)
+    btnPrint.className = 'btn btn-secondary';
+    btnSkip.className = 'btn btn-primary';
+    btnSkip.focus();
+  }
 }
 
 function closeReceiptModal() {
-  stopReceiptCountdown();
   document.getElementById('receipt-modal').classList.remove('active');
   focusSearchInput();
 }
@@ -1879,9 +1861,20 @@ function handleGlobalKeydowns(e) {
   const isPaymentOpen = paymentModal.classList.contains('active');
   const isReceiptOpen = receiptModal.classList.contains('active');
   
-  // Hentikan countdown struk jika ada aktivitas tombol keyboard
+  // Navigasi tombol struk kiri/kanan
   if (isReceiptOpen) {
-    stopReceiptCountdown();
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      selectedReceiptButtonIndex = 0;
+      updateReceiptButtonsHighlight();
+      return;
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      selectedReceiptButtonIndex = 1;
+      updateReceiptButtonsHighlight();
+      return;
+    }
   }
   
   if (e.key === 'Escape') {
@@ -1912,7 +1905,11 @@ function handleGlobalKeydowns(e) {
   if (e.key === 'Enter') {
     if (isReceiptOpen) {
       e.preventDefault();
-      window.print();
+      if (selectedReceiptButtonIndex === 0) {
+        window.print();
+      } else {
+        closeReceiptModal();
+      }
     } else if (isPaymentOpen) {
       const btnSubmit = document.getElementById('btn-submit-payment');
       if (btnSubmit && !btnSubmit.disabled) {

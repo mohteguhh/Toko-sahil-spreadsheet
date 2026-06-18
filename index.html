@@ -744,17 +744,13 @@
         <p>Barang yang sudah dibeli tidak dapat ditukar.</p>
         <div class="divider-dashed no-print"></div>
         <p class="shortcut-tip no-print" style="margin-top: 10px; font-weight: bold; color: #555;">
-          [Enter] Cetak Nota | [Esc] Kembali ke Kasir
-        </p>
-        <!-- COUNTDOWN TIMER OTOMATIS (FITUR BARU) -->
-        <p id="receipt-countdown-text" class="no-print" style="margin-top: 8px; color: var(--color-primary); font-weight: 700; font-size: 0.8rem; display: none;">
-          Kembali ke Kasir otomatis dalam <span id="receipt-countdown">3</span> detik...
+          Gunakan tombol panah &larr; &rarr; untuk memilih tombol | [Enter] Konfirmasi
         </p>
       </div>
       
       <div class="modal-actions no-print">
-        <button class="btn btn-secondary" onclick="closeReceiptModal()">Kembali [Esc]</button>
-        <button class="btn btn-primary" onclick="window.print()">Cetak Struk [Enter]</button>
+        <button class="btn btn-primary" id="btn-print-receipt" onclick="window.print()">Cetak Nota</button>
+        <button class="btn btn-secondary" id="btn-skip-receipt" onclick="closeReceiptModal()">Tidak</button>
       </div>
     </div>
   </div>
