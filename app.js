@@ -3798,10 +3798,14 @@ function updateShiftStatusUI() {
     btnText.textContent = `Shift: Aktif (${activeShift.nama_kasir})`;
     btnStatus.style.borderColor = 'var(--primary-color)';
     btnStatus.style.color = 'var(--primary-color)';
+    btnStatus.style.background = 'rgba(37, 99, 235, 0.08)';
+    btnStatus.style.boxShadow = '0 0 10px rgba(37, 99, 235, 0.2)';
   } else {
     btnText.textContent = 'Buka Shift Kasir';
     btnStatus.style.borderColor = 'var(--border-color)';
     btnStatus.style.color = 'var(--text-main)';
+    btnStatus.style.background = 'var(--bg-surface-elevated)';
+    btnStatus.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)';
   }
 }
 
@@ -3815,23 +3819,28 @@ function openShiftModal() {
     let cashierOptions = cashiers.map(c => `<option value="${c}">${c}</option>`).join('');
     
     body.innerHTML = `
-      <div class="form-group">
-        <label>Nama Kasir</label>
-        <select id="shift-kasir" class="form-control">${cashierOptions}</select>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="form-group">
+          <label style="font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem; display: block;">Pilih Kasir</label>
+          <select id="shift-kasir" class="form-control" style="width: 100%; padding: 0.75rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-surface-elevated); font-size: 1rem;">${cashierOptions}</select>
+        </div>
+        <div class="form-group">
+          <label style="font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem; display: block;">Jenis Shift</label>
+          <select id="shift-jenis" class="form-control" style="width: 100%; padding: 0.75rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-surface-elevated); font-size: 1rem;">
+            <option value="Shift 1 (07:00 - 15:00)">Shift 1 (07:00 - 15:00)</option>
+            <option value="Shift 2 (15:00 - 21:00)">Shift 2 (15:00 - 21:00)</option>
+            <option value="Shift Custom">Shift Custom</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label style="font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem; display: block;">Modal Awal / Uang Laci (Rp)</label>
+          <div style="position: relative;">
+            <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-weight: 600;">Rp</span>
+            <input type="text" id="shift-modal-awal" class="form-control" placeholder="100.000" onkeyup="formatRupiahInput(this)" style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); font-size: 1.1rem; font-weight: 600;">
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1.1rem; font-weight: 600; margin-top: 0.5rem; box-shadow: var(--shadow-md);" onclick="submitOpenShift()">🚀 Buka Shift Sekarang</button>
       </div>
-      <div class="form-group">
-        <label>Jenis Shift</label>
-        <select id="shift-jenis" class="form-control">
-          <option value="Shift 1 (07:00 - 15:00)">Shift 1 (07:00 - 15:00)</option>
-          <option value="Shift 2 (15:00 - 21:00)">Shift 2 (15:00 - 21:00)</option>
-          <option value="Shift Custom">Shift Custom</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Modal Awal (Uang Laci) - Rp</label>
-        <input type="text" id="shift-modal-awal" class="form-control" placeholder="100.000" onkeyup="formatRupiahInput(this)">
-      </div>
-      <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="submitOpenShift()">Buka Shift</button>
     `;
   } else {
     title.textContent = 'Tutup Shift Kasir';
@@ -3852,17 +3861,27 @@ function openShiftModal() {
     const estimasiLaci = activeShift.modal_awal + totalUangMasuk;
     
     body.innerHTML = `
-      <div style="background: var(--bg-body); padding: 1rem; border-radius: var(--border-radius-sm); margin-bottom: 1rem; text-align: center;">
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">Estimasi Uang Laci Seharusnya</p>
-        <h3 style="color: var(--primary-color); font-size: 1.5rem; margin: 0;">Rp ${formatRupiah(estimasiLaci)}</h3>
-        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">(Modal Awal + Transaksi Tunai)</p>
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%); padding: 1.5rem; border-radius: var(--border-radius-md); text-align: center; border: 1px solid rgba(59, 130, 246, 0.2);">
+          <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Estimasi Uang Laci Seharusnya</p>
+          <h3 style="color: var(--primary-color); font-size: 2rem; margin: 0; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.05);">Rp ${formatRupiah(estimasiLaci)}</h3>
+          <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+            <span>Modal: <strong>Rp ${formatRupiah(activeShift.modal_awal)}</strong></span>
+            <span>+</span>
+            <span>Masuk: <strong>Rp ${formatRupiah(totalUangMasuk)}</strong></span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label style="font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem; display: block;">Hitungan Fisik Uang Laci (Rp)*</label>
+          <div style="position: relative;">
+            <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-weight: 600;">Rp</span>
+            <input type="text" id="shift-uang-fisik" class="form-control" placeholder="0" onkeyup="formatRupiahInput(this)" style="width: 100%; padding: 1rem 1rem 1rem 2.5rem; border-radius: var(--border-radius-md); border: 2px solid var(--border-color); font-size: 1.5rem; font-weight: 700; color: var(--text-main); background: var(--bg-card); transition: all 0.2s ease;">
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Hitung seluruh uang tunai yang ada di laci saat ini.</p>
+        </div>
+        <button class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.1rem; font-weight: 700; border-radius: var(--border-radius-md); box-shadow: var(--shadow-md); background: linear-gradient(to right, var(--primary-color), var(--primary-hover)); margin-top: 0.5rem;" onclick="submitCloseShift(${totalUangMasuk}, ${estimasiLaci})">🔒 Akhiri Shift & Simpan Laporan</button>
       </div>
-      
-      <div class="form-group">
-        <label>Hitungan Fisik Uang Laci (Rp)*</label>
-        <input type="text" id="shift-uang-fisik" class="form-control" placeholder="Hitung dan masukkan total uang laci..." onkeyup="formatRupiahInput(this)">
-      </div>
-      <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="submitCloseShift(${totalUangMasuk}, ${estimasiLaci})">Tutup Shift</button>
     `;
   }
   

@@ -70,9 +70,9 @@
       <!-- System Indicators -->
       <div class="indicators">
         <!-- STATUS SHIFT -->
-        <div class="cashier-selector-wrapper" style="display: flex; align-items: center; gap: 0.35rem; margin-right: 0.5rem;">
-          <button id="btn-shift-status" onclick="openShiftModal()" class="btn btn-secondary btn-sm" style="background: var(--bg-card); border-color: var(--border-color); color: var(--text-main); font-weight: 600; font-family: var(--font-main);">
-            <svg viewBox="0 0 24 24" class="icon-sm" style="margin-right: 0.25rem;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <div class="cashier-selector-wrapper" style="display: flex; align-items: center; gap: 0.5rem; margin-right: 1rem;">
+          <button id="btn-shift-status" onclick="openShiftModal()" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 50px; font-weight: 600; font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.3s ease; border: 1px solid var(--border-color); background: var(--bg-surface-elevated); color: var(--text-main); box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             <span id="shift-status-text">Buka Shift Kasir</span>
           </button>
         </div>
@@ -755,10 +755,10 @@
   <!-- MODAL: PROSES PEMBAYARAN (STEP 2) -->
   <!-- MODAL BUKA/TUTUP SHIFT -->
   <div class="modal-overlay" id="shift-modal">
-    <div class="modal-content" style="max-width: 400px;">
+    <div class="modal-card" style="max-width: 450px;">
       <div class="modal-header">
         <h3 id="shift-modal-title">Buka Shift Kasir</h3>
-        <button class="btn-close" onclick="closeShiftModal()"><svg viewBox="0 0 24 24" class="icon-sm"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        <button class="close-modal-btn" onclick="closeShiftModal()">&times;</button>
       </div>
       <div class="modal-body" id="shift-modal-body">
         <!-- Rendered by JS -->
