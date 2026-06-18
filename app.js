@@ -2965,6 +2965,12 @@ async function syncTransactionsFromCloud() {
   
   if (result && result.status === 'success') {
     if (result.data) {
+      // Simpan data lokal sebagai referensi untuk merge piutang
+      const localTxMap = {};
+      transactions.forEach(ltx => {
+        localTxMap[ltx.id] = ltx;
+      });
+      
       transactions = result.data.map(tx => {
         let itemsList = [];
         const itemsStr = tx.daftar_item || tx.items || "";
@@ -2989,8 +2995,44 @@ async function syncTransactionsFromCloud() {
           });
         }
         
+        const txId = tx.id_transaksi ? tx.id_transaksi.toString() : (tx.id ? tx.id.toString() : '');
+        
+        // Ambil data piutang dari cloud
+        const cloudSisa = parseFloat(tx.sisa_piutang) || 0;
+        const cloudStatus = tx.status_pembayaran || '';
+        const cloudCustomer = tx.nama_pelanggan || '';
+        
+        // Cek data lokal sebagai referensi merge
+        const localTx = localTxMap[txId];
+        
+        // Tentukan sisa_piutang: prioritaskan data lokal jika cloud kosong
+        let finalSisa = cloudSisa;
+        let finalStatus = '';
+        let finalCustomer = cloudCustomer;
+        
+        if (localTx) {
+          // Ada data lokal — jika cloud tidak punya info piutang, pakai lokal
+          if (cloudSisa === 0 && cloudStatus === '' && localTx.sisa_piutang > 0) {
+            finalSisa = localTx.sisa_piutang;
+          }
+          if (!cloudCustomer && localTx.nama_pelanggan) {
+            finalCustomer = localTx.nama_pelanggan;
+          }
+          if (!cloudStatus && localTx.status_pembayaran) {
+            finalStatus = localTx.status_pembayaran;
+          }
+        }
+        
+        // Tentukan status akhir: sisa_piutang > 0 = pasti Bon
+        if (!finalStatus) {
+          finalStatus = finalSisa > 0 ? 'Bon' : (cloudStatus || 'Lunas');
+        }
+        if (finalSisa > 0) {
+          finalStatus = 'Bon';
+        }
+        
         return {
-          id: tx.id_transaksi ? tx.id_transaksi.toString() : (tx.id ? tx.id.toString() : ''),
+          id: txId,
           waktu: tx.waktu || '',
           items: itemsList,
           total: parseFloat(tx.total) || 0,
@@ -2998,15 +3040,9 @@ async function syncTransactionsFromCloud() {
           kembalian: parseFloat(tx.kembalian) || 0,
           metode_pembayaran: tx.metode_pembayaran || "Tunai",
           kasir: tx.kasir || "Kasir Utama",
-          // Gunakan sisa_piutang sebagai patokan utama — jika > 0 maka statusnya pasti Bon
-          sisa_piutang: parseFloat(tx.sisa_piutang) || 0,
-          nama_pelanggan: tx.nama_pelanggan || "",
-          status_pembayaran: (() => {
-            const sisa = parseFloat(tx.sisa_piutang) || 0;
-            if (sisa > 0) return 'Bon'; // ada sisa hutang = pasti Bon
-            // Kalau sisa 0, percayai field status_pembayaran dari cloud jika ada
-            return tx.status_pembayaran || 'Lunas';
-          })()
+          sisa_piutang: finalSisa,
+          nama_pelanggan: finalCustomer,
+          status_pembayaran: finalStatus
         };
       });
       
