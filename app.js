@@ -30,6 +30,9 @@ let html5QrcodeScanner = null;
 // State Pemilihan Tombol Cetak Nota
 let selectedReceiptButtonIndex = 0; // 0 = Cetak Nota, 1 = Tidak
 
+// State Cetak Label Harga Massal (Terpilih)
+let selectedProductIds = new Set();
+
 // URL Google Apps Script & Offline Sync
 let gasUrl = localStorage.getItem('kasir_gas_url') || '';
 let syncStatus = 'offline'; 
@@ -1483,10 +1486,9 @@ function renderProductsTable() {
   const tbody = document.getElementById('products-table-body');
   tbody.innerHTML = '';
   
-  // Reset checkbox master
+  // Reset checkbox master awal
   const selectAllCb = document.getElementById('select-all-products');
   if (selectAllCb) selectAllCb.checked = false;
-  updateBulkActionButtonState();
   
   const searchVal = document.getElementById('product-list-search').value.toLowerCase().trim();
   
@@ -1536,7 +1538,7 @@ function renderProductsTable() {
     
     tr.innerHTML = `
       <td style="text-align: center; padding: 0.5rem;">
-        <input type="checkbox" class="product-select-checkbox" data-id="${p.id}" onclick="updateBulkActionButtonState()" style="cursor: pointer; transform: scale(1.15);">
+        <input type="checkbox" class="product-select-checkbox" data-id="${p.id}" onclick="toggleProductSelection('${p.id}', this)" ${selectedProductIds.has(p.id) ? 'checked' : ''} style="cursor: pointer; transform: scale(1.15);">
       </td>
       <td>
         <img src="${imgUrl}" alt="${p.nama}" class="prod-table-img" onerror="handleImageError(this)">
@@ -1565,6 +1567,9 @@ function renderProductsTable() {
     `;
     tbody.appendChild(tr);
   });
+  
+  // Sinkronkan tombol cetak massal dan checkbox master berdasarkan item yang baru saja di-render
+  updateBulkActionButtonState();
 }
 
 function filterProductListTable() {
@@ -1713,7 +1718,10 @@ function resetProductForm() {
 }
 
 function deleteProduct(index) {
-  if (confirm(`Apakah Anda yakin ingin menghapus produk "${products[index].nama}"?`)) {
+  const p = products[index];
+  if (!p) return;
+  if (confirm(`Apakah Anda yakin ingin menghapus produk "${p.nama}"?`)) {
+    selectedProductIds.delete(p.id);
     products.splice(index, 1);
     saveProductsLocally();
     updateCategoriesList();
@@ -1865,6 +1873,7 @@ function clearLocalCache() {
     gasUrl = '';
     offlineQueue = [];
     activeCategory = 'All';
+    selectedProductIds.clear();
     receiptSettings = {
       logo: '',
       name: 'KasirKilat',
@@ -2800,19 +2809,44 @@ function closePriceChangeModal() {
 }
 
 // --- FITUR CETAK LABEL MASSAL (BULK PRINTING - FITUR BARU) ---
+function toggleProductSelection(productId, checkbox) {
+  if (checkbox.checked) {
+    selectedProductIds.add(productId);
+  } else {
+    selectedProductIds.delete(productId);
+  }
+  updateBulkActionButtonState();
+}
+
 function toggleSelectAllProducts(masterCheckbox) {
+  const searchVal = document.getElementById('product-list-search').value.toLowerCase().trim();
+  const matched = products.filter(p => {
+    return p.nama.toLowerCase().includes(searchVal) || 
+           p.id.toLowerCase().includes(searchVal) ||
+           (p.barcode && p.barcode.toLowerCase().includes(searchVal)) ||
+           (p.kategori && p.kategori.toLowerCase().includes(searchVal));
+  });
+  const itemsToRender = searchVal === '' ? matched.slice(0, 10) : matched;
+
+  itemsToRender.forEach(p => {
+    if (masterCheckbox.checked) {
+      selectedProductIds.add(p.id);
+    } else {
+      selectedProductIds.delete(p.id);
+    }
+  });
+
   const checkboxes = document.querySelectorAll('.product-select-checkbox');
   checkboxes.forEach(cb => {
-    cb.checked = masterCheckbox.checked;
+    const id = cb.getAttribute('data-id');
+    cb.checked = selectedProductIds.has(id);
   });
+
   updateBulkActionButtonState();
 }
 
 function updateBulkActionButtonState() {
-  const checkboxes = document.querySelectorAll('.product-select-checkbox');
-  const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
-  const count = checkedBoxes.length;
-  
+  const count = selectedProductIds.size;
   const btnBulk = document.getElementById('btn-bulk-print-labels');
   const countEl = document.getElementById('bulk-select-count');
   
@@ -2824,15 +2858,21 @@ function updateBulkActionButtonState() {
       btnBulk.style.display = 'none';
     }
   }
+  
+  const masterCb = document.getElementById('select-all-products');
+  if (masterCb) {
+    const checkboxes = document.querySelectorAll('.product-select-checkbox');
+    if (checkboxes.length > 0) {
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      masterCb.checked = allChecked;
+    } else {
+      masterCb.checked = false;
+    }
+  }
 }
 
 function openBulkPrintLabelModal() {
-  const checkboxes = document.querySelectorAll('.product-select-checkbox');
-  const checkedProductIds = Array.from(checkboxes)
-    .filter(cb => cb.checked)
-    .map(cb => cb.getAttribute('data-id'));
-    
-  if (checkedProductIds.length === 0) {
+  if (selectedProductIds.size === 0) {
     alert("Pilih minimal satu produk!");
     return;
   }
@@ -2840,7 +2880,7 @@ function openBulkPrintLabelModal() {
   const listContainer = document.getElementById('bulk-print-products-list');
   listContainer.innerHTML = '';
   
-  checkedProductIds.forEach(id => {
+  selectedProductIds.forEach(id => {
     const p = products.find(prod => prod.id === id);
     if (p) {
       const row = document.createElement('div');
@@ -2927,6 +2967,10 @@ function printBulkLabels() {
   
   document.body.classList.add('printing-labels');
   window.print();
+  
+  // Bersihkan pilihan setelah print sukses dipicu
+  selectedProductIds.clear();
+  renderProductsTable();
 }
 
 
