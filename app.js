@@ -1187,7 +1187,7 @@ function checkPromoBanner() {
     html += `
       <div class="promo-marquee-item">
         ${p.nama}: <span class="highlight">Rp ${formatRupiah(p.harga_diskon)}</span> 
-        <span class="stock">(Sisa: ${p.kuota_diskon})</span>
+        <span class="stock">(Harga Asli: <s style="opacity: 0.7;">Rp ${formatRupiah(p.harga_jual)}</s>)</span>
       </div>
     `;
   });
