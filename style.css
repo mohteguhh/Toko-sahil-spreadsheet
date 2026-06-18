@@ -1356,6 +1356,8 @@ tr:hover td {
   flex-direction: column;
   animation: scaleUp var(--transition-normal);
   border: 1px solid #ddd;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .receipt-logo-img {
   height: 48px;
@@ -1845,6 +1847,8 @@ tr:hover td {
     margin: 0;
     width: 80mm;
     max-width: 100%;
+    max-height: none;
+    overflow-y: visible;
   }
   
   /* Jika mencetak laporan harian */

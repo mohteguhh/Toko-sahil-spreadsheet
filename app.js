@@ -2465,71 +2465,76 @@ function renameCashier(oldName) {
 // --- PINTASAN KEYBOARD GLOBAL ---
 
 function handleGlobalKeydowns(e) {
-  if (activeTab !== 'pos') return;
-  
   const paymentModal = document.getElementById('payment-modal');
   const receiptModal = document.getElementById('receipt-modal');
   
   const isPaymentOpen = paymentModal.classList.contains('active');
   const isReceiptOpen = receiptModal.classList.contains('active');
   
-  // Navigasi tombol struk kiri/kanan
-  if (isReceiptOpen) {
-    if (e.key === 'ArrowLeft') {
+  // Modals have global priority across all tabs
+  if (isReceiptOpen || isPaymentOpen) {
+    if (e.key === 'Escape') {
       e.preventDefault();
-      selectedReceiptButtonIndex = 0;
-      updateReceiptButtonsHighlight();
+      if (isReceiptOpen) closeReceiptModal();
+      else if (isPaymentOpen) closePaymentModal();
       return;
     }
-    if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      selectedReceiptButtonIndex = 1;
-      updateReceiptButtonsHighlight();
-      return;
+    
+    if (isReceiptOpen) {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        selectedReceiptButtonIndex = 0;
+        updateReceiptButtonsHighlight();
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        selectedReceiptButtonIndex = 1;
+        updateReceiptButtonsHighlight();
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedReceiptButtonIndex === 0) window.print();
+        else closeReceiptModal();
+        return;
+      }
+    } else if (isPaymentOpen) {
+      if (e.key === 'Shift' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        setQuickCash('pass');
+        return;
+      }
+      if (e.key === 'Enter') {
+        const btnSubmit = document.getElementById('btn-submit-payment');
+        if (btnSubmit && !btnSubmit.disabled) {
+          e.preventDefault();
+          processCheckout();
+        }
+        return;
+      }
     }
   }
   
+  // Non-modal shortcuts are POS-only
+  if (activeTab !== 'pos') return;
+  
   if (e.key === 'Escape') {
     e.preventDefault();
-    if (isReceiptOpen) {
-      closeReceiptModal();
-    } else if (isPaymentOpen) {
-      closePaymentModal();
-    } else {
-      if (cart.length > 0) {
-        clearCart();
-      }
+    if (cart.length > 0) {
+      clearCart();
     }
     return;
   }
   
   if (e.key === 'Shift' && !e.ctrlKey && !e.altKey && !e.metaKey) {
-    if (!isPaymentOpen && !isReceiptOpen && cart.length > 0) {
+    if (cart.length > 0) {
       e.preventDefault();
       openPaymentModal();
-    } else if (isPaymentOpen) {
-      e.preventDefault();
-      setQuickCash('pass');
     }
     return;
   }
-  
-  if (e.key === 'Enter') {
-    if (isReceiptOpen) {
-      e.preventDefault();
-      if (selectedReceiptButtonIndex === 0) {
-        window.print();
-      } else {
-        closeReceiptModal();
-      }
-    } else if (isPaymentOpen) {
-      const btnSubmit = document.getElementById('btn-submit-payment');
-      if (btnSubmit && !btnSubmit.disabled) {
-        e.preventDefault();
-        processCheckout();
-      }
-    }
-  }
+
 }
 
 // --- UTILITY FUNCTIONS ---
