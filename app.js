@@ -1385,7 +1385,6 @@ function calculateChange() {
   const finalTotalToPay = globalTotal - pointDiscount;
   document.getElementById('pay-total-amount').textContent = `Rp ${formatRupiah(finalTotalToPay)}`;
   
-  const cash = parseFloat(cashText) || 0;
   const change = cash - finalTotalToPay;
   
   const changeBox = changeVal.parentElement;
@@ -3800,7 +3799,7 @@ function updateShiftStatusUI() {
     btnStatus.style.borderColor = 'var(--primary-color)';
     btnStatus.style.color = 'var(--primary-color)';
   } else {
-    btnText.textContent = 'Shift: Tutup';
+    btnText.textContent = 'Buka Shift Kasir';
     btnStatus.style.borderColor = 'var(--border-color)';
     btnStatus.style.color = 'var(--text-main)';
   }
