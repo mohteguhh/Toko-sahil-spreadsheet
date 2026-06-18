@@ -1651,13 +1651,18 @@ async function processCheckout() {
   }
   
   // 1. Kurangi stok produk secara lokal
-  // 1. Kurangi stok produk secara lokal
   cart.forEach(cartItem => {
     const localProd = products.find(p => p.id === cartItem.id);
     if (localProd) {
       localProd.stok = Math.max(0, localProd.stok - cartItem.qty);
       if (cartItem.isPromo) {
-        localProd.kuota_diskon = Math.max(0, (parseInt(localProd.kuota_diskon) || 0) - cartItem.qty);
+        let prevKuota = parseInt(localProd.kuota_diskon) || 0;
+        if (prevKuota > 0) {
+          localProd.kuota_diskon = Math.max(0, prevKuota - cartItem.qty);
+          if (localProd.kuota_diskon === 0) {
+            localProd.harga_diskon = 0; // Disable promo once quota runs out
+          }
+        }
       }
     }
   });
