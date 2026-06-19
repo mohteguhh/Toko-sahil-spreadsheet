@@ -83,6 +83,7 @@ if (receiptSettings.fontSizeItems === undefined) receiptSettings.fontSizeItems =
 if (receiptSettings.fontSizeFooter === undefined) receiptSettings.fontSizeFooter = receiptSettings.fontSize || 12;
 if (receiptSettings.printFormat === undefined) receiptSettings.printFormat = 'html';
 if (receiptSettings.textFontSize === undefined) receiptSettings.textFontSize = 8;
+if (receiptSettings.textTitleFontSize === undefined) receiptSettings.textTitleFontSize = 13;
 if (receiptSettings.textPaddingLeft === undefined) receiptSettings.textPaddingLeft = 2;
 if (receiptSettings.textWidth === undefined) receiptSettings.textWidth = 32;
 
@@ -368,6 +369,8 @@ function loadReceiptSettings() {
   document.getElementById('receipt-print-format').value = receiptSettings.printFormat || 'html';
   
   // Load Text Format Settings
+  document.getElementById('receipt-text-title-font-size').value = receiptSettings.textTitleFontSize || 13;
+  document.getElementById('text-title-font-preview-val').textContent = `${receiptSettings.textTitleFontSize || 13}pt`;
   document.getElementById('receipt-text-font-size').value = receiptSettings.textFontSize || 8;
   document.getElementById('text-font-preview-val').textContent = `${receiptSettings.textFontSize || 8}pt`;
   document.getElementById('receipt-text-padding-left').value = receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 2;
@@ -509,12 +512,13 @@ function applyReceiptSettings() {
   }
   
   // Set CSS Variables for Plain Text Format dynamic values
+  const textTitleFontSize = receiptSettings.textTitleFontSize || 13; // in pt
   const textFontSize = receiptSettings.textFontSize || 8; // in pt
   const textPaddingLeft = receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 2; // in mm
   const textWidth = receiptSettings.textWidth || 32; // character columns
   
+  document.documentElement.style.setProperty('--print-text-title-size', `${textTitleFontSize}pt`);
   document.documentElement.style.setProperty('--print-text-font-size', `${textFontSize}pt`);
-  document.documentElement.style.setProperty('--print-text-title-size', `${textFontSize * 1.6}pt`);
   document.documentElement.style.setProperty('--print-text-padding-left', `${textPaddingLeft}mm`);
   document.documentElement.style.setProperty('--print-text-width', textWidth);
 }
@@ -544,11 +548,16 @@ function updateReceiptFontSizePreview(val) {
   document.getElementById('font-size-preview-val').textContent = `${val}px`;
 }
 
+function updateTextTitleFontPreview(val) {
+  document.getElementById('text-title-font-preview-val').textContent = `${val}pt`;
+  const textTitleFontSize = parseFloat(val) || 13;
+  document.documentElement.style.setProperty('--print-text-title-size', `${textTitleFontSize}pt`);
+}
+
 function updateTextFontPreview(val) {
   document.getElementById('text-font-preview-val').textContent = `${val}pt`;
   const textFontSize = parseFloat(val) || 8;
   document.documentElement.style.setProperty('--print-text-font-size', `${textFontSize}pt`);
-  document.documentElement.style.setProperty('--print-text-title-size', `${textFontSize * 1.6}pt`);
 }
 
 function updateTextPaddingPreview(val) {
@@ -583,6 +592,7 @@ function saveReceiptSettings() {
   receiptSettings.printFormat = document.getElementById('receipt-print-format').value;
   
   // Save Text Format Settings
+  receiptSettings.textTitleFontSize = parseFloat(document.getElementById('receipt-text-title-font-size').value) || 13;
   receiptSettings.textFontSize = parseFloat(document.getElementById('receipt-text-font-size').value) || 8;
   receiptSettings.textPaddingLeft = parseFloat(document.getElementById('receipt-text-padding-left').value) || 2;
   receiptSettings.textWidth = parseInt(document.getElementById('receipt-text-width').value) || 32;

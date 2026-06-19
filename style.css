@@ -1879,16 +1879,25 @@ tr:hover td {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+}
+
+.text-receipt-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  max-width: 100%;
 }
 
 .receipt-text-header-title {
   font-family: 'Courier New', Courier, monospace;
-  font-size: calc(var(--print-text-font-size, 8pt) * 2); /* Dynamic title size based on slider */
+  font-size: calc(var(--print-text-title-size, 13pt) * 1.6); /* Dynamic title size based on slider */
   font-weight: 900;
   text-align: center;
   color: #000000;
   margin-bottom: 0.25rem;
   text-transform: uppercase;
+  width: 100%;
 }
 
 .receipt-text-body {
@@ -1974,6 +1983,7 @@ body.print-format-html #receipt-text-content {
     width: 100% !important;
     background: transparent !important;
     box-sizing: border-box !important;
+    align-items: flex-start !important;
   }
   body.printing-receipt .receipt-text-header-title {
     font-size: var(--print-text-title-size, 13pt) !important;
