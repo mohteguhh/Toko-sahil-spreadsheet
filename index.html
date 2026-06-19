@@ -13,7 +13,7 @@
   <!-- HTML5 QR Code Library for Camera Scanning -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   
-  <link rel="stylesheet" href="style.css?v=2.4">
+  <link rel="stylesheet" href="style.css?v=2.5">
 </head>
 <body>
 
@@ -1114,7 +1114,10 @@
       </div>
 
       <!-- Plain Text Version (For fast & clear printing) -->
-      <pre id="receipt-text-content" class="receipt-text-print" style="display: none;"></pre>
+      <div id="receipt-text-content" class="receipt-text-print-container" style="display: none;">
+        <div class="receipt-text-header-title" id="rec-text-store-name">TOKO SAHIL</div>
+        <pre class="receipt-text-body" id="rec-text-body"></pre>
+      </div>
       
       <!-- Modal Navigation/Actions (Never printed) -->
       <div class="no-print" style="width: 100%;">
@@ -1317,6 +1320,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=2.4"></script>
+  <script src="app.js?v=2.5"></script>
 </body>
 </html>

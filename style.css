@@ -1869,19 +1869,36 @@ tr:hover td {
   }
 }
 
-/* Styling Struk Plain Text */
-.receipt-text-print {
+/* Styling Struk Plain Text Container */
+.receipt-text-print-container {
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.receipt-text-header-title {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 14px; /* Larger on screen for readability and spacing */
+  font-size: 18px; /* Large and bold */
+  font-weight: 900;
+  text-align: center;
+  color: #000000;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.receipt-text-body {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px; /* Safe size to prevent wrapping on screen */
   line-height: 1.35;
   font-weight: bold;
   color: #000000;
-  background-color: #ffffff;
-  padding: 0.5rem;
   margin: 0;
   white-space: pre; /* Force monospace no-wrap on screen to prevent jumbling */
-  border: 1px solid #ddd;
-  border-radius: 4px;
   width: 100%;
   box-sizing: border-box;
   text-align: left;
@@ -1892,11 +1909,11 @@ body.print-format-text #receipt-html-content {
   display: none !important;
 }
 body.print-format-text #receipt-text-content {
-  display: block !important;
+  display: flex !important; /* Use flex to stack title and body */
 }
 body.print-format-text .receipt-card {
-  padding: 1rem; /* Less padding to fit the text receipt snuggly on screen */
-  max-width: 330px; /* Slightly narrower card for text mode */
+  padding: 0.75rem; /* SNR margins on screen */
+  max-width: 300px; /* Snug width so text aligns perfectly without large side spaces */
 }
 body.print-format-html #receipt-html-content {
   display: block !important;
@@ -1949,11 +1966,25 @@ body.print-format-html #receipt-text-content {
   body.printing-receipt .receipt-card * {
     color: #000 !important;
   }
-  body.printing-receipt .receipt-text-print {
+  /* Print overrides for text receipt */
+  body.printing-receipt .receipt-text-print-container {
     border: none !important;
     padding: 0 !important;
     margin: 0 auto !important;
-    font-size: 9.5px !important; /* Safe size to prevent wrapping on 58mm paper */
+    width: 100% !important;
+    background: transparent !important;
+  }
+  body.printing-receipt .receipt-text-header-title {
+    font-size: 14px !important; /* Scaled down for paper */
+    line-height: 1.25 !important;
+    margin-bottom: 4px !important;
+    font-weight: bold !important;
+  }
+  body.printing-receipt .receipt-text-body {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    font-size: 9.5px !important; /* Fits 32 chars on 48mm printable area */
     line-height: 1.2 !important;
     width: 100% !important;
     max-width: 100% !important;

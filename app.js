@@ -477,7 +477,7 @@ function applyReceiptSettings() {
   if (htmlContent && textContent) {
     if (printFormat === 'text') {
       htmlContent.style.display = 'none';
-      textContent.style.display = 'block';
+      textContent.style.display = 'flex';
       document.body.classList.remove('print-format-html');
       document.body.classList.add('print-format-text');
     } else {
@@ -1810,10 +1810,7 @@ function generatePlainTextReceipt(tx, items) {
   const width = 32; // Standard columns for 58mm printer
   let text = "";
   
-  // 1. Nama Toko & Informasi Toko
-  if (receiptSettings.showName && receiptSettings.name) {
-    text += centerText(receiptSettings.name.toUpperCase(), width) + "\n";
-  }
+  // 1. Informasi Alamat & Telp Toko (Nama Toko dirender terpisah dengan HTML agar font bisa besar)
   if (receiptSettings.showAddress && receiptSettings.address) {
     const addrLines = wrapText(receiptSettings.address, width);
     addrLines.forEach(line => {
@@ -1986,9 +1983,15 @@ function showReceipt(tx, items) {
   }
   
   // Render Plain Text Receipt
-  const textContent = document.getElementById('receipt-text-content');
-  if (textContent) {
-    textContent.textContent = generatePlainTextReceipt(tx, items);
+  const textStoreName = document.getElementById('rec-text-store-name');
+  if (textStoreName) {
+    textStoreName.textContent = receiptSettings.name.toUpperCase();
+    textStoreName.style.display = (receiptSettings.showName && receiptSettings.name) ? 'block' : 'none';
+  }
+  
+  const textBody = document.getElementById('rec-text-body');
+  if (textBody) {
+    textBody.textContent = generatePlainTextReceipt(tx, items);
   }
   
   document.getElementById('receipt-modal').classList.add('active');
