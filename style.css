@@ -1967,14 +1967,14 @@ body.print-format-html #receipt-text-content {
   /* Print overrides for text receipt */
   body.printing-receipt .receipt-text-print-container {
     border: none !important;
-    padding: 0 0 0 3.8vw !important; /* Left padding to balance and match the right margin */
+    padding: 0 0 0 2mm !important; /* Constant, tiny 2mm left margin to prevent left edge sticking */
     margin: 0 !important;
     width: 100% !important;
     background: transparent !important;
     box-sizing: border-box !important;
   }
   body.printing-receipt .receipt-text-header-title {
-    font-size: 7.5vw !important; /* Scales proportionally to physical paper width */
+    font-size: 13pt !important; /* Bold, large and highly readable store name */
     line-height: 1.25 !important;
     margin-bottom: 4px !important;
     font-weight: bold !important;
@@ -1983,7 +1983,7 @@ body.print-format-html #receipt-text-content {
     border: none !important;
     padding: 0 !important;
     margin: 0 !important;
-    font-size: 4.8vw !important; /* Fits 32 characters on any physical page width perfectly */
+    font-size: 8pt !important; /* Perfect large, readable text size that fits 32 characters in ~54mm */
     line-height: 1.25 !important;
     width: 100% !important;
     max-width: 100% !important;
