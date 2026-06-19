@@ -1867,6 +1867,11 @@ tr:hover td {
 
 /* --- PRINTING CSS (FITUR BARU) --- */
 @media print {
+  @page {
+    margin: 0;
+    size: 58mm auto;
+  }
+  
   body * {
     visibility: hidden;
   }
@@ -1882,20 +1887,23 @@ tr:hover td {
     top: 0;
     width: 100%;
     background-color: #ffffff;
-    display: flex !important;
-    align-items: flex-start;
-    justify-content: center;
+    display: block !important;
     padding: 0;
   }
   body.printing-receipt .receipt-card {
     border: none;
     box-shadow: none;
-    padding: 0;
+    padding: 2mm; /* Sedikit padding agar tidak terpotong */
     margin: 0;
     width: 58mm;
     max-width: 100%;
     max-height: none;
     overflow-y: visible;
+    color: #000;
+  }
+  /* Paksa teks hitam pekat agar tidak blur saat dicetak */
+  body.printing-receipt .receipt-card * {
+    color: #000 !important;
   }
   
   /* Jika mencetak laporan harian */

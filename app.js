@@ -2746,6 +2746,22 @@ function handleGlobalKeydowns(e) {
     }
     return;
   }
+  
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    const activeTag = document.activeElement ? document.activeElement.tagName : '';
+    if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
+    
+    const cartList = document.getElementById('cart-list');
+    if (cartList && cart.length > 0) {
+      e.preventDefault();
+      const scrollAmount = 50;
+      if (e.key === 'ArrowDown') {
+        cartList.scrollTop += scrollAmount;
+      } else {
+        cartList.scrollTop -= scrollAmount;
+      }
+    }
+  }
 
 }
 
