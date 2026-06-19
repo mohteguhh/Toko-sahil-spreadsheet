@@ -1244,6 +1244,18 @@ function removeFromCart(cartId) {
   recalculateCartSplit(baseId, totalQty);
 }
 
+function setCartQtyDirect(cartId, value) {
+  const qty = parseInt(value) || 1;
+  const item = cart.find(it => it.cartId === cartId);
+  if (!item) return;
+  const baseId = item.id;
+  
+  let totalQty = cart.filter(i => i.id === baseId).reduce((sum, i) => sum + i.qty, 0);
+  totalQty = totalQty - item.qty + qty;
+  
+  recalculateCartSplit(baseId, totalQty);
+}
+
 function recalculateCartSplit(baseId, totalQty) {
   // Hapus semua item lama dengan baseId yang sama
   cart = cart.filter(i => i.id !== baseId);
@@ -1390,7 +1402,7 @@ function renderCart() {
       </div>
       <div class="cart-item-controls">
         <button class="qty-btn" onclick="updateCartQty('${item.cartId}', -1)">-</button>
-        <span class="qty-val">${item.qty}</span>
+        <input type="number" class="qty-input" value="${item.qty}" min="1" onchange="setCartQtyDirect('${item.cartId}', this.value)">
         <button class="qty-btn" onclick="updateCartQty('${item.cartId}', 1)">+</button>
         <button class="remove-item-btn" onclick="removeFromCart('${item.cartId}')">
           <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
