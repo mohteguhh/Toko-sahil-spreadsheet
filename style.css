@@ -596,7 +596,16 @@ svg.icon-empty {
   border-bottom: 1px solid var(--bg-app);
 }
 .floating-item:hover, .floating-item.selected {
-  background-color: #ffedd5; /* Darker orange for better visibility */
+  background-color: #334155; /* Gelap (Dark Slate) agar sangat jelas */
+  color: #ffffff;
+}
+.floating-item:hover .floating-item-name,
+.floating-item.selected .floating-item-name,
+.floating-item:hover .floating-item-price,
+.floating-item.selected .floating-item-price,
+.floating-item:hover .floating-item-stock,
+.floating-item.selected .floating-item-stock {
+  color: #ffffff !important;
 }
 .floating-item-img {
   width: 40px;
