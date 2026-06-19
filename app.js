@@ -37,6 +37,8 @@ let html5QrcodeScanner = null;
 
 // State Pemilihan Tombol Cetak Nota
 let selectedReceiptButtonIndex = 0; // 0 = Cetak Nota, 1 = Tidak
+let currentTxForPrint = null;
+let currentItemsForPrint = [];
 
 // State Cetak Label Harga Massal (Terpilih)
 let selectedProductIds = new Set();
@@ -1746,6 +1748,9 @@ async function processCheckout() {
 
 // Tampilkan Struk Belanja
 function showReceipt(tx, items) {
+  currentTxForPrint = tx;
+  currentItemsForPrint = items;
+  
   document.getElementById('rec-id').textContent = tx.id;
   
   const dateObj = new Date(tx.waktu);
@@ -1855,6 +1860,229 @@ function updateReceiptButtonsHighlight() {
 function closeReceiptModal() {
   document.getElementById('receipt-modal').classList.remove('active');
   focusSearchInput();
+}
+
+function splitTextIntoLines(str, maxLen) {
+  if (!str) return [];
+  const words = str.split(' ');
+  const lines = [];
+  let currentLine = '';
+  
+  words.forEach(word => {
+    if ((currentLine + (currentLine ? ' ' : '') + word).length <= maxLen) {
+      currentLine += (currentLine ? ' ' : '') + word;
+    } else {
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+      let tempWord = word;
+      while (tempWord.length > maxLen) {
+        lines.push(tempWord.substring(0, maxLen));
+        tempWord = tempWord.substring(maxLen);
+      }
+      currentLine = tempWord;
+    }
+  });
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+  return lines;
+}
+
+function triggerPrintReceipt() {
+  if (!currentTxForPrint) {
+    alert("Tidak ada transaksi aktif untuk dicetak.");
+    return;
+  }
+  
+  const storeName = receiptSettings.showName ? receiptSettings.name : '';
+  const storeAddress = receiptSettings.showAddress ? receiptSettings.address : '';
+  const storePhone = receiptSettings.showPhone ? receiptSettings.phone : '';
+  
+  const dateObj = new Date(currentTxForPrint.waktu);
+  const timeStr = dateObj.toLocaleDateString('id-ID') + ' ' + dateObj.toLocaleTimeString('id-ID', { hour12: false });
+  const cashierName = currentTxForPrint.kasir || 'Kasir Utama';
+  
+  const COLS = 32;
+  
+  function centerText(text) {
+    if (text.length >= COLS) return text.substring(0, COLS);
+    const pad = Math.floor((COLS - text.length) / 2);
+    return ' '.repeat(pad) + text;
+  }
+  
+  function alignLeftRight(left, right) {
+    const leftLen = left.length;
+    const rightLen = right.length;
+    if (leftLen + rightLen >= COLS) {
+      const spaceLeft = COLS - rightLen - 1;
+      if (spaceLeft > 0) {
+        return left.substring(0, spaceLeft) + ' ' + right;
+      } else {
+        return left + '\n' + ' '.repeat(COLS - rightLen) + right;
+      }
+    }
+    const spaces = COLS - (leftLen + rightLen);
+    return left + ' '.repeat(spaces) + right;
+  }
+  
+  function separator(char = '-') {
+    return char.repeat(COLS);
+  }
+  
+  let text = '';
+  
+  // Header
+  if (storeName) text += centerText(storeName) + '\n';
+  if (storeAddress) {
+    const addrLines = splitTextIntoLines(storeAddress, COLS);
+    addrLines.forEach(l => {
+      text += centerText(l) + '\n';
+    });
+  }
+  if (storePhone) text += centerText('Telp: ' + storePhone) + '\n';
+  
+  text += separator('=') + '\n';
+  
+  // Transaksi Info
+  text += 'No: ' + currentTxForPrint.id + '\n';
+  text += 'Waktu: ' + timeStr + '\n';
+  if (receiptSettings.showCashier) {
+    text += 'Kasir: ' + cashierName + '\n';
+  }
+  
+  text += separator('-') + '\n';
+  
+  // Items
+  let subtotal = 0;
+  currentItemsForPrint.forEach(item => {
+    subtotal += item.harga * item.qty;
+    const itemLines = splitTextIntoLines(item.nama, COLS);
+    itemLines.forEach((line) => {
+      text += line + '\n';
+    });
+    
+    const qtyStr = `${item.qty}x @Rp ${formatRupiah(item.harga)}`;
+    const totalItemStr = `Rp ${formatRupiah(item.harga * item.qty)}`;
+    text += alignLeftRight('  ' + qtyStr, totalItemStr) + '\n';
+  });
+  
+  text += separator('-') + '\n';
+  
+  // Totals
+  if (receiptSettings.showSubtotal) {
+    text += alignLeftRight('Subtotal', `Rp ${formatRupiah(subtotal)}`) + '\n';
+  }
+  
+  const discountPercent = subtotal > 0 ? Math.round(((subtotal - currentTxForPrint.total) / subtotal) * 100) : 0;
+  if (receiptSettings.showDiscount && discountPercent > 0) {
+    text += alignLeftRight(`Diskon (${discountPercent}%)`, `-Rp ${formatRupiah(subtotal - currentTxForPrint.total)}`) + '\n';
+  }
+  
+  if (currentTxForPrint.diskon_poin > 0) {
+    text += alignLeftRight('Diskon Poin', `-Rp ${formatRupiah(currentTxForPrint.diskon_poin)}`) + '\n';
+  }
+  
+  text += alignLeftRight('Total', `Rp ${formatRupiah(currentTxForPrint.total)}`) + '\n';
+  text += alignLeftRight('Bayar', `Rp ${formatRupiah(currentTxForPrint.bayar)}`) + '\n';
+  text += alignLeftRight('Kembali', `Rp ${formatRupiah(currentTxForPrint.kembalian)}`) + '\n';
+  
+  if (receiptSettings.showMethod) {
+    let methodStr = currentTxForPrint.metode_pembayaran || 'Tunai';
+    if (currentTxForPrint.status_pembayaran === 'Bon') {
+      methodStr += ' (Bon)';
+    }
+    text += alignLeftRight('Metode', methodStr) + '\n';
+  }
+  
+  // CRM info (Poin)
+  if (currentTxForPrint.nama_pelanggan) {
+    text += separator('-') + '\n';
+    text += alignLeftRight('Pelanggan', currentTxForPrint.nama_pelanggan) + '\n';
+    text += alignLeftRight('Poin Didapat', '+' + (currentTxForPrint.poin_didapat || 0)) + '\n';
+    const customer = customers.find(c => c.nama === currentTxForPrint.nama_pelanggan);
+    const totalPoin = customer ? (customer.poin || 0) : (currentTxForPrint.poin_didapat || 0);
+    text += alignLeftRight('Total Poin', String(totalPoin)) + '\n';
+  }
+  
+  // Piutang info
+  if (currentTxForPrint.sisa_piutang > 0) {
+    text += alignLeftRight('Sisa Piutang', `Rp ${formatRupiah(currentTxForPrint.sisa_piutang)}`) + '\n';
+  }
+  
+  text += separator('-') + '\n';
+  
+  // Footer
+  text += centerText('Terima kasih atas') + '\n';
+  text += centerText('kunjungan Anda!') + '\n';
+  text += centerText('Barang yang sudah dibeli') + '\n';
+  text += centerText('tidak dapat') + '\n';
+  text += centerText('ditukar/dikembalikan.') + '\n';
+  
+  text += separator('=') + '\n\n\n\n';
+  
+  let iframe = document.getElementById('receipt-print-iframe');
+  if (iframe) {
+    iframe.remove();
+  }
+  
+  iframe = document.createElement('iframe');
+  iframe.id = 'receipt-print-iframe';
+  iframe.style.position = 'absolute';
+  iframe.style.width = '0px';
+  iframe.style.height = '0px';
+  iframe.style.border = 'none';
+  iframe.style.top = '-1000px';
+  iframe.style.left = '-1000px';
+  
+  document.body.appendChild(iframe);
+  
+  const doc = iframe.contentWindow.document || iframe.contentDocument;
+  doc.open();
+  doc.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Cetak Nota</title>
+      <style>
+        @page {
+          margin: 0;
+          size: 58mm auto;
+        }
+        body {
+          margin: 0;
+          padding: 0 1mm 0 0;
+          width: 58mm;
+          font-family: 'Courier New', Courier, monospace;
+          font-size: 11pt;
+          line-height: 1.25;
+          background-color: #fff;
+          color: #000;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        pre {
+          margin: 0;
+          padding: 0;
+          white-space: pre-wrap;
+          word-break: break-all;
+          font-family: 'Courier New', Courier, monospace;
+          font-size: 11.5pt;
+          font-weight: bold;
+        }
+      </style>
+    </head>
+    <body>
+      <pre>${text}</pre>
+    </body>
+    </html>
+  `);
+  doc.close();
+  
+  setTimeout(() => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  }, 150);
 }
 
 async function syncTransactionToCloud(tx) {
@@ -2707,7 +2935,7 @@ function handleGlobalKeydowns(e) {
       }
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (selectedReceiptButtonIndex === 0) window.print();
+        if (selectedReceiptButtonIndex === 0) triggerPrintReceipt();
         else closeReceiptModal();
         return;
       }
