@@ -596,7 +596,7 @@ svg.icon-empty {
   border-bottom: 1px solid var(--bg-app);
 }
 .floating-item:hover, .floating-item.selected {
-  background-color: var(--color-primary-light);
+  background-color: #ffedd5; /* Darker orange for better visibility */
 }
 .floating-item-img {
   width: 40px;
@@ -1872,7 +1872,7 @@ tr:hover td {
     box-shadow: none;
     padding: 0;
     margin: 0;
-    width: 80mm;
+    width: 58mm;
     max-width: 100%;
     max-height: none;
     overflow-y: visible;
