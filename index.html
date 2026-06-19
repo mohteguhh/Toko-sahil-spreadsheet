@@ -755,29 +755,29 @@
               <div class="form-group" style="margin: 0;">
                 <label for="receipt-text-title-font-size">Ukuran Font Judul (pt)</label>
                 <div class="slider-group">
-                  <input type="range" id="receipt-text-title-font-size-slider" min="6" max="100" value="13" step="0.5" oninput="document.getElementById('receipt-text-title-font-size').value = this.value; updateTextTitleFontPreview(this.value)">
-                  <input type="number" id="receipt-text-title-font-size" value="13" step="0.5" oninput="if(document.getElementById('receipt-text-title-font-size-slider')){document.getElementById('receipt-text-title-font-size-slider').value = this.value;} updateTextTitleFontPreview(this.value)" class="form-control" style="width: 80px; padding: 0.25rem; height: 32px; text-align: center;">
+                  <input type="range" id="receipt-text-title-font-size" min="8" max="24" value="13" step="0.5" oninput="updateTextTitleFontPreview(this.value)">
+                  <span id="text-title-font-preview-val">13pt</span>
                 </div>
               </div>
               <div class="form-group" style="margin: 0;">
-                <label for="receipt-text-font-size">Ukuran Font Isi Struk (pt)</label>
+                <label for="receipt-text-font-size">Ukuran Font Cetak (pt)</label>
                 <div class="slider-group">
-                  <input type="range" id="receipt-text-font-size-slider" min="6" max="100" value="8" step="0.5" oninput="document.getElementById('receipt-text-font-size').value = this.value; updateTextFontPreview(this.value)">
-                  <input type="number" id="receipt-text-font-size" value="8" step="0.5" oninput="if(document.getElementById('receipt-text-font-size-slider')){document.getElementById('receipt-text-font-size-slider').value = this.value;} updateTextFontPreview(this.value)" class="form-control" style="width: 80px; padding: 0.25rem; height: 32px; text-align: center;">
+                  <input type="range" id="receipt-text-font-size" min="6" max="14" value="8" step="0.5" oninput="updateTextFontPreview(this.value)">
+                  <span id="text-font-preview-val">8pt</span>
                 </div>
               </div>
               <div class="form-group" style="margin: 0;">
                 <label for="receipt-text-padding-left">Margin Kiri Kertas (mm)</label>
                 <div class="slider-group">
-                  <input type="range" id="receipt-text-padding-left-slider" min="0" max="100" value="2" step="0.5" oninput="document.getElementById('receipt-text-padding-left').value = this.value; updateTextPaddingPreview(this.value)">
-                  <input type="number" id="receipt-text-padding-left" value="2" step="0.5" oninput="if(document.getElementById('receipt-text-padding-left-slider')){document.getElementById('receipt-text-padding-left-slider').value = this.value;} updateTextPaddingPreview(this.value)" class="form-control" style="width: 80px; padding: 0.25rem; height: 32px; text-align: center;">
+                  <input type="range" id="receipt-text-padding-left" min="0" max="10" value="2" step="0.5" oninput="updateTextPaddingPreview(this.value)">
+                  <span id="text-padding-preview-val">2mm</span>
                 </div>
               </div>
               <div class="form-group" style="margin: 0;">
                 <label for="receipt-text-width">Lebar Kolom (Jumlah Karakter)</label>
                 <div class="slider-group">
-                  <input type="range" id="receipt-text-width-slider" min="10" max="100" value="32" step="1" oninput="document.getElementById('receipt-text-width').value = this.value; updateTextWidthPreview(this.value)">
-                  <input type="number" id="receipt-text-width" value="32" step="1" oninput="if(document.getElementById('receipt-text-width-slider')){document.getElementById('receipt-text-width-slider').value = this.value;} updateTextWidthPreview(this.value)" class="form-control" style="width: 80px; padding: 0.25rem; height: 32px; text-align: center;">
+                  <input type="range" id="receipt-text-width" min="24" max="48" value="32" step="1" oninput="updateTextWidthPreview(this.value)">
+                  <span id="text-width-preview-val">32 karakter</span>
                 </div>
               </div>
             </div>
