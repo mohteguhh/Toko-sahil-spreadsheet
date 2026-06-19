@@ -1984,12 +1984,12 @@ body.print-format-html #receipt-text-content {
     border: none !important;
     padding: 0 !important;
     margin: 0 auto !important;
-    font-size: 9.5px !important; /* Fits 32 chars on 48mm printable area */
-    line-height: 1.2 !important;
+    font-size: 8.5px !important; /* Slightly smaller to fit safely inside 48mm */
+    line-height: 1.25 !important;
     width: 100% !important;
     max-width: 100% !important;
-    white-space: pre-wrap !important;
-    word-break: break-all !important;
+    white-space: pre !important; /* Force no-wrap during print to match screen layout exactly */
+    word-break: normal !important;
   }
   
   /* Jika mencetak laporan harian */
