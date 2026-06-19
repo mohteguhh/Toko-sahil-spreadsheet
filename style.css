@@ -1385,8 +1385,8 @@ tr:hover td {
   overflow-y: auto;
 }
 .receipt-logo-img {
-  height: 48px;
-  max-width: 120px;
+  height: 72px; /* Diperbesar */
+  max-width: 160px;
   object-fit: contain;
   margin-bottom: 0.5rem;
   display: block;
@@ -1398,13 +1398,15 @@ tr:hover td {
   margin-bottom: 0.75rem;
 }
 .receipt-title {
-  font-size: 1.15rem;
-  font-weight: 800;
+  font-size: 1.5em; /* Lebih besar dari sebelumnya dan relatif terhadap parent */
+  font-weight: 900; /* Ekstra tebal */
+  text-transform: uppercase;
   letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
 }
 .receipt-subtitle {
-  color: #555555;
-  font-size: 0.75rem;
+  color: #333333; /* Lebih gelap agar lebih tajam saat diprint */
+  font-size: 0.85em; /* Sedikit lebih besar */
 }
 .divider-dashed {
   border-top: 1px dashed #444444;
@@ -1869,7 +1871,6 @@ tr:hover td {
 @media print {
   @page {
     margin: 0;
-    size: 58mm auto;
   }
   
   body * {
@@ -1893,9 +1894,9 @@ tr:hover td {
   body.printing-receipt .receipt-card {
     border: none;
     box-shadow: none;
-    padding: 2mm; /* Sedikit padding agar tidak terpotong */
-    margin: 0;
-    width: 58mm;
+    padding: 2mm;
+    margin: 0 auto;
+    width: 100%;
     max-width: 100%;
     max-height: none;
     overflow-y: visible;
