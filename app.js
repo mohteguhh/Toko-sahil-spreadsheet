@@ -2961,9 +2961,12 @@ function openEditTransactionModal(txId) {
   currentEditingTxId = txId;
   document.getElementById('edit-tx-id-title').textContent = txId;
   
-  // Clone data transaksi
-  editTxItems = JSON.parse(JSON.stringify(tx.items || []));
-  editTxOriginalItems = JSON.parse(JSON.stringify(tx.items || []));
+  // Clone data transaksi dan pastikan cartId ada
+  editTxItems = JSON.parse(JSON.stringify(tx.items || [])).map(item => {
+    if (!item.cartId) item.cartId = item.id + (item.isPromo ? '_promo' : '_reguler');
+    return item;
+  });
+  editTxOriginalItems = JSON.parse(JSON.stringify(editTxItems));
   
   // Set metode pembayaran
   const metode = tx.metode_pembayaran || 'Tunai';
@@ -3020,9 +3023,9 @@ function renderEditTxItems() {
         <div class="edit-tx-item-price">Rp ${formatRupiah(item.harga)}</div>
       </div>
       <div class="edit-tx-item-controls">
-        <input type="number" class="edit-tx-qty-input" value="${item.qty}" min="1" onchange="updateEditTxQty('${item.id}', this.value)">
+        <input type="number" class="edit-tx-qty-input" value="${item.qty}" min="1" onchange="updateEditTxQty('${item.cartId}', this.value)">
         <span class="edit-tx-item-subtotal">Rp ${formatRupiah(subtotal)}</span>
-        <button class="remove-item-btn" onclick="removeEditTxItem('${item.id}')" style="margin-left: 0.5rem;">
+        <button class="remove-item-btn" onclick="removeEditTxItem('${item.cartId}')" style="margin-left: 0.5rem;">
           <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
         </button>
       </div>
@@ -3034,31 +3037,27 @@ function renderEditTxItems() {
   calculateChangeEditTx();
 }
 
-function updateEditTxQty(id, value) {
+function updateEditTxQty(cartId, value) {
   const qty = parseInt(value) || 1;
-  const item = editTxItems.find(it => it.id === id);
+  const item = editTxItems.find(it => it.cartId === cartId);
   if (!item) return;
+  const baseId = item.id;
   
-  const product = products.find(p => p.id === id);
-  if (product) {
-    const origItem = editTxOriginalItems.find(it => it.id === id);
-    const origQty = origItem ? origItem.qty : 0;
-    const maxAvailable = product.stok + origQty;
-    
-    if (qty > maxAvailable) {
-      alert(`Stok tidak mencukupi! Batas maksimum penambahan untuk transaksi ini adalah ${maxAvailable} pcs (Stok tersisa + Kuantitas asli).`);
-      renderEditTxItems();
-      return;
-    }
-  }
+  let totalQty = editTxItems.filter(i => i.id === baseId).reduce((sum, i) => sum + i.qty, 0);
+  totalQty = totalQty - item.qty + qty;
   
-  item.qty = Math.max(1, qty);
-  renderEditTxItems();
+  recalculateEditTxSplit(baseId, totalQty);
 }
 
-function removeEditTxItem(id) {
-  editTxItems = editTxItems.filter(it => it.id !== id);
-  renderEditTxItems();
+function removeEditTxItem(cartId) {
+  const item = editTxItems.find(it => it.cartId === cartId);
+  if (!item) return;
+  const baseId = item.id;
+  
+  let totalQty = editTxItems.filter(i => i.id === baseId).reduce((sum, i) => sum + i.qty, 0);
+  totalQty -= item.qty;
+  
+  recalculateEditTxSplit(baseId, totalQty);
 }
 
 function filterEditTxSearch() {
@@ -3162,38 +3161,84 @@ function handleEditTxSearchInputKeydowns(e) {
 }
 
 function addEditTxItem(product) {
-  const existing = editTxItems.find(it => it.id === product.id);
-  if (existing) {
-    const origItem = editTxOriginalItems.find(it => it.id === product.id);
-    const origQty = origItem ? origItem.qty : 0;
-    const maxAvailable = product.stok + origQty;
-    
-    if (existing.qty >= maxAvailable) {
-      alert(`Stok tidak mencukupi! Batas maksimum untuk barang ini adalah ${maxAvailable} pcs.`);
-      return;
-    }
-    existing.qty += 1;
-  } else {
-    if (product.stok <= 0) {
-      alert("Stok barang habis!");
-      return;
-    }
-    const hargaDiskon = parseFloat(product.harga_diskon) || 0;
-    const kuotaDiskon = parseInt(product.kuota_diskon) || 0;
-    const hasPromo = hargaDiskon > 0 && kuotaDiskon > 0;
-    
-    editTxItems.push({
-      id: product.id,
-      nama: hasPromo ? product.nama + ' (Promo)' : product.nama,
-      harga: hasPromo ? hargaDiskon : product.harga_jual,
-      harga_beli: parseFloat(product.harga_beli) || 0,
-      qty: 1,
-      isPromo: hasPromo
-    });
-  }
+  let totalQty = editTxItems.filter(i => i.id === product.id).reduce((sum, i) => sum + i.qty, 0);
+  totalQty += 1;
+  recalculateEditTxSplit(product.id, totalQty);
   
   document.getElementById('edit-tx-search-input').value = '';
   closeEditTxFloatingResults();
+}
+
+function recalculateEditTxSplit(baseId, totalQty) {
+  // Hapus semua item lama dengan baseId yang sama
+  editTxItems = editTxItems.filter(i => i.id !== baseId);
+  
+  if (totalQty <= 0) {
+    renderEditTxItems();
+    return;
+  }
+  
+  const localProd = products.find(p => p.id === baseId);
+  if (!localProd) return;
+  
+  const origItems = editTxOriginalItems.filter(it => it.id === baseId);
+  const origQty = origItems.reduce((sum, it) => sum + it.qty, 0);
+  const maxAvailable = localProd.stok + origQty;
+  
+  if (totalQty > maxAvailable && !appConfig.allowZeroStock) {
+    alert(`Stok tidak mencukupi! Batas maksimum untuk barang ini adalah ${maxAvailable} pcs (Stok tersisa + Kuantitas asli).`);
+    totalQty = maxAvailable;
+  }
+  
+  const hargaDiskon = parseFloat(localProd.harga_diskon) || 0;
+  let origPromoQty = 0;
+  origItems.forEach(it => {
+    if (it.isPromo) origPromoQty += it.qty;
+  });
+  
+  const totalKuotaTersedia = (parseInt(localProd.kuota_diskon) || 0) + origPromoQty;
+  const kuotaDiskon = totalKuotaTersedia > 0 ? totalKuotaTersedia : Infinity;
+  const hasPromo = appConfig.enablePromo && hargaDiskon > 0;
+  
+  if (hasPromo && totalKuotaTersedia > 0) {
+    const promoQty = Math.min(totalQty, kuotaDiskon);
+    const regQty = totalQty - promoQty;
+    
+    if (promoQty > 0) {
+      editTxItems.push({
+        id: baseId,
+        cartId: baseId + '_promo',
+        nama: localProd.nama + ' (Promo)',
+        harga: hargaDiskon,
+        harga_beli: parseFloat(localProd.harga_beli) || 0,
+        qty: promoQty,
+        isPromo: true
+      });
+    }
+    
+    if (regQty > 0) {
+      editTxItems.push({
+        id: baseId,
+        cartId: baseId + '_reguler',
+        nama: localProd.nama,
+        harga: localProd.harga_jual,
+        harga_beli: parseFloat(localProd.harga_beli) || 0,
+        qty: regQty,
+        isPromo: false
+      });
+    }
+  } else {
+    editTxItems.push({
+      id: baseId,
+      cartId: baseId + '_reguler',
+      nama: localProd.nama,
+      harga: localProd.harga_jual,
+      harga_beli: parseFloat(localProd.harga_beli) || 0,
+      qty: totalQty,
+      isPromo: false
+    });
+  }
+  
   renderEditTxItems();
 }
 
