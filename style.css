@@ -1952,19 +1952,28 @@ body.print-format-html #receipt-text-content {
   body.printing-receipt .receipt-card {
     border: none;
     box-shadow: none;
-    padding: 0;
-    margin: 0 auto; /* Center it! */
-    width: 54mm; /* Increased printable area to make margins tighter */
-    max-width: 54mm;
+    padding: 1.5rem; /* Matches daily report print padding */
+    margin: 0 auto;
+    width: 100%; /* Stretches to full width just like daily report */
+    max-width: 100%;
     max-height: none;
     overflow: hidden;
     box-sizing: border-box;
     color: #000;
     background: #fff;
+    font-family: monospace;
   }
   /* Paksa teks hitam pekat agar tidak blur saat dicetak */
   body.printing-receipt .receipt-card * {
     color: #000 !important;
+  }
+  body.printing-receipt #receipt-html-content table {
+    border-collapse: collapse;
+  }
+  body.printing-receipt #receipt-html-content th,
+  body.printing-receipt #receipt-html-content td {
+    border: none;
+    padding: 0.2rem 0;
   }
   /* Print overrides for text receipt */
   body.printing-receipt .receipt-text-print-container {

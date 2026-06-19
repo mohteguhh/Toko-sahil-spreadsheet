@@ -13,7 +13,7 @@
   <!-- HTML5 QR Code Library for Camera Scanning -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   
-  <link rel="stylesheet" href="style.css?v=2.7">
+  <link rel="stylesheet" href="style.css?v=2.8">
 </head>
 <body>
 
@@ -1034,82 +1034,92 @@
     <div class="receipt-card" id="receipt-card-print">
       <!-- HTML Graphic Version -->
       <div id="receipt-html-content">
-        <div class="receipt-header">
+        <div style="text-align: center; margin-bottom: 1rem;">
           <div class="receipt-logo-container" id="rec-logo-container"></div>
-          <h3 class="receipt-title" id="rec-store-name">NAMA TOKO</h3>
-          <p class="receipt-subtitle" id="rec-store-address">Alamat Toko</p>
-          <p class="receipt-subtitle" id="rec-store-phone">Telp: -</p>
-          <div class="divider-dashed"></div>
+          <h2 style="font-family: monospace; font-size: 1.25rem; font-weight: bold; margin: 0 0 0.25rem 0; text-transform: uppercase;" id="rec-store-name">NAMA TOKO</h2>
+          <p style="font-family: monospace; font-size: 0.85rem; margin: 0 0 0.25rem 0;" id="rec-store-address">Alamat Toko</p>
+          <p style="font-family: monospace; font-size: 0.85rem; margin: 0;" id="rec-store-phone">Telp: -</p>
         </div>
+        <div class="divider-dashed"></div>
         
-        <div class="receipt-details">
-          <div class="receipt-detail-row">
-            <span>No. Transaksi</span>
-            <span id="rec-id">TX-123456</span>
-          </div>
-          <div class="receipt-detail-row">
-            <span>Waktu</span>
-            <span id="rec-time">18/06/2026 13:40</span>
-          </div>
-          <div class="receipt-detail-row" id="rec-cashier-row">
-            <span>Kasir</span>
-            <span id="rec-cashier">Kasir Utama</span>
-          </div>
-        </div>
+        <table style="width: 100%; font-family: monospace; font-size: 0.85rem; border-collapse: collapse; margin-bottom: 0.5rem;">
+          <tr>
+            <td style="padding: 0.15rem 0; text-align: left; width: 40%;">No. Transaksi</td>
+            <td style="padding: 0.15rem 0; text-align: right; font-weight: bold;" id="rec-id">TX-123456</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.15rem 0; text-align: left;">Waktu</td>
+            <td style="padding: 0.15rem 0; text-align: right;" id="rec-time">18/06/2026 13:40</td>
+          </tr>
+          <tr id="rec-cashier-row">
+            <td style="padding: 0.15rem 0; text-align: left;">Kasir</td>
+            <td style="padding: 0.15rem 0; text-align: right;" id="rec-cashier">Kasir Utama</td>
+          </tr>
+        </table>
         
         <div class="divider-dashed"></div>
         
-        <!-- Receipt Items -->
-        <div class="receipt-items" id="rec-items">
-          <!-- Item list -->
-        </div>
+        <!-- Receipt Items Table -->
+        <table style="width: 100%; font-family: monospace; font-size: 0.85rem; border-collapse: collapse; margin-bottom: 0.5rem;">
+          <thead>
+            <tr style="border-bottom: 1px dashed #444;">
+              <th style="text-align: left; padding: 0.25rem 0; font-weight: bold; width: 65%;">Nama Produk</th>
+              <th style="text-align: right; padding: 0.25rem 0; font-weight: bold; width: 35%;">Total</th>
+            </tr>
+          </thead>
+          <tbody id="rec-items-table-body">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
         
         <div class="divider-dashed"></div>
         
-        <!-- Receipt Calc -->
-        <div class="receipt-totals">
-          <div class="receipt-total-row" id="rec-subtotal-row">
-            <span>Subtotal</span>
-            <span id="rec-subtotal">Rp 0</span>
-          </div>
-          <div class="receipt-total-row" id="rec-discount-row">
-            <span>Diskon</span>
-            <span id="rec-discount">0%</span>
-          </div>
-          <div class="receipt-total-row" id="rec-point-discount-row" style="display: none;">
-            <span>Tukar Poin</span>
-            <span id="rec-point-discount">-Rp 0</span>
-          </div>
-          <div class="receipt-total-row final-total">
-            <span>Total</span>
-            <span id="rec-total">Rp 0</span>
-          </div>
-          <div class="receipt-total-row">
-            <span>Uang Bayar</span>
-            <span id="rec-cash">Rp 0</span>
-          </div>
-          <div class="receipt-total-row">
-            <span>Kembalian</span>
-            <span id="rec-change">Rp 0</span>
-          </div>
-          <div class="receipt-total-row" id="rec-method-row">
-            <span>Metode</span>
-            <span id="rec-method">Tunai</span>
-          </div>
-          <div class="receipt-total-row" id="rec-debt-row" style="display: none;">
-            <span style="color: #b91c1c; font-weight: bold;">Sisa Bon (Hutang)</span>
-            <span id="rec-debt" style="color: #b91c1c; font-weight: bold;">Rp 0</span>
-          </div>
-        </div>
+        <!-- Receipt Calc Table -->
+        <table style="width: 100%; font-family: monospace; font-size: 0.85rem; border-collapse: collapse;">
+          <tr id="rec-subtotal-row">
+            <td style="padding: 0.15rem 0; text-align: left;">Subtotal</td>
+            <td style="padding: 0.15rem 0; text-align: right;" id="rec-subtotal">Rp 0</td>
+          </tr>
+          <tr id="rec-discount-row">
+            <td style="padding: 0.15rem 0; text-align: left;">Diskon</td>
+            <td style="padding: 0.15rem 0; text-align: right;" id="rec-discount">0%</td>
+          </tr>
+          <tr id="rec-point-discount-row" style="display: none;">
+            <td style="padding: 0.15rem 0; text-align: left;">Tukar Poin</td>
+            <td style="padding: 0.15rem 0; text-align: right;" id="rec-point-discount">-Rp 0</td>
+          </tr>
+          <tr style="border-top: 1px dashed #444; border-bottom: 1px dashed #444; font-weight: bold; font-size: 1rem;">
+            <td style="padding: 0.35rem 0; text-align: left;">Total</td>
+            <td style="padding: 0.35rem 0; text-align: right;" id="rec-total">Rp 0</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.25rem 0 0.15rem 0; text-align: left;">Uang Bayar</td>
+            <td style="padding: 0.25rem 0 0.15rem 0; text-align: right;" id="rec-cash">Rp 0</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.15rem 0; text-align: left;">Kembalian</td>
+            <td style="padding: 0.15rem 0; text-align: right; font-weight: bold;" id="rec-change">Rp 0</td>
+          </tr>
+          <tr id="rec-method-row">
+            <td style="padding: 0.15rem 0; text-align: left;">Metode</td>
+            <td style="padding: 0.15rem 0; text-align: right;" id="rec-method">Tunai</td>
+          </tr>
+          <tr id="rec-debt-row" style="display: none;">
+            <td style="padding: 0.15rem 0; text-align: left; color: #b91c1c; font-weight: bold;">Sisa Bon (Hutang)</td>
+            <td style="padding: 0.15rem 0; text-align: right; color: #b91c1c; font-weight: bold;" id="rec-debt">Rp 0</td>
+          </tr>
+        </table>
         
-        <div id="rec-crm-info" style="display: none; margin-top: 1rem; text-align: center; font-size: 0.8rem; border-top: 1px dashed var(--border-color); padding-top: 0.5rem; margin-bottom: 1rem;">
+        <div id="rec-crm-info" style="display: none; margin-top: 0.5rem; text-align: center; font-size: 0.8rem; border-top: 1px dashed #444; padding-top: 0.5rem; margin-bottom: 0.5rem;">
           <div>Poin Didapat: <span id="rec-points-earned">0</span></div>
           <div>Total Poin: <span id="rec-points-total">0</span></div>
         </div>
         
-        <div class="receipt-footer">
-          <p>Terima kasih atas kunjungan Anda!</p>
-          <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Barang yang sudah dibeli tidak dapat ditukar/dikembalikan.</p>
+        <div class="divider-dashed"></div>
+        
+        <div style="text-align: center; font-family: monospace; font-size: 0.8rem; line-height: 1.35; margin-top: 0.5rem;">
+          <p style="margin: 0 0 0.25rem 0;">Terima kasih atas kunjungan Anda!</p>
+          <p style="margin: 0; font-size: 0.7rem; color: var(--text-muted);">Barang yang sudah dibeli tidak dapat ditukar/dilembalikan.</p>
         </div>
       </div>
 
@@ -1320,6 +1330,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=2.7"></script>
+  <script src="app.js?v=2.8"></script>
 </body>
 </html>
