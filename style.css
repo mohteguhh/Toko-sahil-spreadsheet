@@ -1874,7 +1874,7 @@ tr:hover td {
   background-color: #ffffff;
   border: 1px solid #ddd;
   border-radius: 4px;
-  padding: 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem calc(var(--print-text-padding-left, 2mm) * 1.5); /* Scale padding proportionally on screen */
   width: 100%;
   box-sizing: border-box;
   display: flex;
@@ -1883,7 +1883,7 @@ tr:hover td {
 
 .receipt-text-header-title {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 18px; /* Large and bold */
+  font-size: calc(var(--print-text-font-size, 8pt) * 2); /* Dynamic title size based on slider */
   font-weight: 900;
   text-align: center;
   color: #000000;
@@ -1893,13 +1893,13 @@ tr:hover td {
 
 .receipt-text-body {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 13px; /* Safe size to prevent wrapping on screen */
+  font-size: calc(var(--print-text-font-size, 8pt) * 1.6); /* Dynamic body size based on slider */
   line-height: 1.35;
   font-weight: bold;
   color: #000000;
   margin: 0;
   white-space: pre; /* Force monospace no-wrap on screen to prevent jumbling */
-  width: 100%;
+  width: calc(var(--print-text-width, 32) * 1ch);
   box-sizing: border-box;
   text-align: left;
 }
@@ -1913,7 +1913,9 @@ body.print-format-text #receipt-text-content {
 }
 body.print-format-text .receipt-card {
   padding: 0.75rem; /* SNR margins on screen */
-  max-width: 300px; /* Snug width so text aligns perfectly without large side spaces */
+  width: max-content;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 body.print-format-html #receipt-html-content {
   display: block !important;
@@ -1967,14 +1969,14 @@ body.print-format-html #receipt-text-content {
   /* Print overrides for text receipt */
   body.printing-receipt .receipt-text-print-container {
     border: none !important;
-    padding: 0 0 0 2mm !important; /* Constant, tiny 2mm left margin to prevent left edge sticking */
+    padding: 0 0 0 var(--print-text-padding-left, 2mm) !important;
     margin: 0 !important;
     width: 100% !important;
     background: transparent !important;
     box-sizing: border-box !important;
   }
   body.printing-receipt .receipt-text-header-title {
-    font-size: 13pt !important; /* Bold, large and highly readable store name */
+    font-size: var(--print-text-title-size, 13pt) !important;
     line-height: 1.25 !important;
     margin-bottom: 4px !important;
     font-weight: bold !important;
@@ -1983,9 +1985,9 @@ body.print-format-html #receipt-text-content {
     border: none !important;
     padding: 0 !important;
     margin: 0 !important;
-    font-size: 8pt !important; /* Perfect large, readable text size that fits 32 characters in ~54mm */
+    font-size: var(--print-text-font-size, 8pt) !important;
     line-height: 1.25 !important;
-    width: 100% !important;
+    width: calc(var(--print-text-width, 32) * 1ch) !important;
     max-width: 100% !important;
     white-space: pre !important; /* Force no-wrap during print to match screen layout exactly */
     word-break: normal !important;

@@ -725,7 +725,8 @@
               </div>
             </div>
             
-            <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+            <!-- SLIDER PENGATURAN FORMAT GRAFIS (HTML) -->
+            <div id="html-format-settings" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
               <div class="form-group" style="margin: 0;">
                 <label for="receipt-font-header">Ukuran Font Header Toko</label>
                 <div class="slider-group">
@@ -745,6 +746,31 @@
                 <div class="slider-group">
                   <input type="range" id="receipt-font-footer" min="10" max="20" value="12" step="1" oninput="updateFontPreview('footer', this.value)">
                   <span id="font-preview-footer-val">12px</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SLIDER PENGATURAN FORMAT TEKS (PLAIN TEXT) -->
+            <div id="text-format-settings" style="margin-top: 1rem; display: none; flex-direction: column; gap: 1rem;">
+              <div class="form-group" style="margin: 0;">
+                <label for="receipt-text-font-size">Ukuran Font Cetak (pt)</label>
+                <div class="slider-group">
+                  <input type="range" id="receipt-text-font-size" min="6" max="14" value="8" step="0.5" oninput="updateTextFontPreview(this.value)">
+                  <span id="text-font-preview-val">8pt</span>
+                </div>
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label for="receipt-text-padding-left">Margin Kiri Kertas (mm)</label>
+                <div class="slider-group">
+                  <input type="range" id="receipt-text-padding-left" min="0" max="10" value="2" step="0.5" oninput="updateTextPaddingPreview(this.value)">
+                  <span id="text-padding-preview-val">2mm</span>
+                </div>
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label for="receipt-text-width">Lebar Kolom (Jumlah Karakter)</label>
+                <div class="slider-group">
+                  <input type="range" id="receipt-text-width" min="24" max="48" value="32" step="1" oninput="updateTextWidthPreview(this.value)">
+                  <span id="text-width-preview-val">32 karakter</span>
                 </div>
               </div>
             </div>

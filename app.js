@@ -82,6 +82,9 @@ if (receiptSettings.fontSizeHeader === undefined) receiptSettings.fontSizeHeader
 if (receiptSettings.fontSizeItems === undefined) receiptSettings.fontSizeItems = receiptSettings.fontSize || 12;
 if (receiptSettings.fontSizeFooter === undefined) receiptSettings.fontSizeFooter = receiptSettings.fontSize || 12;
 if (receiptSettings.printFormat === undefined) receiptSettings.printFormat = 'html';
+if (receiptSettings.textFontSize === undefined) receiptSettings.textFontSize = 8;
+if (receiptSettings.textPaddingLeft === undefined) receiptSettings.textPaddingLeft = 2;
+if (receiptSettings.textWidth === undefined) receiptSettings.textWidth = 32;
 
 // Contoh Data Awal (Produk)
 const defaultProducts = [
@@ -364,6 +367,14 @@ function loadReceiptSettings() {
   document.getElementById('chk-show-method').checked = receiptSettings.showMethod;
   document.getElementById('receipt-print-format').value = receiptSettings.printFormat || 'html';
   
+  // Load Text Format Settings
+  document.getElementById('receipt-text-font-size').value = receiptSettings.textFontSize || 8;
+  document.getElementById('text-font-preview-val').textContent = `${receiptSettings.textFontSize || 8}pt`;
+  document.getElementById('receipt-text-padding-left').value = receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 2;
+  document.getElementById('text-padding-preview-val').textContent = `${receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 2}mm`;
+  document.getElementById('receipt-text-width').value = receiptSettings.textWidth || 32;
+  document.getElementById('text-width-preview-val').textContent = `${receiptSettings.textWidth || 32} karakter`;
+  
   applyReceiptSettings();
 }
 
@@ -474,19 +485,38 @@ function applyReceiptSettings() {
   const htmlContent = document.getElementById('receipt-html-content');
   const textContent = document.getElementById('receipt-text-content');
   
+  const htmlSettings = document.getElementById('html-format-settings');
+  const textSettings = document.getElementById('text-format-settings');
+  
   if (htmlContent && textContent) {
     if (printFormat === 'text') {
       htmlContent.style.display = 'none';
       textContent.style.display = 'flex';
       document.body.classList.remove('print-format-html');
       document.body.classList.add('print-format-text');
+      
+      if (htmlSettings) htmlSettings.style.display = 'none';
+      if (textSettings) textSettings.style.display = 'flex';
     } else {
       htmlContent.style.display = 'block';
       textContent.style.display = 'none';
       document.body.classList.remove('print-format-text');
       document.body.classList.add('print-format-html');
+      
+      if (htmlSettings) htmlSettings.style.display = 'flex';
+      if (textSettings) textSettings.style.display = 'none';
     }
   }
+  
+  // Set CSS Variables for Plain Text Format dynamic values
+  const textFontSize = receiptSettings.textFontSize || 8; // in pt
+  const textPaddingLeft = receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 2; // in mm
+  const textWidth = receiptSettings.textWidth || 32; // character columns
+  
+  document.documentElement.style.setProperty('--print-text-font-size', `${textFontSize}pt`);
+  document.documentElement.style.setProperty('--print-text-title-size', `${textFontSize * 1.6}pt`);
+  document.documentElement.style.setProperty('--print-text-padding-left', `${textPaddingLeft}mm`);
+  document.documentElement.style.setProperty('--print-text-width', textWidth);
 }
 
 // Memicu klik input file untuk logo
@@ -514,6 +544,25 @@ function updateReceiptFontSizePreview(val) {
   document.getElementById('font-size-preview-val').textContent = `${val}px`;
 }
 
+function updateTextFontPreview(val) {
+  document.getElementById('text-font-preview-val').textContent = `${val}pt`;
+  const textFontSize = parseFloat(val) || 8;
+  document.documentElement.style.setProperty('--print-text-font-size', `${textFontSize}pt`);
+  document.documentElement.style.setProperty('--print-text-title-size', `${textFontSize * 1.6}pt`);
+}
+
+function updateTextPaddingPreview(val) {
+  document.getElementById('text-padding-preview-val').textContent = `${val}mm`;
+  const textPaddingLeft = parseFloat(val) || 2;
+  document.documentElement.style.setProperty('--print-text-padding-left', `${textPaddingLeft}mm`);
+}
+
+function updateTextWidthPreview(val) {
+  document.getElementById('text-width-preview-val').textContent = `${val} karakter`;
+  const textWidth = parseInt(val) || 32;
+  document.documentElement.style.setProperty('--print-text-width', textWidth);
+}
+
 function saveReceiptSettings() {
   receiptSettings.name = document.getElementById('store-name-input').value.trim() || 'KasirKilat';
   receiptSettings.phone = document.getElementById('store-phone-input').value.trim() || '-';
@@ -532,6 +581,11 @@ function saveReceiptSettings() {
   receiptSettings.showDiscount = document.getElementById('chk-show-discount').checked;
   receiptSettings.showMethod = document.getElementById('chk-show-method').checked;
   receiptSettings.printFormat = document.getElementById('receipt-print-format').value;
+  
+  // Save Text Format Settings
+  receiptSettings.textFontSize = parseFloat(document.getElementById('receipt-text-font-size').value) || 8;
+  receiptSettings.textPaddingLeft = parseFloat(document.getElementById('receipt-text-padding-left').value) || 2;
+  receiptSettings.textWidth = parseInt(document.getElementById('receipt-text-width').value) || 32;
   
   localStorage.setItem('kasir_receipt_settings', JSON.stringify(receiptSettings));
   applyReceiptSettings();
@@ -1807,7 +1861,7 @@ function formatLine(left, right, width = 32) {
 }
 
 function generatePlainTextReceipt(tx, items) {
-  const width = 32; // Standard columns for 58mm printer
+  const width = receiptSettings.textWidth || 32; // Standard columns for 58mm printer
   let text = "";
   
   // 1. Informasi Alamat & Telp Toko (Nama Toko dirender terpisah dengan HTML agar font bisa besar)
