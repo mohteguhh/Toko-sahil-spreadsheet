@@ -2094,12 +2094,42 @@ function renderProductsTable() {
   const searchVal = document.getElementById('product-list-search').value.toLowerCase().trim();
   
   // Filter produk
-  const matched = products.filter(p => {
+  let matched = products.filter(p => {
     return p.nama.toLowerCase().includes(searchVal) || 
            p.id.toLowerCase().includes(searchVal) ||
            (p.barcode && p.barcode.toLowerCase().includes(searchVal)) ||
            (p.kategori && p.kategori.toLowerCase().includes(searchVal));
   });
+  
+  // Sort produk
+  const sortSelect = document.getElementById('product-list-sort');
+  if (sortSelect) {
+    const sortValue = sortSelect.value;
+    matched.sort((a, b) => {
+      if (sortValue === 'name_asc') {
+        return a.nama.localeCompare(b.nama);
+      } else if (sortValue === 'category_asc') {
+        const catA = a.kategori || 'ZZZ'; // Push empty categories to the end
+        const catB = b.kategori || 'ZZZ';
+        return catA.localeCompare(catB);
+      } else if (sortValue === 'stock_asc') {
+        return a.stok - b.stok;
+      } else if (sortValue === 'stock_desc') {
+        return b.stok - a.stok;
+      } else if (sortValue === 'price_asc') {
+        return a.harga_jual - b.harga_jual;
+      } else if (sortValue === 'price_desc') {
+        return b.harga_jual - a.harga_jual;
+      }
+      return 0; // Default: newest (reverse original order if we assume last added is at the end, but original array is kept as is unless we explicitly reverse it)
+    });
+    
+    // For 'newest', we assume the original array order is oldest first, so we reverse to get newest first. 
+    // Actually, new products are pushed to the end of the `products` array.
+    if (sortValue === 'newest') {
+      matched.reverse();
+    }
+  }
   
   const totalCount = matched.length;
   

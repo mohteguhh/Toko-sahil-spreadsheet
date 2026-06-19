@@ -599,12 +599,21 @@
             </div>
             
             <!-- SEARCH FILTER FOR INVENTORY LIST -->
-            <div class="table-search-wrapper" style="margin-bottom: 1rem;">
-              <div class="search-bar">
+            <div class="table-search-wrapper" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <div class="search-bar" style="flex: 1; min-width: 200px;">
                 <svg viewBox="0 0 24 24" class="icon-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 <input type="text" id="product-list-search" placeholder="Cari nama barang atau barcode di tabel..." oninput="filterProductListTable()">
               </div>
-              <span class="help-text" id="table-search-count">Menampilkan 10 data teratas. Ketik kata kunci untuk mencari data lainnya.</span>
+              <select id="product-list-sort" onchange="filterProductListTable()" style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-md); background: var(--bg-surface); color: var(--text-main); outline: none;">
+                <option value="newest">Urutan: Terbaru</option>
+                <option value="name_asc">Nama (A-Z)</option>
+                <option value="category_asc">Kategori (A-Z)</option>
+                <option value="stock_asc">Stok (Sedikit - Banyak)</option>
+                <option value="stock_desc">Stok (Banyak - Sedikit)</option>
+                <option value="price_asc">Harga (Termurah)</option>
+                <option value="price_desc">Harga (Termahal)</option>
+              </select>
+              <span class="help-text" id="table-search-count" style="width: 100%;">Menampilkan 10 data teratas. Ketik kata kunci untuk mencari data lainnya.</span>
             </div>
             
             <div class="table-wrapper">
