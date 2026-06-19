@@ -37,8 +37,6 @@ let html5QrcodeScanner = null;
 
 // State Pemilihan Tombol Cetak Nota
 let selectedReceiptButtonIndex = 0; // 0 = Cetak Nota, 1 = Tidak
-let currentTxForPrint = null;
-let currentItemsForPrint = [];
 
 // State Cetak Label Harga Massal (Terpilih)
 let selectedProductIds = new Set();
@@ -83,6 +81,7 @@ if (receiptSettings.showMethod === undefined) receiptSettings.showMethod = true;
 if (receiptSettings.fontSizeHeader === undefined) receiptSettings.fontSizeHeader = receiptSettings.fontSize || 14;
 if (receiptSettings.fontSizeItems === undefined) receiptSettings.fontSizeItems = receiptSettings.fontSize || 12;
 if (receiptSettings.fontSizeFooter === undefined) receiptSettings.fontSizeFooter = receiptSettings.fontSize || 12;
+if (receiptSettings.printFormat === undefined) receiptSettings.printFormat = 'html';
 
 // Contoh Data Awal (Produk)
 const defaultProducts = [
@@ -363,6 +362,7 @@ function loadReceiptSettings() {
   document.getElementById('chk-show-subtotal').checked = receiptSettings.showSubtotal;
   document.getElementById('chk-show-discount').checked = receiptSettings.showDiscount;
   document.getElementById('chk-show-method').checked = receiptSettings.showMethod;
+  document.getElementById('receipt-print-format').value = receiptSettings.printFormat || 'html';
   
   applyReceiptSettings();
 }
@@ -468,6 +468,25 @@ function applyReceiptSettings() {
   } else {
     previewBox.innerHTML = `<span>Belum ada Logo</span>`;
   }
+
+  // 5. Atur Format Cetak Struk (HTML vs Text)
+  const printFormat = receiptSettings.printFormat || 'html';
+  const htmlContent = document.getElementById('receipt-html-content');
+  const textContent = document.getElementById('receipt-text-content');
+  
+  if (htmlContent && textContent) {
+    if (printFormat === 'text') {
+      htmlContent.style.display = 'none';
+      textContent.style.display = 'block';
+      document.body.classList.remove('print-format-html');
+      document.body.classList.add('print-format-text');
+    } else {
+      htmlContent.style.display = 'block';
+      textContent.style.display = 'none';
+      document.body.classList.remove('print-format-text');
+      document.body.classList.add('print-format-html');
+    }
+  }
 }
 
 // Memicu klik input file untuk logo
@@ -512,6 +531,7 @@ function saveReceiptSettings() {
   receiptSettings.showSubtotal = document.getElementById('chk-show-subtotal').checked;
   receiptSettings.showDiscount = document.getElementById('chk-show-discount').checked;
   receiptSettings.showMethod = document.getElementById('chk-show-method').checked;
+  receiptSettings.printFormat = document.getElementById('receipt-print-format').value;
   
   localStorage.setItem('kasir_receipt_settings', JSON.stringify(receiptSettings));
   applyReceiptSettings();
@@ -1746,11 +1766,147 @@ async function processCheckout() {
 
 // (Logika Countdown Struk Belanja Dihilangkan)
 
+// --- RENDER STRUK TEKS POLOS (PLAIN TEXT) ---
+function wrapText(text, maxChars) {
+  if (!text) return [""];
+  const words = text.split(" ");
+  const lines = [];
+  let currentLine = "";
+  
+  words.forEach(word => {
+    if ((currentLine + " " + word).trim().length <= maxChars) {
+      currentLine = (currentLine + " " + word).trim();
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+      while (currentLine.length > maxChars) {
+        lines.push(currentLine.substring(0, maxChars));
+        currentLine = currentLine.substring(maxChars);
+      }
+    }
+  });
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+function centerText(text, width = 32) {
+  if (!text) return " ".repeat(width);
+  if (text.length >= width) return text.substring(0, width);
+  const leftPadding = Math.floor((width - text.length) / 2);
+  return " ".repeat(leftPadding) + text;
+}
+
+function formatLine(left, right, width = 32) {
+  left = left || "";
+  right = right || "";
+  const spaceNeeded = width - left.length - right.length;
+  if (spaceNeeded <= 0) {
+    return left + " " + right;
+  }
+  return left + " ".repeat(spaceNeeded) + right;
+}
+
+function generatePlainTextReceipt(tx, items) {
+  const width = 32; // Standard columns for 58mm printer
+  let text = "";
+  
+  // 1. Nama Toko & Informasi Toko
+  if (receiptSettings.showName && receiptSettings.name) {
+    text += centerText(receiptSettings.name.toUpperCase(), width) + "\n";
+  }
+  if (receiptSettings.showAddress && receiptSettings.address) {
+    const addrLines = wrapText(receiptSettings.address, width);
+    addrLines.forEach(line => {
+      text += centerText(line, width) + "\n";
+    });
+  }
+  if (receiptSettings.showPhone && receiptSettings.phone) {
+    text += centerText("Telp: " + receiptSettings.phone, width) + "\n";
+  }
+  text += centerText("=".repeat(width), width) + "\n";
+  
+  // 2. Detail Transaksi
+  text += formatLine("No. Transaksi", tx.id, width) + "\n";
+  
+  const dateObj = new Date(tx.waktu);
+  const dateStr = dateObj.toLocaleDateString('id-ID');
+  const timeStr = dateObj.toLocaleTimeString('id-ID', { hour12: false });
+  text += formatLine("Waktu", dateStr + " " + timeStr, width) + "\n";
+  
+  if (receiptSettings.showCashier) {
+    text += formatLine("Kasir", tx.kasir || 'Kasir Utama', width) + "\n";
+  }
+  text += centerText("-".repeat(width), width) + "\n";
+  
+  // 3. Daftar Barang
+  let subtotal = 0;
+  items.forEach(item => {
+    subtotal += item.harga * item.qty;
+    const nameLines = wrapText(item.nama, width);
+    nameLines.forEach(line => {
+      text += line + "\n";
+    });
+    const qtyPriceStr = `${item.qty}x @Rp ${formatRupiah(item.harga)}`;
+    const totalItemStr = `Rp ${formatRupiah(item.harga * item.qty)}`;
+    text += formatLine("  " + qtyPriceStr, totalItemStr, width) + "\n";
+  });
+  text += centerText("-".repeat(width), width) + "\n";
+  
+  // 4. Kalkulasi Total
+  if (receiptSettings.showSubtotal) {
+    text += formatLine("Subtotal", "Rp " + formatRupiah(subtotal), width) + "\n";
+  }
+  if (receiptSettings.showDiscount) {
+    const discountPercent = subtotal > 0 ? Math.round(((subtotal - tx.total) / subtotal) * 100) : 0;
+    text += formatLine("Diskon", discountPercent + "%", width) + "\n";
+  }
+  if (tx.diskon_poin > 0) {
+    text += formatLine("Tukar Poin", "-Rp " + formatRupiah(tx.diskon_poin), width) + "\n";
+  }
+  
+  text += formatLine("Total", "Rp " + formatRupiah(tx.total), width) + "\n";
+  text += formatLine("Bayar", "Rp " + formatRupiah(tx.bayar), width) + "\n";
+  text += formatLine("Kembalian", "Rp " + formatRupiah(tx.kembalian), width) + "\n";
+  
+  if (receiptSettings.showMethod) {
+    let methodStr = tx.metode_pembayaran || 'Tunai';
+    if (tx.status_pembayaran === 'Bon') {
+      methodStr += ' (Bon)';
+    }
+    text += formatLine("Metode", methodStr, width) + "\n";
+  }
+  
+  if (tx.sisa_piutang > 0) {
+    text += formatLine("Sisa Bon (Hutang)", "Rp " + formatRupiah(tx.sisa_piutang), width) + "\n";
+  }
+  
+  // CRM Poin
+  if (tx.nama_pelanggan) {
+    text += centerText("-".repeat(width), width) + "\n";
+    text += formatLine("Pelanggan", tx.nama_pelanggan, width) + "\n";
+    text += formatLine("Poin Didapat", "+" + (tx.poin_didapat || 0), width) + "\n";
+    
+    let customerPoinTotal = tx.poin_didapat || 0;
+    if (typeof customers !== 'undefined') {
+      const customer = customers.find(c => c.nama === tx.nama_pelanggan);
+      if (customer) customerPoinTotal = customer.poin || 0;
+    }
+    text += formatLine("Total Poin", "" + customerPoinTotal, width) + "\n";
+  }
+  
+  text += centerText("=".repeat(width), width) + "\n";
+  
+  // 5. Footer
+  text += centerText("Terima kasih atas kunjungan", width) + "\n";
+  text += centerText("Anda!", width) + "\n";
+  text += centerText("Barang yang sudah dibeli tidak", width) + "\n";
+  text += centerText("dapat ditukar/dikembalikan.", width) + "\n";
+  
+  return text;
+}
+
 // Tampilkan Struk Belanja
 function showReceipt(tx, items) {
-  currentTxForPrint = tx;
-  currentItemsForPrint = items;
-  
   document.getElementById('rec-id').textContent = tx.id;
   
   const dateObj = new Date(tx.waktu);
@@ -1789,7 +1945,6 @@ function showReceipt(tx, items) {
   document.getElementById('rec-change').textContent = `Rp ${formatRupiah(tx.kembalian)}`;
   
   // Rincian Metode & Piutang (Fitur Baru)
-  
   const ptRow = document.getElementById('rec-point-discount-row');
   if (ptRow) {
     if (tx.diskon_poin > 0) {
@@ -1830,13 +1985,17 @@ function showReceipt(tx, items) {
     }
   }
   
+  // Render Plain Text Receipt
+  const textContent = document.getElementById('receipt-text-content');
+  if (textContent) {
+    textContent.textContent = generatePlainTextReceipt(tx, items);
+  }
+  
   document.getElementById('receipt-modal').classList.add('active');
   
   // Set default pemilihan tombol struk ke "Cetak Nota" (index 0)
   selectedReceiptButtonIndex = 0;
   updateReceiptButtonsHighlight();
-  
-
 }
 
 function updateReceiptButtonsHighlight() {
@@ -1860,210 +2019,6 @@ function updateReceiptButtonsHighlight() {
 function closeReceiptModal() {
   document.getElementById('receipt-modal').classList.remove('active');
   focusSearchInput();
-}
-
-function triggerPrintReceipt() {
-  const receiptEl = document.getElementById('receipt-card-print');
-  if (!receiptEl) {
-    alert("Elemen struk tidak ditemukan!");
-    return;
-  }
-  
-  // Clone struk dari yang tampil di layar
-  const printContent = receiptEl.cloneNode(true);
-  
-  // Bersihkan elemen tombol dan pintasan keyboard agar tidak ikut tercetak
-  const actions = printContent.querySelector('.modal-actions');
-  if (actions) actions.remove();
-  const shortcutTip = printContent.querySelector('.shortcut-tip');
-  if (shortcutTip) shortcutTip.remove();
-  const dividerNoPrint = printContent.querySelector('.divider-dashed.no-print');
-  if (dividerNoPrint) dividerNoPrint.remove();
-
-  // Buat iframe tersembunyi
-  let iframe = document.getElementById('receipt-print-iframe');
-  if (iframe) {
-    iframe.remove();
-  }
-  
-  iframe = document.createElement('iframe');
-  iframe.id = 'receipt-print-iframe';
-  iframe.style.position = 'absolute';
-  iframe.style.width = '0px';
-  iframe.style.height = '0px';
-  iframe.style.border = 'none';
-  iframe.style.top = '-1000px';
-  iframe.style.left = '-1000px';
-  
-  // Daftarkan event listener onload SEBELUM menulis konten dan SEBELUM append ke DOM untuk reliabilitas tinggi
-  iframe.onload = () => {
-    // Berikan jeda waktu 150ms agar engine render browser menyelesaikan tugasnya
-    setTimeout(() => {
-      try {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-      } catch (e) {
-        console.error("Gagal mencetak melalui iframe terisolasi, fallback ke window.print():", e);
-        window.print();
-      }
-    }, 150);
-  };
-  
-  document.body.appendChild(iframe);
-  
-  const doc = iframe.contentWindow.document || iframe.contentDocument;
-  doc.open();
-  doc.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Cetak Nota</title>
-      <style>
-        /* Import font Google 'Plus Jakarta Sans' agar sama persis */
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
-        
-        @page {
-          margin: 0;
-          size: 58mm auto;
-        }
-        
-        body {
-          margin: 0;
-          padding: 0;
-          width: 58mm;
-          display: flex;
-          justify-content: center;
-          background-color: #fff;
-          color: #000;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        
-        /* Layout struk disesuaikan agar pas di kertas thermal 58mm */
-        .receipt-card {
-          background-color: #ffffff;
-          color: #111111;
-          width: 52mm; /* Pas dengan area cetak bersih 58mm printer thermal */
-          max-width: 52mm;
-          padding: 0 1.5mm;
-          box-sizing: border-box;
-          font-family: monospace;
-          display: flex;
-          flex-direction: column;
-        }
-        
-        .receipt-card * {
-          color: #000 !important; /* Paksa hitam pekat agar tidak blur saat dicetak */
-        }
-        
-        .receipt-logo-img {
-          height: 72px !important; /* Perbesar Logo (Sesuai Permintaan) */
-          max-width: 160px !important; /* Perbesar Logo (Sesuai Permintaan) */
-          object-fit: contain;
-          margin-bottom: 0.5rem;
-          display: block;
-          margin-left: auto;
-          margin-right: auto;
-        }
-        
-        .receipt-header {
-          text-align: center;
-          margin-bottom: 0.5rem;
-          font-size: ${receiptSettings.fontSizeHeader}px !important; /* Dinamis sesuai pengaturan */
-        }
-        
-        .receipt-title {
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 1.5em !important; /* Lebih besar & tebal (Sesuai Permintaan) */
-          font-weight: 900 !important; /* Tebal ekstra (Sesuai Permintaan) */
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin-bottom: 0.25rem;
-          text-align: center;
-        }
-        
-        .receipt-subtitle {
-          font-size: 0.85em !important;
-          margin-bottom: 0.05rem;
-          text-align: center;
-        }
-        
-        .divider-dashed {
-          border-top: 1px dashed #222222;
-          margin: 0.5rem 0;
-          width: 100%;
-        }
-        
-        .receipt-details {
-          display: flex;
-          flex-direction: column;
-          gap: 0.15rem;
-          font-size: ${receiptSettings.fontSizeItems}px !important; /* Dinamis sesuai pengaturan */
-        }
-        
-        .receipt-detail-row {
-          display: flex;
-          justify-content: space-between;
-        }
-        
-        .receipt-items {
-          display: flex;
-          flex-direction: column;
-          gap: 0.35rem;
-          font-size: ${receiptSettings.fontSizeItems}px !important; /* Dinamis sesuai pengaturan */
-        }
-        
-        .receipt-item-row {
-          display: flex;
-          flex-direction: column;
-        }
-        
-        .receipt-item-row-top {
-          display: flex;
-          justify-content: space-between;
-          font-weight: bold;
-        }
-        
-        .receipt-item-row-bottom {
-          display: flex;
-          justify-content: space-between;
-          font-size: 0.95em !important;
-          padding-left: 0.25rem;
-        }
-        
-        .receipt-totals {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-          font-size: ${receiptSettings.fontSizeFooter}px !important; /* Dinamis sesuai pengaturan */
-        }
-        
-        .receipt-total-row {
-          display: flex;
-          justify-content: space-between;
-        }
-        
-        .receipt-total-row.final-total {
-          font-size: 1.1em !important; /* Sedikit lebih besar dari footer total */
-          font-weight: bold;
-          border-top: 1px dashed #222222;
-          border-bottom: 1px dashed #222222;
-          padding: 0.25rem 0;
-        }
-        
-        .receipt-footer {
-          text-align: center;
-          margin-top: 0.75rem;
-          font-size: ${receiptSettings.fontSizeFooter * 0.9}px !important; /* Dinamis sesuai pengaturan */
-        }
-      </style>
-    </head>
-    <body>
-      ${printContent.outerHTML}
-    </body>
-    </html>
-  `);
-  doc.close();
 }
 
 async function syncTransactionToCloud(tx) {
@@ -2916,7 +2871,7 @@ function handleGlobalKeydowns(e) {
       }
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (selectedReceiptButtonIndex === 0) triggerPrintReceipt();
+        if (selectedReceiptButtonIndex === 0) window.print();
         else closeReceiptModal();
         return;
       }

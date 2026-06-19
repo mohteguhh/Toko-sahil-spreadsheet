@@ -932,7 +932,8 @@ svg.icon-empty {
   font-weight: 700;
   color: var(--text-muted);
 }
-.form-group input {
+.form-group input,
+.form-group select {
   width: 100%;
   max-width: 100%;
   background-color: var(--bg-app);
@@ -945,7 +946,8 @@ svg.icon-empty {
   font-size: 0.9rem;
   font-weight: 600;
 }
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
   border-color: var(--color-primary);
   background-color: var(--bg-surface);
   box-shadow: 0 0 0 3px rgba(202, 138, 4, 0.1);
@@ -1867,6 +1869,39 @@ tr:hover td {
   }
 }
 
+/* Styling Struk Plain Text */
+.receipt-text-print {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: bold;
+  color: #000000;
+  background-color: #ffffff;
+  padding: 0.5rem;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+/* Aturan sembunyi/tampil berdasarkan format format */
+body.print-format-text #receipt-html-content {
+  display: none !important;
+}
+body.print-format-text #receipt-text-content {
+  display: block !important;
+}
+body.print-format-html #receipt-html-content {
+  display: block !important;
+}
+body.print-format-html #receipt-text-content {
+  display: none !important;
+}
+
 /* --- PRINTING CSS (FITUR BARU) --- */
 @media print {
   @page {
@@ -1889,24 +1924,36 @@ tr:hover td {
     top: 0;
     width: 100%;
     background-color: #ffffff;
-    display: block !important;
+    display: flex !important;
+    justify-content: center;
+    align-items: flex-start;
     padding: 0;
   }
   body.printing-receipt .receipt-card {
     border: none;
     box-shadow: none;
     padding: 0;
-    margin: 0;
-    width: 46mm; /* Safe printable area for 58mm rolls */
-    max-width: 46mm;
+    margin: 0 auto; /* Center it! */
+    width: 48mm; /* Safe printable area for 58mm rolls */
+    max-width: 48mm;
     max-height: none;
     overflow: hidden;
     box-sizing: border-box;
     color: #000;
+    background: #fff;
   }
   /* Paksa teks hitam pekat agar tidak blur saat dicetak */
   body.printing-receipt .receipt-card * {
     color: #000 !important;
+  }
+  body.printing-receipt .receipt-text-print {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
   
   /* Jika mencetak laporan harian */
