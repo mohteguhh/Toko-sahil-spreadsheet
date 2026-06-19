@@ -1872,15 +1872,14 @@ tr:hover td {
 /* Styling Struk Plain Text */
 .receipt-text-print {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 11px;
-  line-height: 1.25;
+  font-size: 14px; /* Larger on screen for readability and spacing */
+  line-height: 1.35;
   font-weight: bold;
   color: #000000;
   background-color: #ffffff;
   padding: 0.5rem;
   margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre; /* Force monospace no-wrap on screen to prevent jumbling */
   border: 1px solid #ddd;
   border-radius: 4px;
   width: 100%;
@@ -1894,6 +1893,10 @@ body.print-format-text #receipt-html-content {
 }
 body.print-format-text #receipt-text-content {
   display: block !important;
+}
+body.print-format-text .receipt-card {
+  padding: 1rem; /* Less padding to fit the text receipt snuggly on screen */
+  max-width: 330px; /* Slightly narrower card for text mode */
 }
 body.print-format-html #receipt-html-content {
   display: block !important;
@@ -1950,10 +1953,12 @@ body.print-format-html #receipt-text-content {
     border: none !important;
     padding: 0 !important;
     margin: 0 auto !important;
-    font-size: 11px !important;
+    font-size: 9.5px !important; /* Safe size to prevent wrapping on 58mm paper */
     line-height: 1.2 !important;
     width: 100% !important;
     max-width: 100% !important;
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
   }
   
   /* Jika mencetak laporan harian */
