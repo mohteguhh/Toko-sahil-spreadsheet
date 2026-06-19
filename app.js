@@ -1004,25 +1004,16 @@ function openCameraScanner() {
   wrapper.classList.add('active');
   
   html5QrcodeScanner = new Html5Qrcode("interactive-reader", {
-    formatsToSupport: [
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.CODE_93,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.ITF
-    ],
-    useBarCodeDetectorIfSupported: false
+    // Menghapus formatsToSupport agar library memindai semua barcode 1D & 2D secara optimal
+    useBarCodeDetectorIfSupported: true // Gunakan native API bawaan HP yang jauh lebih cepat dan akurat
   });
   
   // Memulai kamera belakang ponsel
   html5QrcodeScanner.start(
     { facingMode: "environment" },
     {
-      fps: 10,
-      qrbox: { width: 250, height: 160 } // Bidik kode barcode horizontal
+      fps: 15, // Ditingkatkan ke 15fps agar lebih responsif
+      qrbox: { width: 250, height: 120 } // Lebih horizontal untuk barcode 1D standar
     },
     onScanSuccess,
     onScanFailure
