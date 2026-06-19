@@ -1913,30 +1913,24 @@ function showReceipt(tx, items) {
   const cashierEl = document.getElementById('rec-cashier');
   if (cashierEl) cashierEl.textContent = tx.kasir || 'Kasir Utama';
   
-  const recItemsTableBody = document.getElementById('rec-items-table-body');
-  if (recItemsTableBody) {
-    recItemsTableBody.innerHTML = '';
-  }
+  const recItems = document.getElementById('rec-items');
+  recItems.innerHTML = '';
   
   let subtotal = 0;
   items.forEach(item => {
     subtotal += item.harga * item.qty;
-    if (recItemsTableBody) {
-      const nameRow = document.createElement('tr');
-      nameRow.innerHTML = `
-        <td style="padding: 0.25rem 0 0 0; text-align: left; font-weight: bold;">${item.nama}</td>
-        <td style="padding: 0.25rem 0 0 0; text-align: right; font-weight: bold;">Rp ${formatRupiah(item.harga * item.qty)}</td>
-      `;
-      recItemsTableBody.appendChild(nameRow);
-      
-      const qtyRow = document.createElement('tr');
-      qtyRow.innerHTML = `
-        <td colspan="2" style="padding: 0 0 0.25rem 0.5rem; text-align: left; font-size: 0.9em; color: #555;">
-          ${item.qty}x @Rp ${formatRupiah(item.harga)}
-        </td>
-      `;
-      recItemsTableBody.appendChild(qtyRow);
-    }
+    const row = document.createElement('div');
+    row.className = 'receipt-item-row';
+    row.innerHTML = `
+      <div class="receipt-item-row-top" style="align-items: flex-start;">
+        <span style="flex: 1; padding-right: 0.5rem;">${item.nama}</span>
+        <div style="text-align: right; display: flex; flex-direction: column;">
+          <span>Rp ${formatRupiah(item.harga * item.qty)}</span>
+          <span style="font-size: 0.9em; font-weight: 500; color: #444; margin-top: 2px;">${item.qty}x @Rp ${formatRupiah(item.harga)}</span>
+        </div>
+      </div>
+    `;
+    recItems.appendChild(row);
   });
   
   const discountPercent = subtotal > 0 ? Math.round(((subtotal - tx.total) / subtotal) * 100) : 0;
