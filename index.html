@@ -37,11 +37,11 @@
       
       <!-- Nav Tabs (Analytics as Default) -->
       <nav class="nav-tabs">
-        <button class="tab-btn active" id="tab-analytics" onclick="switchTab('analytics')">
+        <button class="tab-btn" id="tab-analytics" onclick="switchTab('analytics')">
           <svg viewBox="0 0 24 24" class="icon"><path d="M3 3v18h18M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
           <span>Analisis Penjualan</span>
         </button>
-        <button class="tab-btn" id="tab-pos" onclick="switchTab('pos')">
+        <button class="tab-btn active" id="tab-pos" onclick="switchTab('pos')">
           <svg viewBox="0 0 24 24" class="icon"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
           <span>Kasir (POS)</span>
         </button>
@@ -89,7 +89,7 @@
     <main class="content-area">
       
       <!-- TAB 1: ANALISIS PENJUALAN (DASHBOARD) -->
-      <section id="pane-analytics" class="tab-pane active">
+      <section id="pane-analytics" class="tab-pane">
         <div class="analytics-header">
           <h2>Analisis Penjualan &amp; Dashboard</h2>
           <div class="table-actions" style="flex-wrap: wrap; gap: 0.5rem; align-items: center;">
@@ -221,7 +221,7 @@
       </section>
       
       <!-- TAB 2: KASIR (POS) -->
-      <section id="pane-pos" class="tab-pane">
+      <section id="pane-pos" class="tab-pane active">
         <div class="pos-layout">
           
           <!-- Left Column: Search Bar & Cart -->
