@@ -21,7 +21,7 @@ let cart = JSON.parse(localStorage.getItem('kasir_active_cart')) || [];
 let heldCarts = JSON.parse(localStorage.getItem('kasir_held_carts')) || [];
 let transactions = []; // Riwayat transaksi lokal untuk analisis
 let categories = ['All'];
-let activeTab = 'analytics'; // Default active tab
+let activeTab = 'pos'; // Default active tab
 let activeCategory = 'All';
 
 // State Pencarian POS
