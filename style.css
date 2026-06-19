@@ -1871,6 +1871,7 @@ tr:hover td {
 @media print {
   @page {
     margin: 0;
+    size: 58mm auto;
   }
   
   body * {
@@ -1894,12 +1895,13 @@ tr:hover td {
   body.printing-receipt .receipt-card {
     border: none;
     box-shadow: none;
-    padding: 2mm;
-    margin: 0 auto;
-    width: 100%;
-    max-width: 100%;
+    padding: 0;
+    margin: 0;
+    width: 46mm; /* Safe printable area for 58mm rolls */
+    max-width: 46mm;
     max-height: none;
-    overflow-y: visible;
+    overflow: hidden;
+    box-sizing: border-box;
     color: #000;
   }
   /* Paksa teks hitam pekat agar tidak blur saat dicetak */
