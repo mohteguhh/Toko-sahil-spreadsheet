@@ -1025,90 +1025,12 @@
 
   <!-- MODAL: STRUK BELANJA / INVOICE (STEP 3) -->
   <div class="modal-overlay" id="receipt-modal">
-    <div class="receipt-card" id="receipt-card-print">
-      <div class="receipt-header">
-        <div class="receipt-logo-container" id="rec-logo-container"></div>
-        <h3 class="receipt-title" id="rec-store-name">NAMA TOKO</h3>
-        <p class="receipt-subtitle" id="rec-store-address">Alamat Toko</p>
-        <p class="receipt-subtitle" id="rec-store-phone">Telp: -</p>
-        <div class="divider-dashed"></div>
-      </div>
+    <div class="receipt-card" id="receipt-card-print" style="padding: 0; background: transparent; box-shadow: none;">
+      <pre id="receipt-text-pre" style="font-family: monospace; font-size: 14px; margin: 0; padding: 10px; background: #fff; color: #000; width: 100%; box-sizing: border-box; white-space: pre-wrap; line-height: 1.2;"></pre>
       
-      <div class="receipt-details">
-        <div class="receipt-detail-row">
-          <span>No. Transaksi</span>
-          <span id="rec-id">TX-123456</span>
-        </div>
-        <div class="receipt-detail-row">
-          <span>Waktu</span>
-          <span id="rec-time">18/06/2026 13:40</span>
-        </div>
-        <div class="receipt-detail-row" id="rec-cashier-row">
-          <span>Kasir</span>
-          <span id="rec-cashier">Kasir Utama</span>
-        </div>
-      </div>
-      
-      <div class="divider-dashed"></div>
-      
-      <!-- Receipt Items -->
-      <div class="receipt-items" id="rec-items">
-        <!-- Item list -->
-      </div>
-      
-      <div class="divider-dashed"></div>
-      
-      <!-- Receipt Calc -->
-      <div class="receipt-totals">
-        <div class="receipt-total-row" id="rec-subtotal-row">
-          <span>Subtotal</span>
-          <span id="rec-subtotal">Rp 0</span>
-        </div>
-        <div class="receipt-total-row" id="rec-discount-row">
-          <span>Diskon</span>
-          <span id="rec-discount">0%</span>
-        </div>
-        <div class="receipt-total-row" id="rec-point-discount-row" style="display: none;">
-          <span>Tukar Poin</span>
-          <span id="rec-point-discount">-Rp 0</span>
-        </div>
-        <div class="receipt-total-row final-total">
-          <span>Total</span>
-          <span id="rec-total">Rp 0</span>
-        </div>
-        <div class="receipt-total-row">
-          <span>Uang Bayar</span>
-          <span id="rec-cash">Rp 0</span>
-        </div>
-        <div class="receipt-total-row">
-          <span>Kembalian</span>
-          <span id="rec-change">Rp 0</span>
-        </div>
-        <div class="receipt-total-row" id="rec-method-row">
-          <span>Metode</span>
-          <span id="rec-method">Tunai</span>
-        </div>
-        <div class="receipt-total-row" id="rec-debt-row" style="display: none;">
-          <span style="color: #b91c1c; font-weight: bold;">Sisa Bon (Hutang)</span>
-          <span id="rec-debt" style="color: #b91c1c; font-weight: bold;">Rp 0</span>
-        </div>
-      </div>
-      
-      <div class="divider-dashed">
-        <div id="rec-crm-info" style="display: none; margin-top: 1rem; text-align: center; font-size: 0.8rem; border-top: 1px dashed var(--border-color); padding-top: 0.5rem;">
-          <div>Poin Didapat: <span id="rec-points-earned">0</span></div>
-          <div>Total Poin: <span id="rec-points-total">0</span></div>
-        </div>
-      </div>
-      
-      <div class="receipt-footer">
-        <p>Terima kasih atas kunjungan Anda!</p>
-        <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Barang yang sudah dibeli tidak dapat ditukar/dikembalikan.</p>
-        <div class="divider-dashed no-print"></div>
-        <p class="shortcut-tip no-print" style="margin-top: 10px; font-weight: bold; color: #555;">
-          Gunakan tombol panah &larr; &rarr; untuk memilih tombol | [Enter] Konfirmasi
-        </p>
-      </div>
+      <p class="shortcut-tip no-print" style="margin-top: 10px; font-weight: bold; color: #555; text-align: center;">
+        Gunakan tombol panah &larr; &rarr; untuk memilih tombol | [Enter] Konfirmasi
+      </p>
       
       <div class="modal-actions no-print">
         <button class="btn btn-primary" id="btn-print-receipt" onclick="window.print()">Cetak Nota</button>

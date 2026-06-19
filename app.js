@@ -1746,92 +1746,85 @@ async function processCheckout() {
 
 // Tampilkan Struk Belanja
 function showReceipt(tx, items) {
-  document.getElementById('rec-id').textContent = tx.id;
+  let text = "";
   
+  function centerText(str, width) {
+    if (str.length >= width) return str.substring(0, width);
+    const left = Math.floor((width - str.length) / 2);
+    const right = width - str.length - left;
+    return " ".repeat(left) + str + " ".repeat(right);
+  }
+  function padRight(str, width) {
+    if (str.length >= width) return str.substring(0, width);
+    return str + " ".repeat(width - str.length);
+  }
+  function padLeft(str, width) {
+    if (str.length >= width) return str.substring(0, width);
+    return " ".repeat(width - str.length) + str;
+  }
+  
+  // Header
+  text += centerText(receiptSettings.name || 'Toko', 32) + "\n";
+  if (receiptSettings.address) text += centerText(receiptSettings.address, 32) + "\n";
+  if (receiptSettings.phone) text += centerText("Telp: " + receiptSettings.phone, 32) + "\n";
+  text += "--------------------------------\n";
+  
+  // Info
+  text += padRight("No: " + tx.id, 32) + "\n";
   const dateObj = new Date(tx.waktu);
   const timeStr = dateObj.toLocaleDateString('id-ID') + ' ' + dateObj.toLocaleTimeString('id-ID', { hour12: false });
-  document.getElementById('rec-time').textContent = timeStr;
+  text += padRight("Waktu: " + timeStr, 32) + "\n";
+  text += padRight("Kasir: " + (tx.kasir || 'Kasir Utama'), 32) + "\n";
+  text += "--------------------------------\n";
   
-  const cashierEl = document.getElementById('rec-cashier');
-  if (cashierEl) cashierEl.textContent = tx.kasir || 'Kasir Utama';
-  
-  const recItems = document.getElementById('rec-items');
-  recItems.innerHTML = '';
-  
+  // Items
   let subtotal = 0;
   items.forEach(item => {
     subtotal += item.harga * item.qty;
-    const row = document.createElement('div');
-    row.className = 'receipt-item-row';
-    row.innerHTML = `
-      <div class="receipt-item-row-top" style="align-items: flex-start;">
-        <span style="flex: 1; padding-right: 0.5rem;">${item.nama}</span>
-        <div style="text-align: right; display: flex; flex-direction: column;">
-          <span>Rp ${formatRupiah(item.harga * item.qty)}</span>
-          <span style="font-size: 0.9em; font-weight: 500; color: #444; margin-top: 2px;">${item.qty}x @Rp ${formatRupiah(item.harga)}</span>
-        </div>
-      </div>
-    `;
-    recItems.appendChild(row);
+    let line1Name = item.nama;
+    if (line1Name.length > 20) line1Name = line1Name.substring(0, 20);
+    let line1Price = formatRupiah(item.harga * item.qty);
+    text += padRight(line1Name, 32 - line1Price.length) + line1Price + "\n";
+    
+    let line2 = `  ${item.qty}x @${formatRupiah(item.harga)}`;
+    text += padRight(line2, 32) + "\n";
   });
+  text += "--------------------------------\n";
   
+  // Totals
   const discountPercent = subtotal > 0 ? Math.round(((subtotal - tx.total) / subtotal) * 100) : 0;
   
-  document.getElementById('rec-subtotal').textContent = `Rp ${formatRupiah(subtotal)}`;
-  document.getElementById('rec-discount').textContent = `${discountPercent}%`;
-  document.getElementById('rec-total').textContent = `Rp ${formatRupiah(tx.total)}`;
-  document.getElementById('rec-cash').textContent = `Rp ${formatRupiah(tx.bayar)}`;
-  document.getElementById('rec-change').textContent = `Rp ${formatRupiah(tx.kembalian)}`;
+  text += padRight("Subtotal", 16) + padLeft(formatRupiah(subtotal), 16) + "\n";
+  if (discountPercent > 0) {
+    text += padRight("Diskon", 16) + padLeft(discountPercent + "%", 16) + "\n";
+  }
+  if (tx.diskon_poin > 0) {
+    text += padRight("Tukar Poin", 16) + padLeft("-" + formatRupiah(tx.diskon_poin), 16) + "\n";
+  }
+  text += padRight("Total", 16) + padLeft(formatRupiah(tx.total), 16) + "\n";
+  text += padRight("Uang Bayar", 16) + padLeft(formatRupiah(tx.bayar), 16) + "\n";
+  text += padRight("Kembalian", 16) + padLeft(formatRupiah(tx.kembalian), 16) + "\n";
+  text += padRight("Metode", 16) + padLeft(tx.metode_pembayaran || "Tunai", 16) + "\n";
   
-  // Rincian Metode & Piutang (Fitur Baru)
-  
-  const ptRow = document.getElementById('rec-point-discount-row');
-  if (ptRow) {
-    if (tx.diskon_poin > 0) {
-      document.getElementById('rec-point-discount').textContent = `-Rp ${formatRupiah(tx.diskon_poin)}`;
-      ptRow.style.display = 'flex';
-    } else {
-      ptRow.style.display = 'none';
-    }
+  if (tx.status_pembayaran === 'Hutang') {
+    text += padRight("Sisa Bon", 16) + padLeft(formatRupiah(tx.sisa_piutang || tx.total), 16) + "\n";
   }
   
-  const crmInfo = document.getElementById('rec-crm-info');
-  if (crmInfo) {
-    if (tx.nama_pelanggan) {
-      const customer = customers.find(c => c.nama === tx.nama_pelanggan);
-      crmInfo.style.display = 'block';
-      document.getElementById('rec-points-earned').textContent = tx.poin_didapat || 0;
-      document.getElementById('rec-points-total').textContent = customer ? (customer.poin || 0) : (tx.poin_didapat || 0);
-    } else {
-      crmInfo.style.display = 'none';
-    }
-  }
-  const methodEl = document.getElementById('rec-method');
-  if (methodEl) {
-    methodEl.textContent = tx.metode_pembayaran || 'Tunai';
-    if (tx.status_pembayaran === 'Bon') {
-      methodEl.textContent += ' (Bon)';
-    }
+  text += "--------------------------------\n";
+  if (tx.nama_pelanggan) {
+    text += centerText("Pelanggan: " + tx.nama_pelanggan, 32) + "\n";
+    if (tx.poin_didapat) text += centerText("Poin Didapat: " + tx.poin_didapat, 32) + "\n";
+    text += "--------------------------------\n";
   }
   
-  const debtRow = document.getElementById('rec-debt-row');
-  const debtVal = document.getElementById('rec-debt');
-  if (debtRow && debtVal) {
-    if (tx.sisa_piutang > 0) {
-      debtVal.textContent = `Rp ${formatRupiah(tx.sisa_piutang)}`;
-      debtRow.style.display = 'flex';
-    } else {
-      debtRow.style.display = 'none';
-    }
-  }
+  text += centerText("Terima kasih atas", 32) + "\n";
+  text += centerText("kunjungan Anda", 32) + "\n";
+  
+  document.getElementById('receipt-text-pre').textContent = text;
   
   document.getElementById('receipt-modal').classList.add('active');
-  
-  // Set default pemilihan tombol struk ke "Cetak Nota" (index 0)
   selectedReceiptButtonIndex = 0;
   updateReceiptButtonsHighlight();
-  
-
 }
 
 function updateReceiptButtonsHighlight() {
