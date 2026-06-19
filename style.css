@@ -596,7 +596,7 @@ svg.icon-empty {
   border-bottom: 1px solid var(--bg-app);
 }
 .floating-item:hover, .floating-item.selected {
-  background-color: #334155; /* Gelap (Dark Slate) agar sangat jelas */
+  background-color: var(--color-primary);
   color: #ffffff;
 }
 .floating-item:hover .floating-item-name,
