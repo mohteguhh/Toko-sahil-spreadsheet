@@ -2051,11 +2051,10 @@ function triggerPrintReceipt() {
         }
         body {
           margin: 0;
-          padding: 0 1mm 0 0;
+          padding: 0;
           width: 58mm;
-          font-family: 'Courier New', Courier, monospace;
-          font-size: 11pt;
-          line-height: 1.25;
+          display: flex;
+          justify-content: center;
           background-color: #fff;
           color: #000;
           -webkit-print-color-adjust: exact;
@@ -2064,11 +2063,15 @@ function triggerPrintReceipt() {
         pre {
           margin: 0;
           padding: 0;
+          width: auto;
+          max-width: 100%;
           white-space: pre-wrap;
           word-break: break-all;
           font-family: 'Courier New', Courier, monospace;
-          font-size: 11.5pt;
+          font-size: 11pt;
           font-weight: bold;
+          line-height: 1.2;
+          text-align: left;
         }
       </style>
     </head>
