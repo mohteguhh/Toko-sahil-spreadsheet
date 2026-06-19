@@ -1967,10 +1967,11 @@ body.print-format-html #receipt-text-content {
   /* Print overrides for text receipt */
   body.printing-receipt .receipt-text-print-container {
     border: none !important;
-    padding: 0 !important;
+    padding: 0 0 0 3.8vw !important; /* Left padding to balance and match the right margin */
     margin: 0 !important;
     width: 100% !important;
     background: transparent !important;
+    box-sizing: border-box !important;
   }
   body.printing-receipt .receipt-text-header-title {
     font-size: 7.5vw !important; /* Scales proportionally to physical paper width */
