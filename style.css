@@ -1954,8 +1954,8 @@ body.print-format-html #receipt-text-content {
     box-shadow: none;
     padding: 0;
     margin: 0 auto; /* Center it! */
-    width: 48mm; /* Safe printable area for 58mm rolls */
-    max-width: 48mm;
+    width: 54mm; /* Increased printable area to make margins tighter */
+    max-width: 54mm;
     max-height: none;
     overflow: hidden;
     box-sizing: border-box;
@@ -1975,7 +1975,7 @@ body.print-format-html #receipt-text-content {
     background: transparent !important;
   }
   body.printing-receipt .receipt-text-header-title {
-    font-size: 14px !important; /* Scaled down for paper */
+    font-size: 16px !important; /* Slightly larger on paper */
     line-height: 1.25 !important;
     margin-bottom: 4px !important;
     font-weight: bold !important;
@@ -1984,7 +1984,7 @@ body.print-format-html #receipt-text-content {
     border: none !important;
     padding: 0 !important;
     margin: 0 auto !important;
-    font-size: 8.5px !important; /* Slightly smaller to fit safely inside 48mm */
+    font-size: 10px !important; /* Safe size for 54mm width to fit 32 chars */
     line-height: 1.25 !important;
     width: 100% !important;
     max-width: 100% !important;
