@@ -1895,6 +1895,20 @@ function triggerPrintReceipt() {
   iframe.style.top = '-1000px';
   iframe.style.left = '-1000px';
   
+  // Daftarkan event listener onload SEBELUM menulis konten dan SEBELUM append ke DOM untuk reliabilitas tinggi
+  iframe.onload = () => {
+    // Berikan jeda waktu 150ms agar engine render browser menyelesaikan tugasnya
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (e) {
+        console.error("Gagal mencetak melalui iframe terisolasi, fallback ke window.print():", e);
+        window.print();
+      }
+    }, 150);
+  };
+  
   document.body.appendChild(iframe);
   
   const doc = iframe.contentWindow.document || iframe.contentDocument;
@@ -1934,7 +1948,6 @@ function triggerPrintReceipt() {
           padding: 0 1.5mm;
           box-sizing: border-box;
           font-family: monospace;
-          font-size: 8pt;
           display: flex;
           flex-direction: column;
         }
@@ -1944,10 +1957,10 @@ function triggerPrintReceipt() {
         }
         
         .receipt-logo-img {
-          height: 48px;
-          max-width: 120px;
+          height: 72px !important; /* Perbesar Logo (Sesuai Permintaan) */
+          max-width: 160px !important; /* Perbesar Logo (Sesuai Permintaan) */
           object-fit: contain;
-          margin-bottom: 0.35rem;
+          margin-bottom: 0.5rem;
           display: block;
           margin-left: auto;
           margin-right: auto;
@@ -1956,20 +1969,21 @@ function triggerPrintReceipt() {
         .receipt-header {
           text-align: center;
           margin-bottom: 0.5rem;
+          font-size: ${receiptSettings.fontSizeHeader}px !important; /* Dinamis sesuai pengaturan */
         }
         
         .receipt-title {
           font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 1.25em;
-          font-weight: 900;
+          font-size: 1.5em !important; /* Lebih besar & tebal (Sesuai Permintaan) */
+          font-weight: 900 !important; /* Tebal ekstra (Sesuai Permintaan) */
           text-transform: uppercase;
-          letter-spacing: 0.02em;
-          margin-bottom: 0.15rem;
+          letter-spacing: 0.05em;
+          margin-bottom: 0.25rem;
           text-align: center;
         }
         
         .receipt-subtitle {
-          font-size: 0.85em;
+          font-size: 0.85em !important;
           margin-bottom: 0.05rem;
           text-align: center;
         }
@@ -1984,7 +1998,7 @@ function triggerPrintReceipt() {
           display: flex;
           flex-direction: column;
           gap: 0.15rem;
-          font-size: 0.9em;
+          font-size: ${receiptSettings.fontSizeItems}px !important; /* Dinamis sesuai pengaturan */
         }
         
         .receipt-detail-row {
@@ -1996,6 +2010,7 @@ function triggerPrintReceipt() {
           display: flex;
           flex-direction: column;
           gap: 0.35rem;
+          font-size: ${receiptSettings.fontSizeItems}px !important; /* Dinamis sesuai pengaturan */
         }
         
         .receipt-item-row {
@@ -2012,7 +2027,7 @@ function triggerPrintReceipt() {
         .receipt-item-row-bottom {
           display: flex;
           justify-content: space-between;
-          font-size: 0.95em;
+          font-size: 0.95em !important;
           padding-left: 0.25rem;
         }
         
@@ -2020,7 +2035,7 @@ function triggerPrintReceipt() {
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
-          font-size: 0.9em;
+          font-size: ${receiptSettings.fontSizeFooter}px !important; /* Dinamis sesuai pengaturan */
         }
         
         .receipt-total-row {
@@ -2029,7 +2044,7 @@ function triggerPrintReceipt() {
         }
         
         .receipt-total-row.final-total {
-          font-size: 1.1em;
+          font-size: 1.1em !important; /* Sedikit lebih besar dari footer total */
           font-weight: bold;
           border-top: 1px dashed #222222;
           border-bottom: 1px dashed #222222;
@@ -2039,7 +2054,7 @@ function triggerPrintReceipt() {
         .receipt-footer {
           text-align: center;
           margin-top: 0.75rem;
-          font-size: 0.85em;
+          font-size: ${receiptSettings.fontSizeFooter * 0.9}px !important; /* Dinamis sesuai pengaturan */
         }
       </style>
     </head>
@@ -2049,12 +2064,6 @@ function triggerPrintReceipt() {
     </html>
   `);
   doc.close();
-  
-  // Tunggu 300ms agar font & gambar logo selesai di-render sebelum dicetak
-  setTimeout(() => {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-  }, 300);
 }
 
 async function syncTransactionToCloud(tx) {
