@@ -1969,7 +1969,7 @@ function generatePlainTextReceipt(tx, items) {
   
   // 3. Daftar Barang
   let subtotal = 0;
-  items.forEach(item => {
+  items.forEach((item, index) => {
     subtotal += item.harga * item.qty;
     const nameLines = wrapText(item.nama, width);
     nameLines.forEach(line => {
@@ -1978,6 +1978,10 @@ function generatePlainTextReceipt(tx, items) {
     const qtyPriceStr = `${item.qty}x @Rp ${formatRupiah(item.harga)}`;
     const totalItemStr = `Rp ${formatRupiah(item.harga * item.qty)}`;
     text += formatLine("  " + qtyPriceStr, totalItemStr, width) + "\n";
+    
+    if (index < items.length - 1) {
+      text += centerText(".".repeat(width), width) + "\n";
+    }
   });
   text += centerText("-".repeat(width), width) + "\n";
   
@@ -2049,10 +2053,17 @@ function showReceipt(tx, items) {
   recItems.innerHTML = '';
   
   let subtotal = 0;
-  items.forEach(item => {
+  items.forEach((item, index) => {
     subtotal += item.harga * item.qty;
     const row = document.createElement('div');
     row.className = 'receipt-item-row';
+    
+    if (index < items.length - 1) {
+      row.style.borderBottom = '1px dashed #ddd';
+      row.style.paddingBottom = '0.4rem';
+      row.style.marginBottom = '0.4rem';
+    }
+    
     row.innerHTML = `
       <div class="receipt-item-row-top" style="align-items: flex-start;">
         <span style="flex: 1; padding-right: 0.5rem;">${item.nama}</span>
