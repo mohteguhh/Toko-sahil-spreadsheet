@@ -2344,3 +2344,117 @@ body.print-format-html #receipt-text-content {
   font-size: 0.75rem;
   font-weight: 500;
 }
+
+/* =========================================
+   NEW FEATURE STYLES 
+   ========================================= */
+
+/* 1. Hamburger Menu & Sidebar Nav */
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-main);
+  padding: 0.5rem;
+  margin-left: auto;
+}
+@media (max-width: 768px) {
+  .hamburger-btn {
+    display: block;
+  }
+  .nav-tabs {
+    display: none;
+    position: fixed;
+    top: 60px; /* Below navbar */
+    right: 0;
+    width: 250px;
+    height: calc(100vh - 60px);
+    background-color: var(--bg-surface);
+    border-left: 1px solid var(--border-color);
+    flex-direction: column;
+    padding: 1rem;
+    box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+    z-index: 1000;
+    overflow-y: auto;
+  }
+  .nav-tabs.sidebar-active {
+    display: flex;
+  }
+}
+
+/* 2. Zebra Cart Items */
+#cart-list .cart-item:nth-child(even) {
+  background-color: #fffaf0; /* Pale orange */
+}
+
+/* 3. Floating POS Total & Hide Subtotal */
+.summary-row.subtotal-row {
+  display: none !important;
+}
+.summary-row.total-row {
+  position: relative;
+  background: var(--primary-color);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  z-index: 10;
+  width: 100%;
+  margin: 1rem 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.summary-row.total-row span:first-child {
+  display: none; /* Hide 'Total Akhir' label to maximize font */
+}
+.summary-row.total-row span.total-value {
+  font-size: 2.5rem !important;
+  font-weight: 800;
+}
+@media (max-width: 768px) {
+  .summary-row.total-row {
+    padding: 0.75rem 1rem;
+  }
+  .summary-row.total-row span.total-value {
+    font-size: 2rem !important;
+  }
+}
+
+/* 4. Scrollable Analysis Best Sellers */
+.best-seller-card .table-wrapper {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+/* 5. Product Edit Popup Modal */
+.product-edit-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.product-edit-modal.active {
+  display: flex;
+}
+.product-edit-modal .card {
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+}
+.close-modal-btn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}

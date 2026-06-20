@@ -55,14 +55,16 @@ let appConfig = JSON.parse(localStorage.getItem('kasir_app_config')) || {
   strictShift: false,
   allowZeroStock: false,
   customerMode: true,
-  enablePromo: true
+  enablePromo: true,
+  showDiscountPos: false
 };
 if (appConfig.enablePromo === undefined) appConfig.enablePromo = true;
+if (appConfig.showDiscountPos === undefined) appConfig.showDiscountPos = false;
 
 // Pengaturan Nota / Struk Toko (Default)
 let receiptSettings = JSON.parse(localStorage.getItem('kasir_receipt_settings')) || {
   logo: '',
-  name: 'KasirKilat',
+  name: 'Toko Sahil POS',
   phone: '0812-3456-7890',
   address: 'Jl. Utama No. 123, Indonesia',
   fontSizeHeader: 14,
@@ -81,11 +83,11 @@ if (receiptSettings.showMethod === undefined) receiptSettings.showMethod = true;
 if (receiptSettings.fontSizeHeader === undefined) receiptSettings.fontSizeHeader = receiptSettings.fontSize || 14;
 if (receiptSettings.fontSizeItems === undefined) receiptSettings.fontSizeItems = receiptSettings.fontSize || 12;
 if (receiptSettings.fontSizeFooter === undefined) receiptSettings.fontSizeFooter = receiptSettings.fontSize || 12;
-if (receiptSettings.printFormat === undefined) receiptSettings.printFormat = 'html';
-if (receiptSettings.textFontSize === undefined) receiptSettings.textFontSize = 8;
-if (receiptSettings.textTitleFontSize === undefined) receiptSettings.textTitleFontSize = 13;
-if (receiptSettings.textPaddingLeft === undefined) receiptSettings.textPaddingLeft = 2;
-if (receiptSettings.textWidth === undefined) receiptSettings.textWidth = 32;
+if (receiptSettings.printFormat === undefined) receiptSettings.printFormat = 'text';
+if (receiptSettings.textFontSize === undefined) receiptSettings.textFontSize = 14;
+if (receiptSettings.textTitleFontSize === undefined) receiptSettings.textTitleFontSize = 16;
+if (receiptSettings.textPaddingLeft === undefined) receiptSettings.textPaddingLeft = 6;
+if (receiptSettings.textWidth === undefined) receiptSettings.textWidth = 25;
 
 // Contoh Data Awal (Produk)
 const defaultProducts = [
@@ -390,12 +392,20 @@ function saveAppConfig() {
   appConfig.allowZeroStock = document.getElementById('chk-allow-zero-stock').checked;
   appConfig.customerMode = document.getElementById('chk-customer-mode').checked;
   appConfig.enablePromo = document.getElementById('chk-enable-promo').checked;
+  appConfig.showDiscountPos = document.getElementById('chk-show-discount').checked;
   localStorage.setItem('kasir_app_config', JSON.stringify(appConfig));
   
   const promoContainer = document.getElementById('promo-fields-container');
   if (promoContainer) {
     promoContainer.style.display = appConfig.enablePromo ? 'grid' : 'none';
   }
+  
+  const shiftWrapper = document.getElementById('buka-shift-wrapper');
+  if (shiftWrapper) {
+    shiftWrapper.style.display = appConfig.strictShift ? 'flex' : 'none';
+  }
+  
+  calculateTotal(); // Update POS discount visibility
   
   alert('Pengaturan Sistem Aplikasi berhasil disimpan!');
 }
@@ -406,9 +416,22 @@ function loadAppConfig() {
   document.getElementById('chk-customer-mode').checked = appConfig.customerMode;
   document.getElementById('chk-enable-promo').checked = appConfig.enablePromo;
   
+  const chkDiscount = document.getElementById('chk-show-discount');
+  if (chkDiscount) chkDiscount.checked = appConfig.showDiscountPos;
+  
+  const discountRowWrapper = document.getElementById('discount-row-wrapper');
+  if (discountRowWrapper) {
+    discountRowWrapper.style.display = appConfig.showDiscountPos ? 'flex' : 'none';
+  }
+  
   const promoContainer = document.getElementById('promo-fields-container');
   if (promoContainer) {
     promoContainer.style.display = appConfig.enablePromo ? 'grid' : 'none';
+  }
+  
+  const shiftWrapper = document.getElementById('buka-shift-wrapper');
+  if (shiftWrapper) {
+    shiftWrapper.style.display = appConfig.strictShift ? 'flex' : 'none';
   }
 }
 
@@ -573,7 +596,7 @@ function updateTextWidthPreview(val) {
 }
 
 function saveReceiptSettings() {
-  receiptSettings.name = document.getElementById('store-name-input').value.trim() || 'KasirKilat';
+  receiptSettings.name = document.getElementById('store-name-input').value.trim() || 'Toko Sahil POS';
   receiptSettings.phone = document.getElementById('store-phone-input').value.trim() || '-';
   receiptSettings.address = document.getElementById('store-address-input').value.trim() || '-';
   
@@ -602,9 +625,19 @@ function saveReceiptSettings() {
   alert('Pengaturan Branding & Nota berhasil disimpan!');
 }
 
+function toggleSidebar() {
+  const navTabs = document.querySelector('.nav-tabs');
+  if (navTabs) {
+    navTabs.classList.toggle('sidebar-active');
+  }
+}
+
 // --- NAVIGASI TAB ---
 function switchTab(tabName) {
   activeTab = tabName;
+  
+  const navTabs = document.querySelector('.nav-tabs');
+  if (navTabs) navTabs.classList.remove('sidebar-active');
   
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.remove('active');
@@ -757,12 +790,19 @@ function parseTransactionItemsString(itemsStr) {
 
 // --- TAB 1: MODUL ANALISIS PENJUALAN ---
 
+function getLocalISODate(dateStrOrObj) {
+  const date = new Date(dateStrOrObj);
+  if (isNaN(date)) return '';
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString();
+}
+
 // Inisialisasi filter analisis (hari ini by default)
 function initAnalyticsFilter() {
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
+  const nowStr = getLocalISODate(new Date());
+  const todayStr = nowStr.slice(0, 10);
   const thisMonth = todayStr.slice(0, 7); // YYYY-MM
-  const thisYear = now.getFullYear();
+  const thisYear = new Date().getFullYear();
   
   // Set default date filter to today
   const dateInput = document.getElementById('analytics-filter-date');
@@ -796,14 +836,14 @@ function onAnalyticsFilterTypeChange() {
 function getAnalyticsFilteredTxs() {
   const filterType = document.getElementById('analytics-filter-type')?.value || 'hari';
   if (filterType === 'hari') {
-    const dateVal = document.getElementById('analytics-filter-date')?.value || new Date().toISOString().slice(0, 10);
-    return transactions.filter(tx => tx.waktu && tx.waktu.slice(0, 10) === dateVal);
+    const dateVal = document.getElementById('analytics-filter-date')?.value || getLocalISODate(new Date()).slice(0, 10);
+    return transactions.filter(tx => tx.waktu && getLocalISODate(tx.waktu).slice(0, 10) === dateVal);
   } else if (filterType === 'bulan') {
-    const monthVal = document.getElementById('analytics-filter-month')?.value || new Date().toISOString().slice(0, 7);
-    return transactions.filter(tx => tx.waktu && tx.waktu.slice(0, 7) === monthVal);
+    const monthVal = document.getElementById('analytics-filter-month')?.value || getLocalISODate(new Date()).slice(0, 7);
+    return transactions.filter(tx => tx.waktu && getLocalISODate(tx.waktu).slice(0, 7) === monthVal);
   } else if (filterType === 'tahun') {
     const yearVal = document.getElementById('analytics-filter-year')?.value || String(new Date().getFullYear());
-    return transactions.filter(tx => tx.waktu && tx.waktu.slice(0, 4) === yearVal);
+    return transactions.filter(tx => tx.waktu && getLocalISODate(tx.waktu).slice(0, 4) === yearVal);
   } else {
     return [...transactions];
   }
@@ -987,7 +1027,7 @@ function updateAnalytics() {
   if (sortedSellers.length === 0) {
     bestSellersBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Belum ada penjualan.</td></tr>';
   } else {
-    sortedSellers.slice(0, 5).forEach((nama, idx) => {
+    sortedSellers.slice(0, 10).forEach((nama, idx) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>#${idx + 1}</strong></td>
@@ -1080,7 +1120,10 @@ function playBeep() {
   }
 }
 
-function openCameraScanner() {
+let scannerMode = 'pos'; // pos, kulak, produk
+
+function openCameraScanner(mode = 'pos') {
+  scannerMode = mode;
   if (typeof Html5Qrcode === 'undefined') {
     alert("Maaf, modul kamera scanner gagal dimuat. Pastikan perangkat Anda terhubung ke internet saat membuka aplikasi agar modul dapat diunduh otomatis.");
     return;
@@ -1090,16 +1133,14 @@ function openCameraScanner() {
   wrapper.classList.add('active');
   
   html5QrcodeScanner = new Html5Qrcode("interactive-reader", {
-    // Menghapus formatsToSupport agar library memindai semua barcode 1D & 2D secara optimal
-    useBarCodeDetectorIfSupported: true // Gunakan native API bawaan HP yang jauh lebih cepat dan akurat
+    useBarCodeDetectorIfSupported: true
   });
   
-  // Memulai kamera belakang ponsel
   html5QrcodeScanner.start(
     { facingMode: "environment" },
     {
-      fps: 15, // Ditingkatkan ke 15fps agar lebih responsif
-      qrbox: { width: 250, height: 120 } // Lebih horizontal untuk barcode 1D standar
+      fps: 15,
+      qrbox: { width: 250, height: 120 }
     },
     onScanSuccess,
     onScanFailure
@@ -1114,6 +1155,27 @@ function onScanSuccess(decodedText, decodedResult) {
   playBeep();
   
   const searchVal = decodedText.trim();
+  
+  if (scannerMode === 'kulak') {
+    const input = document.getElementById('kulak-search-input');
+    if (input) {
+      input.value = searchVal;
+      filterKulakSearch();
+    }
+    closeCameraScanner();
+    return;
+  }
+  
+  if (scannerMode === 'produk') {
+    const input = document.getElementById('product-list-search');
+    if (input) {
+      input.value = searchVal;
+      filterProductListTable();
+    }
+    closeCameraScanner();
+    return;
+  }
+  
   const p = products.find(prod => prod.barcode === searchVal || prod.id.toLowerCase() === searchVal.toLowerCase());
   
   if (p) {
@@ -1220,8 +1282,8 @@ function renderFloatingDropdown() {
       <img src="${imgUrl}" alt="${p.nama}" class="floating-item-img" onerror="handleImageError(this)">
       <div class="floating-item-info">
         <span class="floating-item-name">${p.nama} (${p.id})</span>
-        <div class="floating-item-meta">
-          <span class="floating-item-price">Rp ${formatRupiah(p.harga_jual)}</span>
+        <div class="floating-item-meta" style="flex-wrap: wrap; gap: 0.2rem;">
+          <span class="floating-item-price">Jual: Rp ${formatRupiah(p.harga_jual)} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal; margin-left:0.5rem;">Beli: Rp ${formatRupiah(p.harga_beli || 0)}</span></span>
           <span class="floating-item-stock ${stockClass}">${stockText}</span>
         </div>
       </div>
@@ -1508,8 +1570,14 @@ function calculateTotal() {
     subtotal += item.harga * item.qty;
   });
   
+  const discountRowWrapper = document.getElementById('discount-row-wrapper');
+  if (discountRowWrapper) {
+    discountRowWrapper.style.display = appConfig.showDiscountPos ? 'flex' : 'none';
+  }
+  
   const discountInput = document.getElementById('discount-input');
   let discountPercent = parseInt(discountInput.value) || 0;
+  if (!appConfig.showDiscountPos) discountPercent = 0;
   if (discountPercent < 0) discountPercent = 0;
   if (discountPercent > 100) discountPercent = 100;
   
@@ -2506,15 +2574,26 @@ function saveProduct(event) {
   saveProductsLocally();
   updateCategoriesList();
   renderProductsTable();
-  resetProductForm();
+  
   checkPromoBanner();
   
   alert("Produk berhasil disimpan!");
+  closeProductModal(); // This will also reset the form
+  
   syncProductsToCloudBackground();
   
   if (isPriceIncreased) {
     showPriceChangeNotification(productData, oldPrice, priceSellInput);
   }
+}
+
+function openProductModal() {
+  document.getElementById('product-edit-modal').classList.add('active');
+}
+
+function closeProductModal() {
+  document.getElementById('product-edit-modal').classList.remove('active');
+  resetProductForm();
 }
 
 function editProduct(index) {
@@ -2537,8 +2616,7 @@ function editProduct(index) {
   document.getElementById('form-title').textContent = "Edit Produk";
   document.getElementById('btn-save-product').textContent = "Perbarui Produk";
   
-  // Scroll form ke atas di layar HP agar kasir tahu form siap diisi
-  document.querySelector('.form-card').scrollIntoView({ behavior: 'smooth' });
+  openProductModal();
 }
 
 function generateNextProductId() {
@@ -2640,7 +2718,7 @@ function exportToCSV() {
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `Data_Produk_KasirKilat_${new Date().toISOString().slice(0,10)}.csv`);
+  link.setAttribute("download", `Data_Produk_Toko Sahil POS_${new Date().toISOString().slice(0,10)}.csv`);
   document.body.appendChild(link);
   
   link.click();
@@ -2758,7 +2836,7 @@ function clearLocalCache() {
     selectedProductIds.clear();
     receiptSettings = {
       logo: '',
-      name: 'KasirKilat',
+      name: 'Toko Sahil POS',
       phone: '0812-3456-7890',
       address: 'Jl. Utama No. 123, Indonesia',
       fontSize: 12
@@ -3082,11 +3160,13 @@ function renderTransactionsTable() {
       : (tx.daftar_item || tx.items || "").toLowerCase();
       
     const waktuStr = new Date(tx.waktu).toLocaleString('id-ID').toLowerCase();
+    const customerName = (tx.pelanggan || '').toLowerCase();
     
     const matchesSearch = tx.id.toLowerCase().includes(searchVal) || 
                           waktuStr.includes(searchVal) ||
                           itemsStr.includes(searchVal) ||
-                          tx.total.toString().includes(searchVal);
+                          tx.total.toString().includes(searchVal) ||
+                          customerName.includes(searchVal);
                           
     if (!matchesSearch) return false;
     
@@ -3876,7 +3956,7 @@ function exportTransactionsToCSV() {
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `Laporan_Penjualan_KasirKilat_${new Date().toISOString().slice(0,10)}.csv`);
+  link.setAttribute("download", `Laporan_Penjualan_Toko Sahil POS_${new Date().toISOString().slice(0,10)}.csv`);
   document.body.appendChild(link);
   
   link.click();
@@ -3965,7 +4045,7 @@ function updateLabelPreview() {
   const previewContainer = document.getElementById('label-preview-container');
   previewContainer.innerHTML = '';
   
-  const storeName = receiptSettings.name || 'KasirKilat';
+  const storeName = receiptSettings.name || 'Toko Sahil POS';
   const priceFormatted = `Rp ${formatRupiah(p.harga_jual)}`;
   
   if (labelType === 'product') {
@@ -4009,7 +4089,7 @@ function printLabels() {
   const printArea = document.getElementById('labels-print-area');
   printArea.innerHTML = '';
   
-  const storeName = receiptSettings.name || 'KasirKilat';
+  const storeName = receiptSettings.name || 'Toko Sahil POS';
   const priceFormatted = `Rp ${formatRupiah(p.harga_jual)}`;
   
   const container = document.createElement('div');
@@ -4177,7 +4257,7 @@ function printBulkLabels() {
   printArea.innerHTML = '';
   
   const qtyInputs = document.querySelectorAll('.bulk-print-qty-input');
-  const storeName = receiptSettings.name || 'KasirKilat';
+  const storeName = receiptSettings.name || 'Toko Sahil POS';
   
   const container = document.createElement('div');
   container.className = 'labels-print-container';
@@ -4663,6 +4743,17 @@ function updateHeldCartsUI() {
     badge.style.display = heldCarts.length > 0 ? 'flex' : 'none';
   }
 }
+
+// Tutup menu sidebar hamburger jika mengklik di luar area menu
+document.addEventListener('click', function(event) {
+  const navTabs = document.querySelector('.nav-tabs');
+  const hamburgerBtn = document.querySelector('.hamburger-btn');
+  if (navTabs && navTabs.classList.contains('sidebar-active')) {
+    if (!navTabs.contains(event.target) && hamburgerBtn && !hamburgerBtn.contains(event.target)) {
+      navTabs.classList.remove('sidebar-active');
+    }
+  }
+});
 
 function openHeldCartsModal() {
   const tbody = document.getElementById('held-carts-tbody');
