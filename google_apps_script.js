@@ -40,6 +40,12 @@ function doPost(e) {
     if (action === "updateTransactions") {
       return handleResponse(updateTransactions(data.transactions));
     }
+    if (action === "upsertProduct") {
+      return handleResponse(upsertProduct(data.product));
+    }
+    if (action === "deleteProduct") {
+      return handleResponse(deleteProduct(data.productId));
+    }
     
     return handleResponse({ status: "error", message: "Aksi POST tidak dikenali" });
   } catch (error) {
@@ -246,6 +252,60 @@ function updateProducts(productsList) {
   sheet.getRange(2, 1, values.length, 9).setValues(values);
   
   return { status: "success", message: "Sinkronisasi produk (" + productsList.length + " item) sukses secara instan!" };
+}
+
+// Menambah atau Memperbarui SATU produk secara spesifik (Incremental Sync)
+function upsertProduct(p) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Produk");
+  var rows = sheet.getDataRange().getValues();
+  
+  var expDateStr = p.tanggal_kadaluarsa || "";
+  if (expDateStr instanceof Date) {
+    expDateStr = expDateStr.toISOString().slice(0, 10);
+  }
+  
+  var rowData = [
+    p.id || "",
+    p.nama || "",
+    p.kategori || "Umum",
+    Number(p.harga_beli) || 0,
+    Number(p.harga_jual) || 0,
+    Number(p.stok) || 0,
+    p.barcode || "",
+    p.gambar || "",
+    expDateStr
+  ];
+  
+  var found = false;
+  for (var i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString().toLowerCase() === p.id.toString().toLowerCase()) {
+      sheet.getRange(i + 1, 1, 1, 9).setValues([rowData]);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    sheet.appendRow(rowData);
+  }
+  
+  return { status: "success", message: "Produk berhasil diupdate secara individual." };
+}
+
+// Menghapus SATU produk secara spesifik
+function deleteProduct(productId) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Produk");
+  var rows = sheet.getDataRange().getValues();
+  
+  for (var i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString().toLowerCase() === productId.toString().toLowerCase()) {
+      sheet.deleteRow(i + 1);
+      return { status: "success", message: "Produk berhasil dihapus." };
+    }
+  }
+  return { status: "success", message: "Produk tidak ditemukan." };
 }
 
 // Menambahkan atau memperbarui transaksi secara massal (mass-overwrite)

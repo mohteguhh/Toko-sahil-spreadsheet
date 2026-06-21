@@ -371,14 +371,14 @@ function loadReceiptSettings() {
   document.getElementById('receipt-print-format').value = receiptSettings.printFormat || 'html';
   
   // Load Text Format Settings
-  document.getElementById('receipt-text-title-font-size').value = receiptSettings.textTitleFontSize || 13;
-  document.getElementById('text-title-font-preview-val').textContent = `${receiptSettings.textTitleFontSize || 13}pt`;
-  document.getElementById('receipt-text-font-size').value = receiptSettings.textFontSize || 8;
-  document.getElementById('text-font-preview-val').textContent = `${receiptSettings.textFontSize || 8}pt`;
-  document.getElementById('receipt-text-padding-left').value = receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 2;
-  document.getElementById('text-padding-preview-val').textContent = `${receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 2}mm`;
-  document.getElementById('receipt-text-width').value = receiptSettings.textWidth || 32;
-  document.getElementById('text-width-preview-val').textContent = `${receiptSettings.textWidth || 32} karakter`;
+  document.getElementById('receipt-text-title-font-size').value = receiptSettings.textTitleFontSize || 14;
+  document.getElementById('text-title-font-preview-val').textContent = `${receiptSettings.textTitleFontSize || 14}pt`;
+  document.getElementById('receipt-text-font-size').value = receiptSettings.textFontSize || 11;
+  document.getElementById('text-font-preview-val').textContent = `${receiptSettings.textFontSize || 11}pt`;
+  document.getElementById('receipt-text-padding-left').value = receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 1;
+  document.getElementById('text-padding-preview-val').textContent = `${receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 1}mm`;
+  document.getElementById('receipt-text-width').value = receiptSettings.textWidth || 25;
+  document.getElementById('text-width-preview-val').textContent = `${receiptSettings.textWidth || 25} karakter`;
   
   applyReceiptSettings();
 }
@@ -535,10 +535,10 @@ function applyReceiptSettings() {
   }
   
   // Set CSS Variables for Plain Text Format dynamic values
-  const textTitleFontSize = receiptSettings.textTitleFontSize || 13; // in pt
-  const textFontSize = receiptSettings.textFontSize || 8; // in pt
-  const textPaddingLeft = receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 2; // in mm
-  const textWidth = receiptSettings.textWidth || 32; // character columns
+  const textTitleFontSize = receiptSettings.textTitleFontSize || 14; // in pt
+  const textFontSize = receiptSettings.textFontSize || 11; // in pt
+  const textPaddingLeft = receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 1; // in mm
+  const textWidth = receiptSettings.textWidth || 25; // character columns
   
   document.documentElement.style.setProperty('--print-text-title-size', `${textTitleFontSize}pt`);
   document.documentElement.style.setProperty('--print-text-font-size', `${textFontSize}pt`);
@@ -573,25 +573,25 @@ function updateReceiptFontSizePreview(val) {
 
 function updateTextTitleFontPreview(val) {
   document.getElementById('text-title-font-preview-val').textContent = `${val}pt`;
-  const textTitleFontSize = parseFloat(val) || 13;
+  const textTitleFontSize = parseFloat(val) || 14;
   document.documentElement.style.setProperty('--print-text-title-size', `${textTitleFontSize}pt`);
 }
 
 function updateTextFontPreview(val) {
   document.getElementById('text-font-preview-val').textContent = `${val}pt`;
-  const textFontSize = parseFloat(val) || 8;
+  const textFontSize = parseFloat(val) || 11;
   document.documentElement.style.setProperty('--print-text-font-size', `${textFontSize}pt`);
 }
 
 function updateTextPaddingPreview(val) {
   document.getElementById('text-padding-preview-val').textContent = `${val}mm`;
-  const textPaddingLeft = parseFloat(val) || 2;
+  const textPaddingLeft = parseFloat(val) || 1;
   document.documentElement.style.setProperty('--print-text-padding-left', `${textPaddingLeft}mm`);
 }
 
 function updateTextWidthPreview(val) {
   document.getElementById('text-width-preview-val').textContent = `${val} karakter`;
-  const textWidth = parseInt(val) || 32;
+  const textWidth = parseInt(val) || 25;
   document.documentElement.style.setProperty('--print-text-width', textWidth);
 }
 
@@ -615,10 +615,10 @@ function saveReceiptSettings() {
   receiptSettings.printFormat = document.getElementById('receipt-print-format').value;
   
   // Save Text Format Settings
-  receiptSettings.textTitleFontSize = parseFloat(document.getElementById('receipt-text-title-font-size').value) || 13;
-  receiptSettings.textFontSize = parseFloat(document.getElementById('receipt-text-font-size').value) || 8;
-  receiptSettings.textPaddingLeft = parseFloat(document.getElementById('receipt-text-padding-left').value) || 2;
-  receiptSettings.textWidth = parseInt(document.getElementById('receipt-text-width').value) || 32;
+  receiptSettings.textTitleFontSize = parseFloat(document.getElementById('receipt-text-title-font-size').value) || 14;
+  receiptSettings.textFontSize = parseFloat(document.getElementById('receipt-text-font-size').value) || 11;
+  receiptSettings.textPaddingLeft = parseFloat(document.getElementById('receipt-text-padding-left').value) || 1;
+  receiptSettings.textWidth = parseInt(document.getElementById('receipt-text-width').value) || 25;
   
   localStorage.setItem('kasir_receipt_settings', JSON.stringify(receiptSettings));
   applyReceiptSettings();
@@ -1176,7 +1176,7 @@ function onScanSuccess(decodedText, decodedResult) {
     return;
   }
   
-  const p = products.find(prod => prod.barcode === searchVal || prod.id.toLowerCase() === searchVal.toLowerCase());
+  const p = products.find(prod => String(prod.barcode) === searchVal || String(prod.id).toLowerCase() === searchVal.toLowerCase());
   
   if (p) {
     if (p.stok > 0 || appConfig.allowZeroStock) {
@@ -1229,11 +1229,21 @@ function filterProducts() {
   // Barcode exact match logic dipindah ke handleSearchInputKeydowns saat Enter ditekan
   // untuk mencegah pemindaian sebagian jika scanner cepat.
   
-  filteredProducts = products.filter(p => {
-    return p.nama.toLowerCase().includes(searchVal) || 
-           p.id.toLowerCase().includes(searchVal) ||
-           (p.barcode && p.barcode.toLowerCase().includes(searchVal));
-  }).slice(0, 15);
+  let matched = products.filter(p => {
+    return String(p.nama).toLowerCase().includes(searchVal) || 
+           String(p.id).toLowerCase().includes(searchVal) ||
+           (p.barcode && String(p.barcode).toLowerCase().includes(searchVal));
+  });
+  
+  matched.sort((a, b) => {
+    const aNameMatch = String(a.nama).toLowerCase().includes(searchVal);
+    const bNameMatch = String(b.nama).toLowerCase().includes(searchVal);
+    if (aNameMatch && !bNameMatch) return -1;
+    if (!aNameMatch && bNameMatch) return 1;
+    return 0;
+  });
+  
+  filteredProducts = matched.slice(0, 15);
   
   if (filteredProducts.length === 0) {
     dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
@@ -1315,8 +1325,8 @@ function handleSearchInputKeydowns(e) {
     
     // 1. Cek exact match barcode atau ID terlebih dahulu (untuk scanner)
     const exactMatch = products.find(p => 
-      (p.barcode && p.barcode.toLowerCase() === searchVal) || 
-      p.id.toLowerCase() === searchVal
+      (p.barcode && String(p.barcode).toLowerCase() === searchVal) || 
+      String(p.id).toLowerCase() === searchVal
     );
     
     if (exactMatch) {
@@ -1921,14 +1931,14 @@ function wrapText(text, maxChars) {
   return lines;
 }
 
-function centerText(text, width = 32) {
+function centerText(text, width = 25) {
   if (!text) return " ".repeat(width);
   if (text.length >= width) return text.substring(0, width);
   const leftPadding = Math.floor((width - text.length) / 2);
   return " ".repeat(leftPadding) + text;
 }
 
-function formatLine(left, right, width = 32) {
+function formatLine(left, right, width = 25) {
   left = left || "";
   right = right || "";
   const spaceNeeded = width - left.length - right.length;
@@ -1939,7 +1949,19 @@ function formatLine(left, right, width = 32) {
 }
 
 function generatePlainTextReceipt(tx, items) {
-  const width = receiptSettings.textWidth || 32; // Standard columns for 58mm printer
+  let width = receiptSettings.textWidth || 25; // Default 25 karakter
+  
+  // Hitung apakah ada teks barang yang melebihi batas lebar kolom
+  let maxItemWidth = 0;
+  items.forEach(item => {
+    const qtyPriceStr = `${item.qty}x @Rp ${formatRupiah(item.harga)} =`;
+    const totalItemStr = `Rp ${formatRupiah(item.harga * item.qty)}`;
+    const lineLen = qtyPriceStr.length + 1 + totalItemStr.length;
+    if (lineLen > maxItemWidth) maxItemWidth = lineLen;
+  });
+  if (maxItemWidth > width) {
+    width = maxItemWidth;
+  }
   let text = "";
   
   // 1. Informasi Alamat & Telp Toko (Nama Toko dirender terpisah dengan HTML agar font bisa besar)
@@ -1975,12 +1997,15 @@ function generatePlainTextReceipt(tx, items) {
     nameLines.forEach(line => {
       text += line + "\n";
     });
-    const qtyPriceStr = `${item.qty}x @Rp ${formatRupiah(item.harga)}`;
+    const qtyPriceStr = `${item.qty}x @Rp ${formatRupiah(item.harga)} =`;
     const totalItemStr = `Rp ${formatRupiah(item.harga * item.qty)}`;
-    text += formatLine("  " + qtyPriceStr, totalItemStr, width) + "\n";
+    const plainLineText = qtyPriceStr + " " + totalItemStr;
+    const leftPadding = Math.floor((width - plainLineText.length) / 2);
+    const paddedLine = " ".repeat(Math.max(0, leftPadding)) + qtyPriceStr + " <b>" + totalItemStr + "</b>";
+    text += paddedLine + "\n";
     
     if (index < items.length - 1) {
-      text += centerText(".".repeat(width), width) + "\n";
+      text += centerText("-".repeat(width), width) + "\n";
     }
   });
   text += centerText("-".repeat(width), width) + "\n";
@@ -2030,10 +2055,16 @@ function generatePlainTextReceipt(tx, items) {
   text += centerText("=".repeat(width), width) + "\n";
   
   // 5. Footer
-  text += centerText("Terima kasih atas kunjungan", width) + "\n";
-  text += centerText("Anda!", width) + "\n";
-  text += centerText("Barang yang sudah dibeli tidak", width) + "\n";
-  text += centerText("dapat ditukar/dikembalikan.", width) + "\n";
+  const footerLines = [
+    "Terima kasih atas kunjungan Anda!",
+    "Barang yang sudah dibeli tidak dapat ditukar/dikembalikan"
+  ];
+  footerLines.forEach(line => {
+    const wrapped = wrapText(line, width);
+    wrapped.forEach(wLine => {
+      text += centerText(wLine, width) + "\n";
+    });
+  });
   
   return text;
 }
@@ -2134,7 +2165,7 @@ function showReceipt(tx, items) {
   
   const textBody = document.getElementById('rec-text-body');
   if (textBody) {
-    textBody.textContent = generatePlainTextReceipt(tx, items);
+    textBody.innerHTML = generatePlainTextReceipt(tx, items);
   }
   
   document.getElementById('receipt-modal').classList.add('active');
@@ -2235,7 +2266,7 @@ function filterKulakSearch() {
   }
   
   // Cek barcode match langsung
-  const barcodeMatch = products.find(p => p.barcode && p.barcode.toLowerCase() === val);
+  const barcodeMatch = products.find(p => p.barcode && String(p.barcode).toLowerCase() === val);
   if (barcodeMatch) {
     openKulakForm(barcodeMatch);
     input.value = '';
@@ -2243,11 +2274,21 @@ function filterKulakSearch() {
     return;
   }
   
-  kulakFilteredProducts = products.filter(p => {
-    return p.nama.toLowerCase().includes(val) || 
-           p.id.toLowerCase().includes(val) ||
-           (p.barcode && p.barcode.toLowerCase().includes(val));
-  }).slice(0, 15);
+  let matched = products.filter(p => {
+    return String(p.nama).toLowerCase().includes(val) || 
+           String(p.id).toLowerCase().includes(val) ||
+           (p.barcode && String(p.barcode).toLowerCase().includes(val));
+  });
+  
+  matched.sort((a, b) => {
+    const aNameMatch = String(a.nama).toLowerCase().includes(val);
+    const bNameMatch = String(b.nama).toLowerCase().includes(val);
+    if (aNameMatch && !bNameMatch) return -1;
+    if (!aNameMatch && bNameMatch) return 1;
+    return 0;
+  });
+  
+  kulakFilteredProducts = matched.slice(0, 15);
   
   if (kulakFilteredProducts.length === 0) {
     dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
@@ -2372,8 +2413,17 @@ function saveKulak(e) {
     alert(`Berhasil kulak barang! Stok "${p.nama}" sekarang menjadi ${p.stok} pcs.`);
     closeKulakForm();
     
-    // Sinkronkan ke cloud secara massal di latar belakang (tanpa lag)
-    syncProductsToCloudBackground();
+    // Sinkronkan ke cloud secara individual (Incremental)
+    if (gasUrl) {
+      updateSyncStatus('syncing', 'Menyimpan stok...');
+      fetchFromGAS('upsertProduct', { product: p }).then(res => {
+        if (res && res.status === 'success') {
+          updateSyncStatus('online', 'Tersinkronisasi');
+        } else {
+          updateSyncStatus('offline', 'Koneksi Terputus');
+        }
+      });
+    }
 
     if (isPriceIncreased) {
       showPriceChangeNotification(p, oldPrice, newSellPrice);
@@ -2408,10 +2458,10 @@ function renderProductsTable() {
   
   // Filter produk
   let matched = products.filter(p => {
-    return p.nama.toLowerCase().includes(searchVal) || 
-           p.id.toLowerCase().includes(searchVal) ||
-           (p.barcode && p.barcode.toLowerCase().includes(searchVal)) ||
-           (p.kategori && p.kategori.toLowerCase().includes(searchVal));
+    return String(p.nama).toLowerCase().includes(searchVal) || 
+           String(p.id).toLowerCase().includes(searchVal) ||
+           (p.barcode && String(p.barcode).toLowerCase().includes(searchVal)) ||
+           (p.kategori && String(p.kategori).toLowerCase().includes(searchVal));
   });
   
   // Sort produk
@@ -2434,6 +2484,14 @@ function renderProductsTable() {
       } else if (sortValue === 'price_desc') {
         return b.harga_jual - a.harga_jual;
       }
+      
+      if (searchVal) {
+        const aNameMatch = String(a.nama).toLowerCase().includes(searchVal);
+        const bNameMatch = String(b.nama).toLowerCase().includes(searchVal);
+        if (aNameMatch && !bNameMatch) return -1;
+        if (!aNameMatch && bNameMatch) return 1;
+      }
+      
       return 0; // Default: newest (reverse original order if we assume last added is at the end, but original array is kept as is unless we explicitly reverse it)
     });
     
@@ -2591,7 +2649,16 @@ function saveProduct(event) {
   alert("Produk berhasil disimpan!");
   closeProductModal(); // This will also reset the form
   
-  syncProductsToCloudBackground();
+  if (gasUrl) {
+    updateSyncStatus('syncing', 'Menyimpan produk...');
+    fetchFromGAS('upsertProduct', { product: productData }).then(res => {
+      if (res && res.status === 'success') {
+        updateSyncStatus('online', 'Tersinkronisasi');
+      } else {
+        updateSyncStatus('offline', 'Koneksi Terputus');
+      }
+    });
+  }
   
   if (isPriceIncreased) {
     showPriceChangeNotification(productData, oldPrice, priceSellInput);
@@ -2697,7 +2764,16 @@ function deleteProduct(index) {
     saveProductsLocally();
     updateCategoriesList();
     renderProductsTable();
-    syncProductsToCloudBackground();
+    if (gasUrl) {
+      updateSyncStatus('syncing', 'Menghapus produk...');
+      fetchFromGAS('deleteProduct', { productId: p.id }).then(res => {
+        if (res && res.status === 'success') {
+          updateSyncStatus('online', 'Tersinkronisasi');
+        } else {
+          updateSyncStatus('offline', 'Koneksi Terputus');
+        }
+      });
+    }
   }
 }
 
@@ -3173,7 +3249,7 @@ function renderTransactionsTable() {
     const waktuStr = new Date(tx.waktu).toLocaleString('id-ID').toLowerCase();
     const customerName = (tx.pelanggan || '').toLowerCase();
     
-    const matchesSearch = tx.id.toLowerCase().includes(searchVal) || 
+    const matchesSearch = String(tx.id).toLowerCase().includes(searchVal) || 
                           waktuStr.includes(searchVal) ||
                           itemsStr.includes(searchVal) ||
                           tx.total.toString().includes(searchVal) ||
@@ -3306,8 +3382,21 @@ function deleteTransaction(txId) {
     updateAnalytics();
     
     // Sinkronkan ke cloud
-    syncProductsToCloudBackground();
     syncTransactionsToCloudBackground();
+    
+    if (gasUrl) {
+      updateSyncStatus('syncing', 'Menyimpan perubahan stok...');
+      const promises = tx.items.map(item => {
+        const p = products.find(prod => prod.id === item.id);
+        if (p) return fetchFromGAS('upsertProduct', { product: p });
+        return Promise.resolve();
+      });
+      Promise.all(promises).then(() => {
+        updateSyncStatus('online', 'Tersinkronisasi');
+      }).catch(() => {
+        updateSyncStatus('offline', 'Koneksi Terputus');
+      });
+    }
     
     alert(`Transaksi ${txId} berhasil dihapus dan stok barang dikembalikan.`);
   }
@@ -3441,11 +3530,21 @@ function filterEditTxSearch() {
     return;
   }
   
-  editTxFilteredProducts = products.filter(p => {
-    return p.nama.toLowerCase().includes(val) || 
-           p.id.toLowerCase().includes(val) ||
-           (p.barcode && p.barcode.toLowerCase().includes(val));
-  }).slice(0, 15);
+  let matched = products.filter(p => {
+    return String(p.nama).toLowerCase().includes(val) || 
+           String(p.id).toLowerCase().includes(val) ||
+           (p.barcode && String(p.barcode).toLowerCase().includes(val));
+  });
+  
+  matched.sort((a, b) => {
+    const aNameMatch = String(a.nama).toLowerCase().includes(val);
+    const bNameMatch = String(b.nama).toLowerCase().includes(val);
+    if (aNameMatch && !bNameMatch) return -1;
+    if (!aNameMatch && bNameMatch) return 1;
+    return 0;
+  });
+  
+  editTxFilteredProducts = matched.slice(0, 15);
   
   if (editTxFilteredProducts.length === 0) {
     dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
@@ -3759,8 +3858,21 @@ function saveEditedTransaction() {
   renderProductsTable();
   updateAnalytics();
   
-  syncProductsToCloudBackground();
   syncTransactionsToCloudBackground();
+  
+  if (gasUrl && allProductIds && allProductIds.size > 0) {
+    updateSyncStatus('syncing', 'Menyimpan perubahan stok...');
+    const promises = Array.from(allProductIds).map(id => {
+      const p = products.find(prod => prod.id === id);
+      if (p) return fetchFromGAS('upsertProduct', { product: p });
+      return Promise.resolve();
+    });
+    Promise.all(promises).then(() => {
+      updateSyncStatus('online', 'Tersinkronisasi');
+    }).catch(() => {
+      updateSyncStatus('offline', 'Koneksi Terputus');
+    });
+  }
   
   alert("Transaksi berhasil diperbarui!");
 }
@@ -3922,7 +4034,7 @@ function exportTransactionsToCSV() {
       
     const waktuStr = new Date(tx.waktu).toLocaleString('id-ID').toLowerCase();
     
-    const matchesSearch = tx.id.toLowerCase().includes(searchVal) || 
+    const matchesSearch = String(tx.id).toLowerCase().includes(searchVal) || 
                           waktuStr.includes(searchVal) ||
                           itemsStr.includes(searchVal) ||
                           tx.total.toString().includes(searchVal);
@@ -4177,10 +4289,10 @@ function toggleProductSelection(productId, checkbox) {
 function toggleSelectAllProducts(masterCheckbox) {
   const searchVal = document.getElementById('product-list-search').value.toLowerCase().trim();
   const matched = products.filter(p => {
-    return p.nama.toLowerCase().includes(searchVal) || 
-           p.id.toLowerCase().includes(searchVal) ||
-           (p.barcode && p.barcode.toLowerCase().includes(searchVal)) ||
-           (p.kategori && p.kategori.toLowerCase().includes(searchVal));
+    return String(p.nama).toLowerCase().includes(searchVal) || 
+           String(p.id).toLowerCase().includes(searchVal) ||
+           (p.barcode && String(p.barcode).toLowerCase().includes(searchVal)) ||
+           (p.kategori && String(p.kategori).toLowerCase().includes(searchVal));
   });
   const itemsToRender = searchVal === '' ? matched.slice(0, 10) : matched;
 
@@ -4606,8 +4718,8 @@ function renderCustomersTable() {
   tbody.innerHTML = '';
   
   const filtered = customers.filter(c => 
-    c.nama.toLowerCase().includes(search) || 
-    (c.telepon && c.telepon.toLowerCase().includes(search))
+    String(c.nama).toLowerCase().includes(search) || 
+    (c.telepon && String(c.telepon).toLowerCase().includes(search))
   );
   
   if (filtered.length === 0) {
