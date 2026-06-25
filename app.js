@@ -3191,8 +3191,9 @@ function generateCode39SVG(text) {
   const W_WIDTH = 5.0; 
   const GAP = 2.0;     
   const height = 45;   
+  const quietZone = 20;
 
-  let currentX = 0;
+  let currentX = quietZone;
   const rects = [];
 
   for (let i = 0; i < fullText.length; i++) {
@@ -3205,14 +3206,16 @@ function generateCode39SVG(text) {
       const isBar = j % 2 === 0;
 
       if (isBar) {
-        rects.push(`<rect x="${currentX.toFixed(1)}" y="0" width="${width.toFixed(1)}" height="${height}" fill="black" />`);
+        rects.push(`<rect x="${currentX.toFixed(1)}" y="0" width="${width.toFixed(1)}" height="${height}" fill="black" shape-rendering="crispEdges" />`);
       }
       currentX += width;
     }
     currentX += GAP;
   }
 
-  return `<svg width="${currentX.toFixed(1)}" height="${height}" viewBox="0 0 ${currentX.toFixed(1)} ${height}" xmlns="http://www.w3.org/2000/svg">${rects.join('')}</svg>`;
+  currentX += quietZone;
+
+  return `<svg width="${currentX.toFixed(1)}" height="${height}" viewBox="0 0 ${currentX.toFixed(1)} ${height}" xmlns="http://www.w3.org/2000/svg" style="shape-rendering: crispEdges;"><rect width="100%" height="100%" fill="white"/>${rects.join('')}</svg>`;
 }
 
 // State Riwayat Transaksi & Edit Transaksi
@@ -4194,7 +4197,6 @@ function updateLabelPreview() {
       <div class="label-store">${storeName}</div>
       <div class="label-name">${p.nama}</div>
       <div class="label-price-box">
-        <span class="label-price-label">Harga</span>
         <span class="label-price">${priceFormatted}</span>
       </div>
     `;
@@ -4237,7 +4239,6 @@ function printLabels() {
         <div class="label-store">${storeName}</div>
         <div class="label-name">${p.nama}</div>
         <div class="label-price-box">
-          <span class="label-price-label">Harga</span>
           <span class="label-price">${priceFormatted}</span>
         </div>
       `;
@@ -4415,7 +4416,6 @@ function printBulkLabels() {
             <div class="label-store">${storeName}</div>
             <div class="label-name">${p.nama}</div>
             <div class="label-price-box">
-              <span class="label-price-label">Harga</span>
               <span class="label-price">${priceFormatted}</span>
             </div>
           `;

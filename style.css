@@ -2213,29 +2213,29 @@ body.print-format-html #receipt-text-content {
   color: #333;
 }
 
-/* Style for Shelf Label: 80mm x 40mm */
+/* Style for Shelf Label: 50mm x 30mm */
 .label-item-print.shelf-label {
-  width: 80mm;
-  height: 40mm;
-  font-size: 10pt;
-  padding: 10px;
-  border: 2px solid #000;
+  width: 50mm;
+  height: 30mm;
+  font-size: 8pt;
+  padding: 6px;
+  border: 1px solid #000;
 }
 .label-item-print.shelf-label .label-store {
-  font-size: 8pt;
+  font-size: 6pt;
   color: #555;
-  border-bottom: 1.5px solid #000;
+  border-bottom: 1px solid #000;
   width: 100%;
-  padding-bottom: 3px;
+  padding-bottom: 2px;
   text-transform: uppercase;
   font-weight: 800;
-  text-align: left;
+  text-align: center;
 }
 .label-item-print.shelf-label .label-name {
   font-weight: 800;
-  font-size: 16pt;
-  margin-top: 6px;
-  text-align: left;
+  font-size: 10pt;
+  margin-top: 4px;
+  text-align: center;
   width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -2245,20 +2245,13 @@ body.print-format-html #receipt-text-content {
 .label-item-print.shelf-label .label-price-box {
   margin-top: auto;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
+  justify-content: center;
+  align-items: center;
   width: 100%;
 }
-.label-item-print.shelf-label .label-price-label {
-  font-size: 8pt;
-  color: #555;
-  text-transform: uppercase;
-  font-weight: 700;
-  padding-bottom: 2px;
-}
 .label-item-print.shelf-label .label-price {
-  font-weight: 800;
-  font-size: 28pt;
+  font-weight: 900;
+  font-size: 16pt;
   color: #000;
   line-height: 1.1;
 }
