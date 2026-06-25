@@ -2213,13 +2213,14 @@ body.print-format-html #receipt-text-content {
   color: #333;
 }
 
-/* Style for Shelf Label: 50mm x 30mm */
+/* Style for Shelf Label: 58mm thermal paper (printable area ~48mm) */
 .label-item-print.shelf-label {
-  width: 50mm;
-  height: 30mm;
+  width: 48mm;
+  height: 35mm;
   font-size: 8pt;
   padding: 6px;
-  border: 1px solid #000;
+  border: 1px dashed #000;
+  margin-bottom: 2mm;
 }
 .label-item-print.shelf-label .label-store {
   font-size: 6pt;
