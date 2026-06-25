@@ -89,6 +89,16 @@ if (receiptSettings.textTitleFontSize === undefined) receiptSettings.textTitleFo
 if (receiptSettings.textPaddingLeft === undefined) receiptSettings.textPaddingLeft = 6;
 if (receiptSettings.textWidth === undefined) receiptSettings.textWidth = 25;
 
+let labelSettings = JSON.parse(localStorage.getItem('kasir_label_settings')) || {
+  width: 60,
+  height: 30,
+  marginLeft: 0,
+  chars: 25,
+  showBarcode: true,
+  showPrice: true
+};
+
+
 // Contoh Data Awal (Produk)
 const defaultProducts = [
   { 
@@ -622,7 +632,30 @@ function saveReceiptSettings() {
   
   localStorage.setItem('kasir_receipt_settings', JSON.stringify(receiptSettings));
   applyReceiptSettings();
+  loadLabelSettings();
+  renderProducts();
   alert('Pengaturan Branding & Nota berhasil disimpan!');
+}
+
+function loadLabelSettings() {
+  document.getElementById('setting-label-width').value = labelSettings.width || 60;
+  document.getElementById('setting-label-height').value = labelSettings.height || 30;
+  document.getElementById('setting-label-margin-left').value = labelSettings.marginLeft || 0;
+  document.getElementById('setting-label-chars').value = labelSettings.chars || 25;
+  document.getElementById('setting-label-show-barcode').checked = labelSettings.showBarcode !== false;
+  document.getElementById('setting-label-show-price').checked = labelSettings.showPrice !== false;
+}
+
+function saveLabelSettings() {
+  labelSettings.width = parseFloat(document.getElementById('setting-label-width').value) || 60;
+  labelSettings.height = parseFloat(document.getElementById('setting-label-height').value) || 30;
+  labelSettings.marginLeft = parseFloat(document.getElementById('setting-label-margin-left').value) || 0;
+  labelSettings.chars = parseInt(document.getElementById('setting-label-chars').value) || 25;
+  labelSettings.showBarcode = document.getElementById('setting-label-show-barcode').checked;
+  labelSettings.showPrice = document.getElementById('setting-label-show-price').checked;
+  
+  localStorage.setItem('kasir_label_settings', JSON.stringify(labelSettings));
+  alert('Pengaturan Cetak Label berhasil disimpan!');
 }
 
 function toggleSidebar() {
@@ -3166,57 +3199,25 @@ function formatRupiah(number) {
   return new Intl.NumberFormat('id-ID').format(number);
 }
 
-// --- Generator Barcode Code 39 Offline ---
-const CODE39_MAP = {
-  '0': '000110100', '1': '100100001', '2': '001100001', '3': '101100000',
-  '4': '000110001', '5': '100110000', '6': '001110000', '7': '000100101',
-  '8': '100100100', '9': '001100100', 'A': '100001001', 'B': '001001001',
-  'C': '101001000', 'D': '000011001', 'E': '100011000', 'F': '001011000',
-  'G': '000001101', 'H': '100001100', 'I': '001001100', 'J': '000011100',
-  'K': '100000011', 'L': '001000011', 'M': '101000010', 'N': '000010011',
-  'O': '100010010', 'P': '001010010', 'Q': '000000111', 'R': '100000110',
-  'S': '001000110', 'T': '000010110', 'U': '110000001', 'V': '011000001',
-  'W': '111000000', 'X': '010010001', 'Y': '110010000', 'Z': '011010000',
-  '-': '010000101', '.': '110000100', ' ': '011000100', '$': '010101000',
-  '/': '010100010', '+': '010001010', '%': '000101010', '*': '010010100'
-};
-
-function generateCode39SVG(text) {
+// --- Generator Barcode JsBarcode ---
+function getBarcodeHTML(text) {
   if (!text) return '';
-  const cleanText = text.toUpperCase().split('').filter(c => CODE39_MAP[c]).join('');
-  if (!cleanText) return '';
-
-  const fullText = '*' + cleanText + '*';
-  const N_WIDTH = 2.0; 
-  const W_WIDTH = 5.0; 
-  const GAP = 2.0;     
-  const height = 45;   
-  const quietZone = 20;
-
-  let currentX = quietZone;
-  const rects = [];
-
-  for (let i = 0; i < fullText.length; i++) {
-    const char = fullText[i];
-    const pattern = CODE39_MAP[char];
-
-    for (let j = 0; j < 9; j++) {
-      const isWide = pattern[j] === '1';
-      const width = isWide ? W_WIDTH : N_WIDTH;
-      const isBar = j % 2 === 0;
-
-      if (isBar) {
-        rects.push(`<rect x="${currentX.toFixed(1)}" y="0" width="${width.toFixed(1)}" height="${height}" fill="black" shape-rendering="crispEdges" />`);
-      }
-      currentX += width;
-    }
-    currentX += GAP;
+  try {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    JsBarcode(svg, text, { 
+      width: 1.5, 
+      height: 32, 
+      displayValue: false, 
+      margin: 0,
+      background: "transparent"
+    });
+    return svg.outerHTML;
+  } catch (e) {
+    console.error("Barcode generation error:", e);
+    return '';
   }
-
-  currentX += quietZone;
-
-  return `<svg width="${currentX.toFixed(1)}" height="${height}" viewBox="0 0 ${currentX.toFixed(1)} ${height}" xmlns="http://www.w3.org/2000/svg" style="shape-rendering: crispEdges;"><rect width="100%" height="100%" fill="white"/>${rects.join('')}</svg>`;
 }
+
 
 // State Riwayat Transaksi & Edit Transaksi
 let editTxItems = [];
@@ -4171,36 +4172,56 @@ function updateLabelPreview() {
   const previewContainer = document.getElementById('label-preview-container');
   previewContainer.innerHTML = '';
   
+  const labelHTML = buildLabelHTML(p, labelType);
+  previewContainer.innerHTML = labelHTML;
+}
+
+function buildLabelHTML(p, labelType) {
   const storeName = receiptSettings.name || 'Toko Sahil POS';
   const priceFormatted = `Rp ${formatRupiah(p.harga_jual)}`;
   
+  let productName = p.nama || '';
+  if (productName.length > labelSettings.chars) {
+    productName = productName.substring(0, labelSettings.chars) + '...';
+  }
+  
+  const barcodeVal = p.barcode || p.id;
+  const barcodeSVG = getBarcodeHTML(barcodeVal);
+  
   if (labelType === 'product') {
-    // Render label produk (ada barcode)
-    const barcodeVal = p.id;
-    const barcodeSVG = generateCode39SVG(barcodeVal);
-    
-    const labelDiv = document.createElement('div');
-    labelDiv.className = 'label-item-print product-label';
-    labelDiv.innerHTML = `
-      <div class="label-store">${storeName}</div>
-      <div class="label-name">${p.nama}</div>
-      <div class="label-price">${priceFormatted}</div>
-      <div class="label-barcode-svg">${barcodeSVG}</div>
-      <div class="label-barcode-text">${barcodeVal}</div>
-    `;
-    previewContainer.appendChild(labelDiv);
-  } else {
-    // Render label rak (nama & harga besar)
-    const labelDiv = document.createElement('div');
-    labelDiv.className = 'label-item-print shelf-label';
-    labelDiv.innerHTML = `
-      <div class="label-store">${storeName}</div>
-      <div class="label-name">${p.nama}</div>
-      <div class="label-price-box">
-        <span class="label-price">${priceFormatted}</span>
+    return `
+      <div class="label-item-print product-label">
+        <div class="label-store">${storeName}</div>
+        <div class="label-name">${productName}</div>
+        <div class="label-price">${priceFormatted}</div>
+        <div class="label-barcode-svg">${barcodeSVG}</div>
+        <div class="label-barcode-text">${barcodeVal}</div>
       </div>
     `;
-    previewContainer.appendChild(labelDiv);
+  } else {
+    // Shelf Label
+    let barcodeHtmlStr = '';
+    if (labelSettings.showBarcode) {
+       barcodeHtmlStr = `<div class="label-barcode-svg" style="height: 24px; margin-top: 4px;">${barcodeSVG}</div>`;
+    }
+    
+    let priceHtmlStr = '';
+    if (labelSettings.showPrice) {
+       priceHtmlStr = `
+        <div class="label-price-box">
+          <span class="label-price">${priceFormatted}</span>
+        </div>
+       `;
+    }
+
+    return `
+      <div class="label-item-print shelf-label" style="width: ${labelSettings.width}mm; height: ${labelSettings.height}mm;">
+        <div class="label-store">${storeName}</div>
+        <div class="label-name">${productName}</div>
+        ${barcodeHtmlStr}
+        ${priceHtmlStr}
+      </div>
+    `;
   }
 }
 
@@ -4214,36 +4235,14 @@ function printLabels() {
   const printArea = document.getElementById('labels-print-area');
   printArea.innerHTML = '';
   
-  const storeName = receiptSettings.name || 'Toko Sahil POS';
-  const priceFormatted = `Rp ${formatRupiah(p.harga_jual)}`;
-  
   const container = document.createElement('div');
   container.className = 'labels-print-container';
+  container.style.paddingLeft = `${labelSettings.marginLeft}mm`;
   
   for (let i = 0; i < qty; i++) {
-    const labelDiv = document.createElement('div');
-    if (labelType === 'product') {
-      const barcodeVal = p.id;
-      const barcodeSVG = generateCode39SVG(barcodeVal);
-      labelDiv.className = 'label-item-print product-label';
-      labelDiv.innerHTML = `
-        <div class="label-store">${storeName}</div>
-        <div class="label-name">${p.nama}</div>
-        <div class="label-price">${priceFormatted}</div>
-        <div class="label-barcode-svg">${barcodeSVG}</div>
-        <div class="label-barcode-text">${barcodeVal}</div>
-      `;
-    } else {
-      labelDiv.className = 'label-item-print shelf-label';
-      labelDiv.innerHTML = `
-        <div class="label-store">${storeName}</div>
-        <div class="label-name">${p.nama}</div>
-        <div class="label-price-box">
-          <span class="label-price">${priceFormatted}</span>
-        </div>
-      `;
-    }
-    container.appendChild(labelDiv);
+    const labelWrapper = document.createElement('div');
+    labelWrapper.innerHTML = buildLabelHTML(p, labelType);
+    container.appendChild(labelWrapper.firstElementChild);
   }
   
   printArea.appendChild(container);
@@ -4385,6 +4384,7 @@ function printBulkLabels() {
   
   const container = document.createElement('div');
   container.className = 'labels-print-container';
+  container.style.paddingLeft = `${labelSettings.marginLeft}mm`;
   
   let totalPrinted = 0;
   
@@ -4395,32 +4395,11 @@ function printBulkLabels() {
     
     if (p && qty > 0) {
       totalPrinted += qty;
-      const priceFormatted = `Rp ${formatRupiah(p.harga_jual)}`;
       
       for (let i = 0; i < qty; i++) {
-        const labelDiv = document.createElement('div');
-        if (labelType === 'product') {
-          const barcodeVal = p.id;
-          const barcodeSVG = generateCode39SVG(barcodeVal);
-          labelDiv.className = 'label-item-print product-label';
-          labelDiv.innerHTML = `
-            <div class="label-store">${storeName}</div>
-            <div class="label-name">${p.nama}</div>
-            <div class="label-price">${priceFormatted}</div>
-            <div class="label-barcode-svg">${barcodeSVG}</div>
-            <div class="label-barcode-text">${barcodeVal}</div>
-          `;
-        } else {
-          labelDiv.className = 'label-item-print shelf-label';
-          labelDiv.innerHTML = `
-            <div class="label-store">${storeName}</div>
-            <div class="label-name">${p.nama}</div>
-            <div class="label-price-box">
-              <span class="label-price">${priceFormatted}</span>
-            </div>
-          `;
-        }
-        container.appendChild(labelDiv);
+        const labelWrapper = document.createElement('div');
+        labelWrapper.innerHTML = buildLabelHTML(p, labelType);
+        container.appendChild(labelWrapper.firstElementChild);
       }
     }
   });

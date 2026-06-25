@@ -2151,16 +2151,6 @@ body.print-format-html #receipt-text-content {
     display: block !important;
     padding: 0;
   }
-  body.printing-labels .labels-print-container {
-    padding: 0 !important;
-    gap: 0 !important;
-    margin: 0 !important;
-    display: block !important;
-  }
-  body.printing-labels .label-item-print {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
 }
 
 .labels-print-container {
@@ -2184,15 +2174,11 @@ body.print-format-html #receipt-text-content {
   overflow: hidden;
 }
 
-/* Style for Product Label: Fill Thermal Paper Width */
+/* Style for Product Label: 50mm x 30mm */
 .label-item-print.product-label {
-  width: 100%;
-  min-height: 35mm;
+  width: 50mm;
+  height: 30mm;
   font-size: 8pt;
-  padding: 6px;
-  border: 1px dashed #000;
-  margin-bottom: 5mm;
-  box-sizing: border-box;
 }
 .label-item-print.product-label .label-store {
   font-size: 6pt;
@@ -2219,13 +2205,7 @@ body.print-format-html #receipt-text-content {
 .label-item-print.product-label .label-barcode-svg {
   margin-top: 1px;
   height: 32px;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-.label-item-print.product-label .label-barcode-svg svg {
   max-width: 100%;
-  height: 100%;
 }
 .label-item-print.product-label .label-barcode-text {
   font-family: monospace;
@@ -2233,20 +2213,22 @@ body.print-format-html #receipt-text-content {
   color: #333;
 }
 
-/* Style for Shelf Label: Fill Thermal Paper Width */
+/* Style for Shelf Label: 60mm x 30mm */
 .label-item-print.shelf-label {
-  width: 100%;
-  min-height: 40mm;
-  font-size: 8pt;
-  padding: 10px 5px;
-  border: 1px dashed #000;
-  margin-bottom: 5mm;
-  box-sizing: border-box;
+  width: 60mm;
+  height: 30mm;
+  font-size: 10pt;
+  padding: 6px;
+  border: 2px solid #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
 }
 .label-item-print.shelf-label .label-store {
-  font-size: 6pt;
+  font-size: 8pt;
   color: #555;
-  border-bottom: 1px solid #000;
+  border-bottom: 1.5px solid #000;
   width: 100%;
   padding-bottom: 2px;
   text-transform: uppercase;
@@ -2255,7 +2237,7 @@ body.print-format-html #receipt-text-content {
 }
 .label-item-print.shelf-label .label-name {
   font-weight: 800;
-  font-size: 10pt;
+  font-size: 12pt;
   margin-top: 4px;
   text-align: center;
   width: 100%;
@@ -2273,9 +2255,10 @@ body.print-format-html #receipt-text-content {
 }
 .label-item-print.shelf-label .label-price {
   font-weight: 900;
-  font-size: 32pt;
+  font-size: 24pt;
   color: #000;
-  line-height: 1;
+  line-height: 1.1;
+  text-align: center;
 }
 
 
@@ -2450,33 +2433,4 @@ body.print-format-html #receipt-text-content {
   overflow-y: auto;
 }
 
-/* 5. Product Edit Popup Modal */
-.product-edit-modal {
-  display: none;
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 2000;
-  align-items: center;
-  justify-content: center;
-}
-.product-edit-modal.active {
-  display: flex;
-}
-.product-edit-modal .card {
-  max-height: 90vh;
-  overflow-y: auto;
-  width: 100%;
-  max-width: 500px;
-  position: relative;
-}
-.close-modal-btn {
-  position: absolute;
-  top: 10px;
-  right: 15px;
-  background: transparent;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--text-muted);
-}
+
