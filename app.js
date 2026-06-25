@@ -185,6 +185,13 @@ document.addEventListener('DOMContentLoaded', () => {
   loadData();
   initCashiers();
   
+  // Set default filters to today
+  const today = new Date().toLocaleDateString('en-CA'); // 'en-CA' outputs YYYY-MM-DD
+  const startDateInput = document.getElementById('tx-filter-start-date');
+  const endDateInput = document.getElementById('tx-filter-end-date');
+  if (startDateInput) startDateInput.value = today;
+  if (endDateInput) endDateInput.value = today;
+  
   // Isi input URL di pengaturan jika sudah ada
   if (gasUrl) {
     document.getElementById('gas-url-input').value = gasUrl;
@@ -3265,7 +3272,8 @@ function renderTransactionsTable() {
     if (statusFilter === 'Lunas' && tx.status_pembayaran === 'Bon') return false;
     if (statusFilter === 'Bon' && tx.status_pembayaran !== 'Bon') return false;
     
-    if (tx.waktu) {
+    // Abaikan filter tanggal jika sedang melakukan pencarian (searchVal tidak kosong)
+    if (tx.waktu && searchVal === '') {
       const txDate = new Date(tx.waktu);
       if (startLimit && txDate < startLimit) return false;
       if (endLimit && txDate > endLimit) return false;
@@ -3346,8 +3354,12 @@ function renderTransactionsTable() {
   });
 }
 
+let txFilterTimeout = null;
 function filterTransactionsTable() {
-  renderTransactionsTable();
+  if (txFilterTimeout) clearTimeout(txFilterTimeout);
+  txFilterTimeout = setTimeout(() => {
+    renderTransactionsTable();
+  }, 400); // 400ms debounce to prevent lag while typing
 }
 
 function deleteTransaction(txId) {
