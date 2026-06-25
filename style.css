@@ -2251,7 +2251,7 @@ body.print-format-html #receipt-text-content {
 }
 .label-item-print.shelf-label .label-price {
   font-weight: 900;
-  font-size: 16pt;
+  font-size: 24pt;
   color: #000;
   line-height: 1.1;
 }
