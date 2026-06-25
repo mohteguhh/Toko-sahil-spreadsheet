@@ -2222,10 +2222,10 @@ body.print-format-html #receipt-text-content {
   color: #333;
 }
 
-/* Style for Shelf Label: 58mm thermal paper (printable area ~48mm) */
+/* Style for Shelf Label: 55mm x 40mm */
 .label-item-print.shelf-label {
-  width: 48mm;
-  height: 35mm;
+  width: 55mm;
+  height: 40mm;
   font-size: 8pt;
   padding: 6px;
   border: 1px dashed #000;
@@ -2261,9 +2261,9 @@ body.print-format-html #receipt-text-content {
 }
 .label-item-print.shelf-label .label-price {
   font-weight: 900;
-  font-size: 24pt;
+  font-size: 32pt;
   color: #000;
-  line-height: 1.1;
+  line-height: 1;
 }
 
 
