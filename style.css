@@ -2151,6 +2151,16 @@ body.print-format-html #receipt-text-content {
     display: block !important;
     padding: 0;
   }
+  body.printing-labels .labels-print-container {
+    padding: 0 !important;
+    gap: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+  body.printing-labels .label-item-print {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
 }
 
 .labels-print-container {
@@ -2174,14 +2184,15 @@ body.print-format-html #receipt-text-content {
   overflow: hidden;
 }
 
-/* Style for Product Label: 58mm thermal paper (printable area ~48mm) */
+/* Style for Product Label: Fill Thermal Paper Width */
 .label-item-print.product-label {
-  width: 48mm;
-  height: 35mm;
+  width: 100%;
+  min-height: 35mm;
   font-size: 8pt;
   padding: 6px;
   border: 1px dashed #000;
-  margin-bottom: 2mm;
+  margin-bottom: 5mm;
+  box-sizing: border-box;
 }
 .label-item-print.product-label .label-store {
   font-size: 6pt;
@@ -2222,14 +2233,15 @@ body.print-format-html #receipt-text-content {
   color: #333;
 }
 
-/* Style for Shelf Label: 55mm x 40mm */
+/* Style for Shelf Label: Fill Thermal Paper Width */
 .label-item-print.shelf-label {
-  width: 55mm;
-  height: 40mm;
+  width: 100%;
+  min-height: 40mm;
   font-size: 8pt;
-  padding: 6px;
+  padding: 10px 5px;
   border: 1px dashed #000;
-  margin-bottom: 2mm;
+  margin-bottom: 5mm;
+  box-sizing: border-box;
 }
 .label-item-print.shelf-label .label-store {
   font-size: 6pt;
