@@ -2174,11 +2174,14 @@ body.print-format-html #receipt-text-content {
   overflow: hidden;
 }
 
-/* Style for Product Label: 50mm x 30mm */
+/* Style for Product Label: 58mm thermal paper (printable area ~48mm) */
 .label-item-print.product-label {
-  width: 50mm;
-  height: 30mm;
+  width: 48mm;
+  height: 35mm;
   font-size: 8pt;
+  padding: 6px;
+  border: 1px dashed #000;
+  margin-bottom: 2mm;
 }
 .label-item-print.product-label .label-store {
   font-size: 6pt;
@@ -2205,7 +2208,13 @@ body.print-format-html #receipt-text-content {
 .label-item-print.product-label .label-barcode-svg {
   margin-top: 1px;
   height: 32px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.label-item-print.product-label .label-barcode-svg svg {
   max-width: 100%;
+  height: 100%;
 }
 .label-item-print.product-label .label-barcode-text {
   font-family: monospace;
