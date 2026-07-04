@@ -701,6 +701,10 @@ function loadProductLabelSettings() {
   document.getElementById('setting-prodlabel-show-barcode').checked = productLabelSettings.showBarcode !== false;
   document.getElementById('setting-prodlabel-show-price').checked = productLabelSettings.showPrice !== false;
   document.getElementById('setting-prodlabel-show-storename').checked = productLabelSettings.showStoreName !== false;
+  document.getElementById('setting-prodlabel-barcode-width').value = productLabelSettings.barcodeWidth || 1.5;
+  document.getElementById('prodlabel-barcode-width-val').textContent = productLabelSettings.barcodeWidth || 1.5;
+  document.getElementById('setting-prodlabel-barcode-height').value = productLabelSettings.barcodeHeight || 32;
+  document.getElementById('prodlabel-barcode-height-val').textContent = (productLabelSettings.barcodeHeight || 32) + 'px';
 }
 
 function saveProductLabelSettings() {
@@ -711,6 +715,8 @@ function saveProductLabelSettings() {
   productLabelSettings.showBarcode = document.getElementById('setting-prodlabel-show-barcode').checked;
   productLabelSettings.showPrice = document.getElementById('setting-prodlabel-show-price').checked;
   productLabelSettings.showStoreName = document.getElementById('setting-prodlabel-show-storename').checked;
+  productLabelSettings.barcodeWidth = parseFloat(document.getElementById('setting-prodlabel-barcode-width').value) || 1.5;
+  productLabelSettings.barcodeHeight = parseInt(document.getElementById('setting-prodlabel-barcode-height').value) || 32;
   
   localStorage.setItem('kasir_product_label_settings', JSON.stringify(productLabelSettings));
   alert('Pengaturan Cetak Label Produk berhasil disimpan!');
@@ -3352,13 +3358,13 @@ function formatRupiah(number) {
 }
 
 // --- Generator Barcode JsBarcode ---
-function getBarcodeHTML(text) {
+function getBarcodeHTML(text, options = {}) {
   if (!text) return '';
   try {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     JsBarcode(svg, text, { 
-      width: 1.5, 
-      height: 32, 
+      width: options.width || 1.5, 
+      height: options.height || 32, 
       displayValue: false, 
       margin: 0,
       background: "transparent"
@@ -4342,8 +4348,15 @@ function buildLabelHTML(p, labelType) {
   const storeName = receiptSettings.name || 'Toko Sahil POS';
   const priceFormatted = `Rp ${formatRupiah(p.harga_jual)}`;
   
-  const barcodeVal = p.barcode || p.id;
-  const barcodeSVG = getBarcodeHTML(barcodeVal);
+  const barcodeVal = p.id; // Selalu gunakan ID produk agar pasti bisa discan dengan mudah
+  
+  let bcWidth = 1.5;
+  let bcHeight = 32;
+  if (labelType === 'product') {
+    bcWidth = productLabelSettings.barcodeWidth || 1.5;
+    bcHeight = productLabelSettings.barcodeHeight || 32;
+  }
+  const barcodeSVG = getBarcodeHTML(barcodeVal, { width: bcWidth, height: bcHeight });
   
   if (labelType === 'product') {
     // Product Label - use productLabelSettings
