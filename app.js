@@ -27,6 +27,7 @@ let activeCategory = 'All';
 // State Pencarian POS
 let filteredProducts = [];
 let selectedFloatIndex = -1;
+let selectedCartIndex = -1;
 
 // State Pencarian Kulak
 let kulakFilteredProducts = [];
@@ -95,7 +96,21 @@ let labelSettings = JSON.parse(localStorage.getItem('kasir_label_settings')) || 
   marginLeft: 0,
   chars: 25,
   showBarcode: true,
-  showPrice: true
+  showPrice: true,
+  priceFontSize: 24,
+  priceFontWeight: 900,
+  nameFontSize: 12,
+  nameFontWeight: 800
+};
+
+let productLabelSettings = JSON.parse(localStorage.getItem('kasir_product_label_settings')) || {
+  width: 50,
+  height: 30,
+  marginLeft: 0,
+  chars: 25,
+  showBarcode: true,
+  showPrice: true,
+  showStoreName: true
 };
 
 
@@ -182,6 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initClock();
   loadAppConfig();
   loadReceiptSettings();
+  loadLabelSettings();
+  loadProductLabelSettings();
   loadData();
   initCashiers();
   
@@ -640,6 +657,7 @@ function saveReceiptSettings() {
   localStorage.setItem('kasir_receipt_settings', JSON.stringify(receiptSettings));
   applyReceiptSettings();
   loadLabelSettings();
+  loadProductLabelSettings();
   renderProducts();
   alert('Pengaturan Branding & Nota berhasil disimpan!');
 }
@@ -651,6 +669,12 @@ function loadLabelSettings() {
   document.getElementById('setting-label-chars').value = labelSettings.chars || 25;
   document.getElementById('setting-label-show-barcode').checked = labelSettings.showBarcode !== false;
   document.getElementById('setting-label-show-price').checked = labelSettings.showPrice !== false;
+  document.getElementById('setting-label-price-fontsize').value = labelSettings.priceFontSize || 24;
+  document.getElementById('label-price-fontsize-val').textContent = `${labelSettings.priceFontSize || 24}pt`;
+  document.getElementById('setting-label-price-fontweight').value = labelSettings.priceFontWeight || 900;
+  document.getElementById('setting-label-name-fontsize').value = labelSettings.nameFontSize || 12;
+  document.getElementById('label-name-fontsize-val').textContent = `${labelSettings.nameFontSize || 12}pt`;
+  document.getElementById('setting-label-name-fontweight').value = labelSettings.nameFontWeight || 800;
 }
 
 function saveLabelSettings() {
@@ -660,9 +684,36 @@ function saveLabelSettings() {
   labelSettings.chars = parseInt(document.getElementById('setting-label-chars').value) || 25;
   labelSettings.showBarcode = document.getElementById('setting-label-show-barcode').checked;
   labelSettings.showPrice = document.getElementById('setting-label-show-price').checked;
+  labelSettings.priceFontSize = parseInt(document.getElementById('setting-label-price-fontsize').value) || 24;
+  labelSettings.priceFontWeight = parseInt(document.getElementById('setting-label-price-fontweight').value) || 900;
+  labelSettings.nameFontSize = parseInt(document.getElementById('setting-label-name-fontsize').value) || 12;
+  labelSettings.nameFontWeight = parseInt(document.getElementById('setting-label-name-fontweight').value) || 800;
   
   localStorage.setItem('kasir_label_settings', JSON.stringify(labelSettings));
-  alert('Pengaturan Cetak Label berhasil disimpan!');
+  alert('Pengaturan Cetak Label Rak berhasil disimpan!');
+}
+
+function loadProductLabelSettings() {
+  document.getElementById('setting-prodlabel-width').value = productLabelSettings.width || 50;
+  document.getElementById('setting-prodlabel-height').value = productLabelSettings.height || 30;
+  document.getElementById('setting-prodlabel-margin-left').value = productLabelSettings.marginLeft || 0;
+  document.getElementById('setting-prodlabel-chars').value = productLabelSettings.chars || 25;
+  document.getElementById('setting-prodlabel-show-barcode').checked = productLabelSettings.showBarcode !== false;
+  document.getElementById('setting-prodlabel-show-price').checked = productLabelSettings.showPrice !== false;
+  document.getElementById('setting-prodlabel-show-storename').checked = productLabelSettings.showStoreName !== false;
+}
+
+function saveProductLabelSettings() {
+  productLabelSettings.width = parseFloat(document.getElementById('setting-prodlabel-width').value) || 50;
+  productLabelSettings.height = parseFloat(document.getElementById('setting-prodlabel-height').value) || 30;
+  productLabelSettings.marginLeft = parseFloat(document.getElementById('setting-prodlabel-margin-left').value) || 0;
+  productLabelSettings.chars = parseInt(document.getElementById('setting-prodlabel-chars').value) || 25;
+  productLabelSettings.showBarcode = document.getElementById('setting-prodlabel-show-barcode').checked;
+  productLabelSettings.showPrice = document.getElementById('setting-prodlabel-show-price').checked;
+  productLabelSettings.showStoreName = document.getElementById('setting-prodlabel-show-storename').checked;
+  
+  localStorage.setItem('kasir_product_label_settings', JSON.stringify(productLabelSettings));
+  alert('Pengaturan Cetak Label Produk berhasil disimpan!');
 }
 
 function toggleSidebar() {
@@ -1394,18 +1445,102 @@ function handleSearchInputKeydowns(e) {
     return;
   }
   
-  if (filteredProducts.length === 0) return;
+  // Cek apakah dropdown pencarian sedang terbuka
+  const floatingDropdown = document.getElementById('floating-results');
+  const isFloatingOpen = floatingDropdown && floatingDropdown.classList.contains('active') && filteredProducts.length > 0;
   
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    selectedFloatIndex = (selectedFloatIndex + 1) % filteredProducts.length;
-    renderFloatingDropdown();
-  } 
-  else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    selectedFloatIndex = (selectedFloatIndex - 1 + filteredProducts.length) % filteredProducts.length;
-    renderFloatingDropdown();
-  } 
+  if (isFloatingOpen) {
+    // Navigasi dropdown pencarian produk (perilaku lama)
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedFloatIndex = (selectedFloatIndex + 1) % filteredProducts.length;
+      renderFloatingDropdown();
+    } 
+    else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedFloatIndex = (selectedFloatIndex - 1 + filteredProducts.length) % filteredProducts.length;
+      renderFloatingDropdown();
+    }
+  } else {
+    // Dropdown tertutup -> navigasi keranjang dengan keyboard
+    if (cart.length === 0) return;
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedCartIndex = Math.min(selectedCartIndex + 1, cart.length - 1);
+      highlightSelectedCartItem();
+    } 
+    else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (selectedCartIndex <= 0) {
+        selectedCartIndex = -1;
+        highlightSelectedCartItem();
+      } else {
+        selectedCartIndex = selectedCartIndex - 1;
+        highlightSelectedCartItem();
+      }
+    } 
+    else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      if (selectedCartIndex >= 0 && selectedCartIndex < cart.length) {
+        const item = cart[selectedCartIndex];
+        updateCartQty(item.cartId, 1);
+        // Pastikan index masih valid setelah update
+        if (selectedCartIndex >= cart.length) selectedCartIndex = cart.length - 1;
+        highlightSelectedCartItem();
+        focusSearchInput();
+      }
+    } 
+    else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (selectedCartIndex >= 0 && selectedCartIndex < cart.length) {
+        const item = cart[selectedCartIndex];
+        updateCartQty(item.cartId, -1);
+        // Setelah qty berkurang, cek apakah item terhapus
+        if (cart.length === 0) {
+          selectedCartIndex = -1;
+        } else if (selectedCartIndex >= cart.length) {
+          selectedCartIndex = cart.length - 1;
+        }
+        highlightSelectedCartItem();
+        focusSearchInput();
+      }
+    }
+    else if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (selectedCartIndex >= 0 && selectedCartIndex < cart.length) {
+        // Khusus Backspace: jangan hapus produk keranjang jika user sedang mengetik di kolom pencarian
+        const searchInput = document.getElementById('search-input');
+        if (e.key === 'Backspace' && searchInput.value.length > 0) {
+          return;
+        }
+        
+        e.preventDefault();
+        const item = cart[selectedCartIndex];
+        removeFromCart(item.cartId);
+        
+        if (cart.length === 0) {
+          selectedCartIndex = -1;
+        } else if (selectedCartIndex >= cart.length) {
+          selectedCartIndex = cart.length - 1;
+        }
+        highlightSelectedCartItem();
+        focusSearchInput();
+      }
+    }
+  }
+}
+
+// Menandai item keranjang yang sedang dipilih secara visual
+function highlightSelectedCartItem() {
+  const cartItems = document.querySelectorAll('#cart-list .cart-item');
+  cartItems.forEach((el, i) => {
+    if (i === selectedCartIndex) {
+      el.classList.add('cart-item-selected');
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else {
+      el.classList.remove('cart-item-selected');
+    }
+  });
 }
 
 // --- TAB POS: KERANJANG ---
@@ -1417,6 +1552,7 @@ function addToCart(product) {
   let totalQty = cart.filter(i => i.id === product.id).reduce((sum, i) => sum + i.qty, 0);
   totalQty += 1;
   recalculateCartSplit(product.id, totalQty);
+  focusSearchInput();
 }
 
 function updateCartQty(cartId, delta) {
@@ -1428,6 +1564,7 @@ function updateCartQty(cartId, delta) {
   totalQty += delta;
   
   recalculateCartSplit(baseId, totalQty);
+  focusSearchInput();
 }
 
 function removeFromCart(cartId) {
@@ -1440,6 +1577,7 @@ function removeFromCart(cartId) {
   totalQty -= itemToRemove.qty;
   
   recalculateCartSplit(baseId, totalQty);
+  focusSearchInput();
 }
 
 function setCartQtyDirect(cartId, value) {
@@ -1452,6 +1590,7 @@ function setCartQtyDirect(cartId, value) {
   totalQty = totalQty - item.qty + qty;
   
   recalculateCartSplit(baseId, totalQty);
+  focusSearchInput();
 }
 
 function recalculateCartSplit(baseId, totalQty) {
@@ -1567,6 +1706,7 @@ function clearCart() {
   if (cart.length === 0) return;
   if (confirm("Apakah Anda yakin ingin mengosongkan keranjang belanja?")) {
     cart = [];
+    selectedCartIndex = -1;
     renderCart();
   }
 }
@@ -1609,6 +1749,14 @@ function renderCart() {
     `;
     container.appendChild(div);
   });
+  
+  // Ensure selected index is valid and highlight
+  if (cart.length === 0) {
+    selectedCartIndex = -1;
+  } else if (selectedCartIndex >= cart.length) {
+    selectedCartIndex = cart.length - 1;
+  }
+  highlightSelectedCartItem();
   
   calculateTotal();
 }
@@ -2926,7 +3074,9 @@ async function syncFromCloud() {
   
   if (result && result.status === 'success') {
     if (result.data && result.data.length > 0) {
-      products = result.data.map(p => ({
+      products = result.data
+        .filter(p => p && p.id && p.id.toString().trim() !== '')
+        .map(p => ({
         id: p.id ? p.id.toString() : '',
         nama: p.nama ? p.nama.toString() : '',
         kategori: p.kategori ? p.kategori.toString() : 'Umum',
@@ -2935,7 +3085,9 @@ async function syncFromCloud() {
         stok: parseInt(p.stok) || 0,
         barcode: p.barcode ? p.barcode.toString() : '',
         gambar: p.gambar ? p.gambar.toString() : '',
-        tanggal_kadaluarsa: p.tanggal_kadaluarsa ? p.tanggal_kadaluarsa.toString().slice(0, 10) : ''
+        tanggal_kadaluarsa: p.tanggal_kadaluarsa ? p.tanggal_kadaluarsa.toString().slice(0, 10) : '',
+        harga_diskon: parseFloat(p.harga_diskon) || 0,
+        kuota_diskon: parseInt(p.kuota_diskon) || 0
       }));
       
       saveProductsLocally();
@@ -3183,19 +3335,12 @@ function handleGlobalKeydowns(e) {
     return;
   }
   
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
     const activeTag = document.activeElement ? document.activeElement.tagName : '';
-    if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
-    
-    const cartList = document.getElementById('cart-list');
-    if (cartList && cart.length > 0) {
-      e.preventDefault();
-      const scrollAmount = 50;
-      if (e.key === 'ArrowDown') {
-        cartList.scrollTop += scrollAmount;
-      } else {
-        cartList.scrollTop -= scrollAmount;
-      }
+    const searchInput = document.getElementById('search-input');
+    // Jika focus bukan di search input, arahkan ke search input agar navigasi keranjang berfungsi
+    if (document.activeElement !== searchInput && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT') {
+      searchInput.focus();
     }
   }
 
@@ -3938,7 +4083,12 @@ async function syncTransactionsFromCloud() {
         localTxMap[ltx.id] = ltx;
       });
       
-      transactions = result.data.map(tx => {
+      transactions = result.data
+        .filter(tx => {
+          const txId = tx.id_transaksi || tx.id || '';
+          return txId.toString().trim() !== '';
+        })
+        .map(tx => {
         let itemsList = [];
         const itemsStr = tx.daftar_item || tx.items || "";
         if (itemsStr) {
@@ -4192,26 +4342,49 @@ function buildLabelHTML(p, labelType) {
   const storeName = receiptSettings.name || 'Toko Sahil POS';
   const priceFormatted = `Rp ${formatRupiah(p.harga_jual)}`;
   
-  let productName = p.nama || '';
-  if (productName.length > labelSettings.chars) {
-    productName = productName.substring(0, labelSettings.chars) + '...';
-  }
-  
   const barcodeVal = p.barcode || p.id;
   const barcodeSVG = getBarcodeHTML(barcodeVal);
   
   if (labelType === 'product') {
-    return `
-      <div class="label-item-print product-label">
-        <div class="label-store">${storeName}</div>
-        <div class="label-name">${productName}</div>
-        <div class="label-price">${priceFormatted}</div>
+    // Product Label - use productLabelSettings
+    let productName = p.nama || '';
+    if (productName.length > productLabelSettings.chars) {
+      productName = productName.substring(0, productLabelSettings.chars) + '...';
+    }
+    
+    let storeNameHtml = '';
+    if (productLabelSettings.showStoreName !== false) {
+      storeNameHtml = `<div class="label-store">${storeName}</div>`;
+    }
+    
+    let priceHtml = '';
+    if (productLabelSettings.showPrice !== false) {
+      priceHtml = `<div class="label-price">${priceFormatted}</div>`;
+    }
+    
+    let barcodeHtml = '';
+    if (productLabelSettings.showBarcode !== false) {
+      barcodeHtml = `
         <div class="label-barcode-svg">${barcodeSVG}</div>
         <div class="label-barcode-text">${barcodeVal}</div>
+      `;
+    }
+    
+    return `
+      <div class="label-item-print product-label" style="width: ${productLabelSettings.width}mm; height: ${productLabelSettings.height}mm;">
+        ${storeNameHtml}
+        <div class="label-name">${productName}</div>
+        ${priceHtml}
+        ${barcodeHtml}
       </div>
     `;
   } else {
     // Shelf Label
+    let productName = p.nama || '';
+    if (productName.length > labelSettings.chars) {
+      productName = productName.substring(0, labelSettings.chars) + '...';
+    }
+    
     let barcodeHtmlStr = '';
     if (labelSettings.showBarcode) {
        barcodeHtmlStr = `<div class="label-barcode-svg" style="height: 24px; margin-top: 4px;">${barcodeSVG}</div>`;
@@ -4219,22 +4392,44 @@ function buildLabelHTML(p, labelType) {
     
     let priceHtmlStr = '';
     if (labelSettings.showPrice) {
+       const pfs = labelSettings.priceFontSize || 24;
+       const pfw = labelSettings.priceFontWeight || 900;
+       const priceStyle = getLabelFontStyle(pfs, pfw);
        priceHtmlStr = `
         <div class="label-price-box">
-          <span class="label-price">${priceFormatted}</span>
+          <span class="label-price" style="${priceStyle}">${priceFormatted}</span>
         </div>
        `;
     }
 
+    const nfs = labelSettings.nameFontSize || 12;
+    const nfw = labelSettings.nameFontWeight || 800;
+    const nameStyle = getLabelFontStyle(nfs, nfw);
+
     return `
       <div class="label-item-print shelf-label" style="width: ${labelSettings.width}mm; height: ${labelSettings.height}mm;">
         <div class="label-store">${storeName}</div>
-        <div class="label-name">${productName}</div>
+        <div class="label-name" style="${nameStyle}">${productName}</div>
         ${barcodeHtmlStr}
         ${priceHtmlStr}
       </div>
     `;
   }
+}
+
+// Helper: menghasilkan inline style untuk font label.
+// Nilai > 900 menggunakan font-weight:900 + -webkit-text-stroke untuk ketebalan ekstra saat dicetak.
+function getLabelFontStyle(fontSize, fontWeight) {
+  let style = `font-size: ${fontSize}pt;`;
+  if (fontWeight <= 900) {
+    style += ` font-weight: ${fontWeight};`;
+  } else {
+    style += ` font-weight: 900;`;
+    // Setiap 100 di atas 900 = +0.5px stroke
+    const strokeWidth = ((fontWeight - 900) / 100) * 0.5;
+    style += ` -webkit-text-stroke: ${strokeWidth}px #000; paint-order: stroke fill;`;
+  }
+  return style;
 }
 
 function printLabels() {
@@ -4249,7 +4444,8 @@ function printLabels() {
   
   const container = document.createElement('div');
   container.className = 'labels-print-container';
-  container.style.paddingLeft = `${labelSettings.marginLeft}mm`;
+  const marginLeft = labelType === 'product' ? productLabelSettings.marginLeft : labelSettings.marginLeft;
+  container.style.paddingLeft = `${marginLeft}mm`;
   
   for (let i = 0; i < qty; i++) {
     const labelWrapper = document.createElement('div');
@@ -4396,7 +4592,8 @@ function printBulkLabels() {
   
   const container = document.createElement('div');
   container.className = 'labels-print-container';
-  container.style.paddingLeft = `${labelSettings.marginLeft}mm`;
+  const marginLeft = labelType === 'product' ? productLabelSettings.marginLeft : labelSettings.marginLeft;
+  container.style.paddingLeft = `${marginLeft}mm`;
   
   let totalPrinted = 0;
   

@@ -79,7 +79,9 @@ function setupSheets() {
       50, 
       "8996001300124", 
       "https://m.media-amazon.com/images/I/71Bs3RzmTyL._SL1500_.jpg",
-      "2027-12-31"
+      "2027-12-31",
+      0,
+      0
     ]);
     sheetProduk.appendRow([
       "P002", 
@@ -90,10 +92,12 @@ function setupSheets() {
       100, 
       "8996001300247", 
       "https://images.unsplash.com/photo-1576092768241-dec231879fc3?q=80&w=300",
-      ""
+      "",
+      0,
+      0
     ]);
   } else {
-    // Perbaikan Header jika kolom baru (seperti Tanggal Kadaluarsa / Harga Beli) belum ada
+    // Perbaikan Header jika kolom baru (seperti Tanggal Kadaluarsa / Harga Beli / Diskon) belum ada
     var currentLastCol = Math.max(1, sheetProduk.getLastColumn());
     var existingHeaders = sheetProduk.getRange(1, 1, 1, currentLastCol).getValues()[0];
     
@@ -244,12 +248,14 @@ function updateProducts(productsList) {
       Number(p.stok) || 0,
       p.barcode || "",
       p.gambar || "",
-      expDateStr
+      expDateStr,
+      Number(p.harga_diskon) || 0,
+      Number(p.kuota_diskon) || 0
     ]);
   }
   
   // Tulis massal dalam satu kali panggil API Google Sheets
-  sheet.getRange(2, 1, values.length, 9).setValues(values);
+  sheet.getRange(2, 1, values.length, 11).setValues(values);
   
   return { status: "success", message: "Sinkronisasi produk (" + productsList.length + " item) sukses secara instan!" };
 }
@@ -274,13 +280,15 @@ function upsertProduct(p) {
     Number(p.stok) || 0,
     p.barcode || "",
     p.gambar || "",
-    expDateStr
+    expDateStr,
+    Number(p.harga_diskon) || 0,
+    Number(p.kuota_diskon) || 0
   ];
   
   var found = false;
   for (var i = 1; i < rows.length; i++) {
-    if (rows[i][0].toString().toLowerCase() === p.id.toString().toLowerCase()) {
-      sheet.getRange(i + 1, 1, 1, 9).setValues([rowData]);
+    if (rows[i][0].toString().trim().toLowerCase() === p.id.toString().trim().toLowerCase()) {
+      sheet.getRange(i + 1, 1, 1, rowData.length).setValues([rowData]);
       found = true;
       break;
     }

@@ -710,6 +710,12 @@ svg.icon-empty {
   padding: 0.65rem 0.8rem;
   border-radius: var(--border-radius-sm);
   border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+.cart-item-selected {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 .cart-item-info {
   flex: 1;
@@ -2174,11 +2180,15 @@ body.print-format-html #receipt-text-content {
   overflow: hidden;
 }
 
-/* Style for Product Label: 50mm x 30mm */
+/* Style for Product Label: size set dynamically from settings */
 .label-item-print.product-label {
   width: 50mm;
   height: 30mm;
   font-size: 8pt;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 .label-item-print.product-label .label-store {
   font-size: 6pt;

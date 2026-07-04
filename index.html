@@ -850,9 +850,105 @@
                 Tampilkan Harga di Label Rak
               </label>
             </div>
+
+            <!-- PENGATURAN FONT NAMA PRODUK -->
+            <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 1rem; margin-bottom: 1rem;">
+              <h3 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-main);">🏷️ Font Nama Produk</h3>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="setting-label-name-fontsize">Ukuran Font Nama <span id="label-name-fontsize-val" style="font-weight: 700; color: var(--primary-color);">12pt</span></label>
+                  <input type="range" id="setting-label-name-fontsize" min="6" max="24" value="12" step="1" oninput="document.getElementById('label-name-fontsize-val').textContent = this.value + 'pt'" style="width: 100%; accent-color: var(--primary-color);">
+                </div>
+                <div class="form-group">
+                  <label for="setting-label-name-fontweight">Ketebalan Font Nama</label>
+                  <select id="setting-label-name-fontweight" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-weight: 600; outline: none;">
+                    <option value="400">Normal (400)</option>
+                    <option value="500">Medium (500)</option>
+                    <option value="600">Semi Bold (600)</option>
+                    <option value="700">Bold (700)</option>
+                    <option value="800" selected>Extra Bold (800)</option>
+                    <option value="900">Black (900)</option>
+                    <option value="1000">Super Bold (900+)</option>
+                    <option value="1100">Ultra Bold (900++)</option>
+                    <option value="1200">Mega Bold (900+++)</option>
+                    <option value="1300">Maximum Bold</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- PENGATURAN FONT HARGA -->
+            <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 1rem; margin-bottom: 1.5rem;">
+              <h3 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-main);">💰 Font Harga</h3>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="setting-label-price-fontsize">Ukuran Font Harga <span id="label-price-fontsize-val" style="font-weight: 700; color: var(--primary-color);">24pt</span></label>
+                  <input type="range" id="setting-label-price-fontsize" min="8" max="48" value="24" step="1" oninput="document.getElementById('label-price-fontsize-val').textContent = this.value + 'pt'" style="width: 100%; accent-color: var(--primary-color);">
+                </div>
+                <div class="form-group">
+                  <label for="setting-label-price-fontweight">Ketebalan Font Harga</label>
+                  <select id="setting-label-price-fontweight" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-weight: 600; outline: none;">
+                    <option value="400">Normal (400)</option>
+                    <option value="500">Medium (500)</option>
+                    <option value="600">Semi Bold (600)</option>
+                    <option value="700">Bold (700)</option>
+                    <option value="800">Extra Bold (800)</option>
+                    <option value="900" selected>Black (900)</option>
+                    <option value="1000">Super Bold (900+)</option>
+                    <option value="1100">Ultra Bold (900++)</option>
+                    <option value="1200">Mega Bold (900+++)</option>
+                    <option value="1300">Maximum Bold</option>
+                  </select>
+                </div>
+              </div>
+            </div>
             
             <div class="settings-actions">
-              <button class="btn btn-primary" onclick="saveLabelSettings()">Simpan Pengaturan Label</button>
+              <button class="btn btn-primary" onclick="saveLabelSettings()">Simpan Pengaturan Label Rak</button>
+            </div>
+          </div>
+          
+          <!-- PENGATURAN CETAK LABEL PRODUK (FITUR BARU) -->
+          <div class="card settings-card">
+            <h2>Pengaturan Cetak Label Produk</h2>
+            <p class="settings-desc">Atur tampilan dan ukuran untuk label produk (stiker yang ditempelkan langsung ke produk).</p>
+            
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="setting-prodlabel-width">Lebar Label Produk (mm)</label>
+                <input type="number" id="setting-prodlabel-width" min="20" max="100" value="50">
+              </div>
+              <div class="form-group">
+                <label for="setting-prodlabel-height">Tinggi Label Produk (mm)</label>
+                <input type="number" id="setting-prodlabel-height" min="15" max="60" value="30">
+              </div>
+              <div class="form-group">
+                <label for="setting-prodlabel-margin-left">Margin Kiri Halaman (mm)</label>
+                <input type="number" id="setting-prodlabel-margin-left" min="0" max="50" value="0">
+              </div>
+              <div class="form-group">
+                <label for="setting-prodlabel-chars">Batas Karakter Nama Produk</label>
+                <input type="number" id="setting-prodlabel-chars" min="10" max="50" value="25">
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem; margin-bottom: 1.5rem;">
+              <label style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.95rem; font-weight: 500; cursor: pointer;">
+                <input type="checkbox" id="setting-prodlabel-show-barcode" style="width: 1.25rem; height: 1.25rem; accent-color: var(--primary-color);" checked>
+                Tampilkan Barcode di Label Produk
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.95rem; font-weight: 500; cursor: pointer;">
+                <input type="checkbox" id="setting-prodlabel-show-price" style="width: 1.25rem; height: 1.25rem; accent-color: var(--primary-color);" checked>
+                Tampilkan Harga di Label Produk
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.95rem; font-weight: 500; cursor: pointer;">
+                <input type="checkbox" id="setting-prodlabel-show-storename" style="width: 1.25rem; height: 1.25rem; accent-color: var(--primary-color);" checked>
+                Tampilkan Nama Toko di Label Produk
+              </label>
+            </div>
+            
+            <div class="settings-actions">
+              <button class="btn btn-primary" onclick="saveProductLabelSettings()">Simpan Pengaturan Label Produk</button>
             </div>
           </div>
           
