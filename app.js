@@ -1600,6 +1600,9 @@ function setCartQtyDirect(cartId, value) {
 }
 
 function recalculateCartSplit(baseId, totalQty) {
+  // Find the original index to preserve position
+  const originalIndex = cart.findIndex(i => i.id === baseId);
+  
   // Hapus semua item lama dengan baseId yang sama
   cart = cart.filter(i => i.id !== baseId);
   
@@ -1620,12 +1623,14 @@ function recalculateCartSplit(baseId, totalQty) {
   const kuotaDiskon = (parseInt(localProd.kuota_diskon) || 0) > 0 ? parseInt(localProd.kuota_diskon) : Infinity;
   const hasPromo = appConfig.enablePromo && hargaDiskon > 0;
   
+  let newItems = [];
+  
   if (hasPromo) {
     const promoQty = Math.min(totalQty, kuotaDiskon);
     const regQty = totalQty - promoQty;
     
     if (promoQty > 0) {
-      cart.push({
+      newItems.push({
         id: baseId,
         cartId: baseId + '_promo',
         nama: localProd.nama + ' (Promo)',
@@ -1637,7 +1642,7 @@ function recalculateCartSplit(baseId, totalQty) {
     }
     
     if (regQty > 0) {
-      cart.push({
+      newItems.push({
         id: baseId,
         cartId: baseId + '_reguler',
         nama: localProd.nama,
@@ -1648,7 +1653,7 @@ function recalculateCartSplit(baseId, totalQty) {
       });
     }
   } else {
-    cart.push({
+    newItems.push({
       id: baseId,
       cartId: baseId + '_reguler',
       nama: localProd.nama,
@@ -1657,6 +1662,13 @@ function recalculateCartSplit(baseId, totalQty) {
       qty: totalQty,
       isPromo: false
     });
+  }
+  
+  // Insert new items at the original position (or at the end if it wasn't there before)
+  if (originalIndex !== -1) {
+    cart.splice(originalIndex, 0, ...newItems);
+  } else {
+    cart.push(...newItems);
   }
   
   renderCart();
@@ -3920,18 +3932,27 @@ function calculateChangeEditTx() {
   const cash = parseFloat(cashText) || 0;
   const change = cash - total;
   
+  const tx = transactions.find(t => t.id === currentEditingTxId);
+  const isBon = tx && tx.status_pembayaran === 'Bon';
+  
   if (cashInput.value === '') {
     changeVal.textContent = 'Rp 0';
     changeVal.style.color = 'var(--text-muted)';
-    btnSave.disabled = true;
+    btnSave.disabled = false; // Enable so user can click and get the alert
   } else if (change >= 0) {
     changeVal.textContent = `Rp ${formatRupiah(change)}`;
     changeVal.style.color = 'var(--color-success)';
     btnSave.disabled = false;
   } else {
-    changeVal.textContent = `Kurang Rp ${formatRupiah(Math.abs(change))}`;
-    changeVal.style.color = 'var(--color-danger)';
-    btnSave.disabled = true;
+    if (isBon) {
+      changeVal.textContent = `Sisa Bon Rp ${formatRupiah(Math.abs(change))}`;
+      changeVal.style.color = 'var(--text-main)';
+      btnSave.disabled = false;
+    } else {
+      changeVal.textContent = `Kurang Rp ${formatRupiah(Math.abs(change))}`;
+      changeVal.style.color = 'var(--color-danger)';
+      btnSave.disabled = false; // Enable so user can click and get the alert
+    }
   }
 }
 
@@ -3966,7 +3987,7 @@ function saveEditedTransaction() {
     cash = parseFloat(cashText) || 0;
     
     if (tx.status_pembayaran !== 'Bon' && cash < total) {
-      alert("Pembayaran kurang!");
+      alert("Pembayaran kurang! Silakan ubah Uang Diterima agar tidak kurang dari total tagihan.");
       return;
     }
     kembalian = cash >= total ? cash - total : 0;
