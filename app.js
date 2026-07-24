@@ -1344,19 +1344,19 @@ function filterProducts() {
     // Barcode exact match logic dipindah ke handleSearchInputKeydowns saat Enter ditekan
     // untuk mencegah pemindaian sebagian jika scanner cepat.
     
-    let matched = products.filter(p => {
-      return String(p.nama).toLowerCase().includes(searchVal) || 
-             String(p.id).toLowerCase().includes(searchVal) ||
-             (p.barcode && String(p.barcode).toLowerCase().includes(searchVal));
-    });
+    let nameMatches = [];
+    let otherMatches = [];
     
-    matched.sort((a, b) => {
-      const aNameMatch = String(a.nama).toLowerCase().includes(searchVal);
-      const bNameMatch = String(b.nama).toLowerCase().includes(searchVal);
-      if (aNameMatch && !bNameMatch) return -1;
-      if (!aNameMatch && bNameMatch) return 1;
-      return 0;
-    });
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      if (String(p.nama).toLowerCase().includes(searchVal)) {
+        nameMatches.push(p);
+      } else if (String(p.id).toLowerCase().includes(searchVal) || (p.barcode && String(p.barcode).toLowerCase().includes(searchVal))) {
+        otherMatches.push(p);
+      }
+    }
+    
+    let matched = nameMatches.concat(otherMatches);
     
     filteredProducts = matched.slice(0, 15);
     
@@ -2504,19 +2504,19 @@ function filterKulakSearch() {
       return;
     }
     
-    let matched = products.filter(p => {
-      return String(p.nama).toLowerCase().includes(val) || 
-             String(p.id).toLowerCase().includes(val) ||
-             (p.barcode && String(p.barcode).toLowerCase().includes(val));
-    });
+    let nameMatches = [];
+    let otherMatches = [];
     
-    matched.sort((a, b) => {
-      const aNameMatch = String(a.nama).toLowerCase().includes(val);
-      const bNameMatch = String(b.nama).toLowerCase().includes(val);
-      if (aNameMatch && !bNameMatch) return -1;
-      if (!aNameMatch && bNameMatch) return 1;
-      return 0;
-    });
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      if (String(p.nama).toLowerCase().includes(val)) {
+        nameMatches.push(p);
+      } else if (String(p.id).toLowerCase().includes(val) || (p.barcode && String(p.barcode).toLowerCase().includes(val))) {
+        otherMatches.push(p);
+      }
+    }
+    
+    let matched = nameMatches.concat(otherMatches);
     
     kulakFilteredProducts = matched.slice(0, 15);
     
@@ -2688,48 +2688,52 @@ function renderProductsTable() {
   const searchVal = document.getElementById('product-list-search').value.toLowerCase().trim();
   
   // Filter produk
-  let matched = products.filter(p => {
-    return String(p.nama).toLowerCase().includes(searchVal) || 
-           String(p.id).toLowerCase().includes(searchVal) ||
-           (p.barcode && String(p.barcode).toLowerCase().includes(searchVal)) ||
-           (p.kategori && String(p.kategori).toLowerCase().includes(searchVal));
-  });
+  let matched = [];
+  if (searchVal) {
+    let nameMatches = [];
+    let otherMatches = [];
+    for (let i = products.length - 1; i >= 0; i--) {
+      const p = products[i];
+      if (String(p.nama).toLowerCase().includes(searchVal)) {
+        nameMatches.push(p);
+      } else if (String(p.id).toLowerCase().includes(searchVal) || 
+                 (p.barcode && String(p.barcode).toLowerCase().includes(searchVal)) || 
+                 (p.kategori && String(p.kategori).toLowerCase().includes(searchVal))) {
+        otherMatches.push(p);
+      }
+    }
+    matched = nameMatches.concat(otherMatches);
+  } else {
+    matched = [...products];
+  }
   
   // Sort produk
   const sortSelect = document.getElementById('product-list-sort');
   if (sortSelect) {
     const sortValue = sortSelect.value;
-    matched.sort((a, b) => {
-      if (sortValue === 'name_asc') {
-        return a.nama.localeCompare(b.nama);
-      } else if (sortValue === 'category_asc') {
-        const catA = a.kategori || 'ZZZ'; // Push empty categories to the end
-        const catB = b.kategori || 'ZZZ';
-        return catA.localeCompare(catB);
-      } else if (sortValue === 'stock_asc') {
-        return a.stok - b.stok;
-      } else if (sortValue === 'stock_desc') {
-        return b.stok - a.stok;
-      } else if (sortValue === 'price_asc') {
-        return a.harga_jual - b.harga_jual;
-      } else if (sortValue === 'price_desc') {
-        return b.harga_jual - a.harga_jual;
-      }
-      
-      if (searchVal) {
-        const aNameMatch = String(a.nama).toLowerCase().includes(searchVal);
-        const bNameMatch = String(b.nama).toLowerCase().includes(searchVal);
-        if (aNameMatch && !bNameMatch) return -1;
-        if (!aNameMatch && bNameMatch) return 1;
-      }
-      
-      return 0; // Default: newest (reverse original order if we assume last added is at the end, but original array is kept as is unless we explicitly reverse it)
-    });
-    
-    // For 'newest', we assume the original array order is oldest first, so we reverse to get newest first. 
-    // Actually, new products are pushed to the end of the `products` array.
     if (sortValue === 'newest') {
-      matched.reverse();
+      if (!searchVal) {
+        matched.reverse();
+      }
+    } else {
+      matched.sort((a, b) => {
+        if (sortValue === 'name_asc') {
+          return a.nama.localeCompare(b.nama);
+        } else if (sortValue === 'category_asc') {
+          const catA = a.kategori || 'ZZZ';
+          const catB = b.kategori || 'ZZZ';
+          return catA.localeCompare(catB);
+        } else if (sortValue === 'stock_asc') {
+          return a.stok - b.stok;
+        } else if (sortValue === 'stock_desc') {
+          return b.stok - a.stok;
+        } else if (sortValue === 'price_asc') {
+          return a.harga_jual - b.harga_jual;
+        } else if (sortValue === 'price_desc') {
+          return b.harga_jual - a.harga_jual;
+        }
+        return 0;
+      });
     }
   }
   
@@ -3737,19 +3741,19 @@ function filterEditTxSearch() {
       return;
     }
     
-    let matched = products.filter(p => {
-      return String(p.nama).toLowerCase().includes(val) || 
-             String(p.id).toLowerCase().includes(val) ||
-             (p.barcode && String(p.barcode).toLowerCase().includes(val));
-    });
+    let nameMatches = [];
+    let otherMatches = [];
     
-    matched.sort((a, b) => {
-      const aNameMatch = String(a.nama).toLowerCase().includes(val);
-      const bNameMatch = String(b.nama).toLowerCase().includes(val);
-      if (aNameMatch && !bNameMatch) return -1;
-      if (!aNameMatch && bNameMatch) return 1;
-      return 0;
-    });
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      if (String(p.nama).toLowerCase().includes(val)) {
+        nameMatches.push(p);
+      } else if (String(p.id).toLowerCase().includes(val) || (p.barcode && String(p.barcode).toLowerCase().includes(val))) {
+        otherMatches.push(p);
+      }
+    }
+    
+    let matched = nameMatches.concat(otherMatches);
     
     editTxFilteredProducts = matched.slice(0, 15);
     
