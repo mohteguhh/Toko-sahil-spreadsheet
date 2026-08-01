@@ -47,7 +47,8 @@ let cashiers = JSON.parse(localStorage.getItem('kasir_cashiers')) || ['Kasir Uta
 let activeCashier = localStorage.getItem('kasir_active_cashier') || 'Kasir Utama';
 
 // URL Google Apps Script & Offline Sync
-let gasUrl = localStorage.getItem('kasir_gas_url') || '';
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwbJCQIxhqOFu2iGSMzoL2YrJf7pvLoGVm2B6qs2DUQ2vIIrBlZBJO-vP557agNvlhNzg/exec';
+let gasUrl = localStorage.getItem('kasir_gas_url') || DEFAULT_GAS_URL;
 let syncStatus = 'offline'; 
 let offlineQueue = JSON.parse(localStorage.getItem('kasir_offline_queue')) || [];
 
@@ -65,9 +66,9 @@ if (appConfig.showDiscountPos === undefined) appConfig.showDiscountPos = false;
 // Pengaturan Nota / Struk Toko (Default)
 let receiptSettings = JSON.parse(localStorage.getItem('kasir_receipt_settings')) || {
   logo: '',
-  name: 'Toko Sahil POS',
-  phone: '0812-3456-7890',
-  address: 'Jl. Utama No. 123, Indonesia',
+  name: 'TOKO SAHIL',
+  phone: '0896-3649-2890',
+  address: 'Desa Sumurber Rt 21 Rw 07 Panceng Gresik',
   fontSizeHeader: 14,
   fontSizeItems: 12,
   fontSizeFooter: 12
@@ -85,10 +86,10 @@ if (receiptSettings.fontSizeHeader === undefined) receiptSettings.fontSizeHeader
 if (receiptSettings.fontSizeItems === undefined) receiptSettings.fontSizeItems = receiptSettings.fontSize || 12;
 if (receiptSettings.fontSizeFooter === undefined) receiptSettings.fontSizeFooter = receiptSettings.fontSize || 12;
 if (receiptSettings.printFormat === undefined) receiptSettings.printFormat = 'text';
-if (receiptSettings.textFontSize === undefined) receiptSettings.textFontSize = 14;
+if (receiptSettings.textFontSize === undefined) receiptSettings.textFontSize = 12.5;
 if (receiptSettings.textTitleFontSize === undefined) receiptSettings.textTitleFontSize = 16;
-if (receiptSettings.textPaddingLeft === undefined) receiptSettings.textPaddingLeft = 6;
-if (receiptSettings.textWidth === undefined) receiptSettings.textWidth = 25;
+if (receiptSettings.textPaddingLeft === undefined) receiptSettings.textPaddingLeft = 3;
+if (receiptSettings.textWidth === undefined) receiptSettings.textWidth = 20;
 
 let labelSettings = JSON.parse(localStorage.getItem('kasir_label_settings')) || {
   width: 60,
@@ -209,22 +210,16 @@ document.addEventListener('DOMContentLoaded', () => {
   if (startDateInput) startDateInput.value = today;
   if (endDateInput) endDateInput.value = today;
   
-  // Isi input URL di pengaturan jika sudah ada
-  if (gasUrl) {
-    document.getElementById('gas-url-input').value = gasUrl;
-    
-    // Sinkronisasi otomatis jika perangkat online saat halaman dibuka
-    if (navigator.onLine) {
-      processOfflineQueue();
-      syncFromCloud();
-      syncTransactionsFromCloud();
-    } else {
-      updateSyncStatus('offline', `Offline (${offlineQueue.length} transaksi tertunda)`);
-      initAnalyticsFilter();
-      updateAnalytics();
-    }
+  // Isi input URL di pengaturan
+  document.getElementById('gas-url-input').value = gasUrl;
+  
+  // Sinkronisasi otomatis jika perangkat online saat halaman dibuka
+  if (navigator.onLine) {
+    processOfflineQueue();
+    syncFromCloud();
+    syncTransactionsFromCloud();
   } else {
-    updateSyncStatus('offline', 'Belum Terhubung');
+    updateSyncStatus('offline', `Offline (${offlineQueue.length} transaksi tertunda)`);
     initAnalyticsFilter();
     updateAnalytics();
   }
@@ -3143,10 +3138,14 @@ function clearLocalCache() {
     selectedProductIds.clear();
     receiptSettings = {
       logo: '',
-      name: 'Toko Sahil POS',
-      phone: '0812-3456-7890',
-      address: 'Jl. Utama No. 123, Indonesia',
-      fontSize: 12
+      name: 'TOKO SAHIL',
+      phone: '0896-3649-2890',
+      address: 'Desa Sumurber Rt 21 Rw 07 Panceng Gresik',
+      fontSize: 12,
+      textFontSize: 12.5,
+      textTitleFontSize: 16,
+      textPaddingLeft: 3,
+      textWidth: 20
     };
     
     document.getElementById('gas-url-input').value = '';
