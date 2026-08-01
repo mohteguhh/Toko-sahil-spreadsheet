@@ -952,6 +952,16 @@ function updateAnalytics() {
   // Filter transaksi sesuai filter yang dipilih
   const todayTxs = getAnalyticsFilteredTxs();
   
+  // Set label untuk Produk Terlaris
+  const filterType = document.getElementById('analytics-filter-type')?.value || 'hari';
+  const labelEl = document.getElementById('best-seller-period');
+  if (labelEl) {
+    if (filterType === 'hari') labelEl.textContent = '(Hari Ini)';
+    else if (filterType === 'bulan') labelEl.textContent = '(Bulan Ini)';
+    else if (filterType === 'tahun') labelEl.textContent = '(Tahun Ini)';
+    else labelEl.textContent = '(Semua Waktu)';
+  }
+  
   let revenue = 0;
   let netProfit = 0;
   
@@ -1109,7 +1119,7 @@ function updateAnalytics() {
   const sellCounts = {};
   const sellRevenue = {};
   
-  transactions.forEach(tx => {
+  todayTxs.forEach(tx => {
     tx.items.forEach(item => {
       sellCounts[item.nama] = (sellCounts[item.nama] || 0) + item.qty;
       sellRevenue[item.nama] = (sellRevenue[item.nama] || 0) + (item.harga * item.qty);
@@ -2183,7 +2193,7 @@ function generatePlainTextReceipt(tx, items) {
   text += centerText("=".repeat(width), width) + "\n";
   
   // 2. Detail Transaksi
-  text += formatLine("No. Transaksi", tx.id, width) + "\n";
+  text += formatLine("No.", tx.id, width) + "\n";
   
   const dateObj = new Date(tx.waktu);
   const dateStr = dateObj.toLocaleDateString('id-ID');
@@ -3445,9 +3455,16 @@ function renderTransactionsTable() {
     return true;
   });
   
+  // Batasi maksimal 50 transaksi yang di-render untuk menghindari lag browser (DOM thrashing)
+  const txsToRender = searchVal === '' ? filteredTxs.slice(0, 50) : filteredTxs.slice(0, 50);
+  
   const countHelpEl = document.getElementById('transaction-search-count');
   if (countHelpEl) {
-    countHelpEl.textContent = `Ditemukan ${filteredTxs.length} transaksi.`;
+    if (filteredTxs.length > 50) {
+      countHelpEl.textContent = `Ditemukan ${filteredTxs.length} transaksi. Menampilkan 50 transaksi terbaru (gunakan pencarian untuk spesifik).`;
+    } else {
+      countHelpEl.textContent = `Ditemukan ${filteredTxs.length} transaksi.`;
+    }
   }
   
   if (filteredTxs.length === 0) {
@@ -3455,7 +3472,7 @@ function renderTransactionsTable() {
     return;
   }
   
-  filteredTxs.forEach(tx => {
+  txsToRender.forEach(tx => {
     const tr = document.createElement('tr');
     
     let itemsDisplay = "";
@@ -4949,7 +4966,15 @@ function renderCustomersTable() {
     return;
   }
   
-  filtered.forEach(c => {
+  const customersToRender = search === '' ? filtered.slice(0, 50) : filtered.slice(0, 50);
+  
+  if (filtered.length > 50) {
+    const infoTr = document.createElement('tr');
+    infoTr.innerHTML = `<td colspan="4" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem;">Ditemukan ${filtered.length} pelanggan. Menampilkan 50 teratas.</td>`;
+    tbody.appendChild(infoTr);
+  }
+  
+  customersToRender.forEach(c => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><strong>${c.nama}</strong></td>
