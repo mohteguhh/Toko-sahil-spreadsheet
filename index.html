@@ -171,10 +171,7 @@
             
             <!-- Best Seller Products Card -->
             <div class="card best-seller-card">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h3 style="margin: 0;">Produk Terlaris</h3>
-                <input type="date" id="best-seller-filter-date" onchange="renderBestSellers()" class="form-control" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem;">
-              </div>
+              <h3>Produk Terlaris</h3>
               <div class="table-wrapper">
                 <table>
                   <thead>
@@ -1445,18 +1442,6 @@
   </div>
   
   <!-- MODAL: ANTREAN / JEDA KERANJANG (FITUR BARU) -->
-  <!-- Delete Confirm Modal -->
-  <div class="modal-overlay" id="delete-confirm-modal">
-    <div class="modal-content" style="max-width: 400px; text-align: center;">
-      <h3 style="margin-top: 0; color: var(--text-main);">Konfirmasi Hapus</h3>
-      <p id="delete-confirm-text" style="margin-bottom: 1.5rem; color: var(--text-main);">Hapus produk ini?</p>
-      <div style="display: flex; gap: 1rem; justify-content: center;">
-        <button id="btn-delete-no" class="btn btn-secondary" onclick="closeDeleteConfirmModal()" style="flex: 1;">Tidak</button>
-        <button id="btn-delete-yes" class="btn btn-danger" onclick="executeCartDelete()" style="flex: 1;">Ya, Hapus</button>
-      </div>
-    </div>
-  </div>
-
   <div class="modal-overlay" id="held-carts-modal">
     <div class="modal-card" style="max-width: 600px;">
       <div class="modal-header">

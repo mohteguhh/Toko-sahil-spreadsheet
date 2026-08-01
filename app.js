@@ -1106,35 +1106,17 @@ function updateAnalytics() {
   }
   
   // 3. Produk Terlaris
-  renderBestSellers();
-  
-  // 4. Gambar Grafik Omzet 7 Hari Terakhir
-  render7DayChart();
-}
-
-function renderBestSellers() {
-  const dateInput = document.getElementById('best-seller-filter-date');
-  if (!dateInput) return;
-  
-  if (!dateInput.value) {
-    dateInput.value = getLocalISODate(new Date()).slice(0, 10);
-  }
-  const dateVal = dateInput.value;
-  
   const sellCounts = {};
   const sellRevenue = {};
   
   transactions.forEach(tx => {
-    if (tx.waktu && getLocalISODate(tx.waktu).slice(0, 10) === dateVal) {
-      tx.items.forEach(item => {
-        sellCounts[item.nama] = (sellCounts[item.nama] || 0) + item.qty;
-        sellRevenue[item.nama] = (sellRevenue[item.nama] || 0) + (item.harga * item.qty);
-      });
-    }
+    tx.items.forEach(item => {
+      sellCounts[item.nama] = (sellCounts[item.nama] || 0) + item.qty;
+      sellRevenue[item.nama] = (sellRevenue[item.nama] || 0) + (item.harga * item.qty);
+    });
   });
   
   const bestSellersBody = document.getElementById('best-sellers-body');
-  if (!bestSellersBody) return;
   bestSellersBody.innerHTML = '';
   
   const sortedSellers = Object.keys(sellCounts).sort((a, b) => sellCounts[b] - sellCounts[a]);
@@ -1142,7 +1124,7 @@ function renderBestSellers() {
   if (sortedSellers.length === 0) {
     bestSellersBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Belum ada penjualan.</td></tr>';
   } else {
-    sortedSellers.forEach((nama, idx) => {
+    sortedSellers.slice(0, 10).forEach((nama, idx) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>#${idx + 1}</strong></td>
@@ -1153,6 +1135,9 @@ function renderBestSellers() {
       bestSellersBody.appendChild(tr);
     });
   }
+  
+  // 4. Gambar Grafik Omzet 7 Hari Terakhir
+  render7DayChart();
 }
 
 // Menggambar Chart Menggunakan CSS Bar
@@ -1328,48 +1313,44 @@ function closeCameraScanner() {
 }
 
 // --- TAB POS: PENCARIAN & DROPDOWN ---
-let posSearchTimeout;
 function filterProducts() {
-  clearTimeout(posSearchTimeout);
-  posSearchTimeout = setTimeout(() => {
-    const searchInput = document.getElementById('search-input');
-    const searchVal = searchInput.value.toLowerCase().trim();
-    const dropdown = document.getElementById('floating-results');
-    
-    if (searchVal === '') {
-      closeFloatingResults();
-      return;
-    }
-    
-    // Barcode exact match logic dipindah ke handleSearchInputKeydowns saat Enter ditekan
-    // untuk mencegah pemindaian sebagian jika scanner cepat.
-    
-    let nameMatches = [];
-    let otherMatches = [];
-    
-    for (let i = 0; i < products.length; i++) {
-      const p = products[i];
-      if (String(p.nama).toLowerCase().includes(searchVal)) {
-        nameMatches.push(p);
-      } else if (String(p.id).toLowerCase().includes(searchVal) || (p.barcode && String(p.barcode).toLowerCase().includes(searchVal))) {
-        otherMatches.push(p);
-      }
-    }
-    
-    let matched = nameMatches.concat(otherMatches);
-    
-    filteredProducts = matched.slice(0, 15);
-    
-    if (filteredProducts.length === 0) {
-      dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
-      dropdown.classList.add('active');
-      selectedFloatIndex = -1;
-      return;
-    }
-    
-    selectedFloatIndex = 0;
-    renderFloatingDropdown();
-  }, 250);
+  const searchInput = document.getElementById('search-input');
+  const searchVal = searchInput.value.toLowerCase().trim();
+  const dropdown = document.getElementById('floating-results');
+  
+  if (searchVal === '') {
+    closeFloatingResults();
+    return;
+  }
+  
+  // Barcode exact match logic dipindah ke handleSearchInputKeydowns saat Enter ditekan
+  // untuk mencegah pemindaian sebagian jika scanner cepat.
+  
+  let matched = products.filter(p => {
+    return String(p.nama).toLowerCase().includes(searchVal) || 
+           String(p.id).toLowerCase().includes(searchVal) ||
+           (p.barcode && String(p.barcode).toLowerCase().includes(searchVal));
+  });
+  
+  matched.sort((a, b) => {
+    const aNameMatch = String(a.nama).toLowerCase().includes(searchVal);
+    const bNameMatch = String(b.nama).toLowerCase().includes(searchVal);
+    if (aNameMatch && !bNameMatch) return -1;
+    if (!aNameMatch && bNameMatch) return 1;
+    return 0;
+  });
+  
+  filteredProducts = matched.slice(0, 15);
+  
+  if (filteredProducts.length === 0) {
+    dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
+    dropdown.classList.add('active');
+    selectedFloatIndex = -1;
+    return;
+  }
+  
+  selectedFloatIndex = 0;
+  renderFloatingDropdown();
 }
 
 function renderFloatingDropdown() {
@@ -1619,18 +1600,16 @@ function setCartQtyDirect(cartId, value) {
 }
 
 function recalculateCartSplit(baseId, totalQty) {
-  if (totalQty <= 0) {
-    const localProd = products.find(p => p.id === baseId);
-    const productName = localProd ? localProd.nama : 'Produk ini';
-    openDeleteConfirmModal(baseId, productName);
-    return;
-  }
-
   // Find the original index to preserve position
   const originalIndex = cart.findIndex(i => i.id === baseId);
   
   // Hapus semua item lama dengan baseId yang sama
   cart = cart.filter(i => i.id !== baseId);
+  
+  if (totalQty <= 0) {
+    renderCart();
+    return;
+  }
   
   const localProd = products.find(p => p.id === baseId);
   if (!localProd) return;
@@ -2482,54 +2461,50 @@ async function processOfflineQueue() {
 
 // --- TAB 3: FITUR KULAK (RESTOCK BARANG DATANG) ---
 
-let kulakSearchTimeout;
 function filterKulakSearch() {
-  clearTimeout(kulakSearchTimeout);
-  kulakSearchTimeout = setTimeout(() => {
-    const input = document.getElementById('kulak-search-input');
-    const val = input.value.toLowerCase().trim();
-    const dropdown = document.getElementById('kulak-floating-results');
-    
-    if (val === '') {
-      closeKulakFloatingResults();
-      return;
-    }
-    
-    // Cek barcode match langsung
-    const barcodeMatch = products.find(p => p.barcode && String(p.barcode).toLowerCase() === val);
-    if (barcodeMatch) {
-      openKulakForm(barcodeMatch);
-      input.value = '';
-      closeKulakFloatingResults();
-      return;
-    }
-    
-    let nameMatches = [];
-    let otherMatches = [];
-    
-    for (let i = 0; i < products.length; i++) {
-      const p = products[i];
-      if (String(p.nama).toLowerCase().includes(val)) {
-        nameMatches.push(p);
-      } else if (String(p.id).toLowerCase().includes(val) || (p.barcode && String(p.barcode).toLowerCase().includes(val))) {
-        otherMatches.push(p);
-      }
-    }
-    
-    let matched = nameMatches.concat(otherMatches);
-    
-    kulakFilteredProducts = matched.slice(0, 15);
-    
-    if (kulakFilteredProducts.length === 0) {
-      dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
-      dropdown.classList.add('active');
-      selectedKulakFloatIndex = -1;
-      return;
-    }
-    
-    selectedKulakFloatIndex = 0;
-    renderKulakFloatingDropdown();
-  }, 250);
+  const input = document.getElementById('kulak-search-input');
+  const val = input.value.toLowerCase().trim();
+  const dropdown = document.getElementById('kulak-floating-results');
+  
+  if (val === '') {
+    closeKulakFloatingResults();
+    return;
+  }
+  
+  // Cek barcode match langsung
+  const barcodeMatch = products.find(p => p.barcode && String(p.barcode).toLowerCase() === val);
+  if (barcodeMatch) {
+    openKulakForm(barcodeMatch);
+    input.value = '';
+    closeKulakFloatingResults();
+    return;
+  }
+  
+  let matched = products.filter(p => {
+    return String(p.nama).toLowerCase().includes(val) || 
+           String(p.id).toLowerCase().includes(val) ||
+           (p.barcode && String(p.barcode).toLowerCase().includes(val));
+  });
+  
+  matched.sort((a, b) => {
+    const aNameMatch = String(a.nama).toLowerCase().includes(val);
+    const bNameMatch = String(b.nama).toLowerCase().includes(val);
+    if (aNameMatch && !bNameMatch) return -1;
+    if (!aNameMatch && bNameMatch) return 1;
+    return 0;
+  });
+  
+  kulakFilteredProducts = matched.slice(0, 15);
+  
+  if (kulakFilteredProducts.length === 0) {
+    dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
+    dropdown.classList.add('active');
+    selectedKulakFloatIndex = -1;
+    return;
+  }
+  
+  selectedKulakFloatIndex = 0;
+  renderKulakFloatingDropdown();
 }
 
 function renderKulakFloatingDropdown() {
@@ -2688,52 +2663,48 @@ function renderProductsTable() {
   const searchVal = document.getElementById('product-list-search').value.toLowerCase().trim();
   
   // Filter produk
-  let matched = [];
-  if (searchVal) {
-    let nameMatches = [];
-    let otherMatches = [];
-    for (let i = products.length - 1; i >= 0; i--) {
-      const p = products[i];
-      if (String(p.nama).toLowerCase().includes(searchVal)) {
-        nameMatches.push(p);
-      } else if (String(p.id).toLowerCase().includes(searchVal) || 
-                 (p.barcode && String(p.barcode).toLowerCase().includes(searchVal)) || 
-                 (p.kategori && String(p.kategori).toLowerCase().includes(searchVal))) {
-        otherMatches.push(p);
-      }
-    }
-    matched = nameMatches.concat(otherMatches);
-  } else {
-    matched = [...products];
-  }
+  let matched = products.filter(p => {
+    return String(p.nama).toLowerCase().includes(searchVal) || 
+           String(p.id).toLowerCase().includes(searchVal) ||
+           (p.barcode && String(p.barcode).toLowerCase().includes(searchVal)) ||
+           (p.kategori && String(p.kategori).toLowerCase().includes(searchVal));
+  });
   
   // Sort produk
   const sortSelect = document.getElementById('product-list-sort');
   if (sortSelect) {
     const sortValue = sortSelect.value;
-    if (sortValue === 'newest') {
-      if (!searchVal) {
-        matched.reverse();
+    matched.sort((a, b) => {
+      if (sortValue === 'name_asc') {
+        return a.nama.localeCompare(b.nama);
+      } else if (sortValue === 'category_asc') {
+        const catA = a.kategori || 'ZZZ'; // Push empty categories to the end
+        const catB = b.kategori || 'ZZZ';
+        return catA.localeCompare(catB);
+      } else if (sortValue === 'stock_asc') {
+        return a.stok - b.stok;
+      } else if (sortValue === 'stock_desc') {
+        return b.stok - a.stok;
+      } else if (sortValue === 'price_asc') {
+        return a.harga_jual - b.harga_jual;
+      } else if (sortValue === 'price_desc') {
+        return b.harga_jual - a.harga_jual;
       }
-    } else {
-      matched.sort((a, b) => {
-        if (sortValue === 'name_asc') {
-          return a.nama.localeCompare(b.nama);
-        } else if (sortValue === 'category_asc') {
-          const catA = a.kategori || 'ZZZ';
-          const catB = b.kategori || 'ZZZ';
-          return catA.localeCompare(catB);
-        } else if (sortValue === 'stock_asc') {
-          return a.stok - b.stok;
-        } else if (sortValue === 'stock_desc') {
-          return b.stok - a.stok;
-        } else if (sortValue === 'price_asc') {
-          return a.harga_jual - b.harga_jual;
-        } else if (sortValue === 'price_desc') {
-          return b.harga_jual - a.harga_jual;
-        }
-        return 0;
-      });
+      
+      if (searchVal) {
+        const aNameMatch = String(a.nama).toLowerCase().includes(searchVal);
+        const bNameMatch = String(b.nama).toLowerCase().includes(searchVal);
+        if (aNameMatch && !bNameMatch) return -1;
+        if (!aNameMatch && bNameMatch) return 1;
+      }
+      
+      return 0; // Default: newest (reverse original order if we assume last added is at the end, but original array is kept as is unless we explicitly reverse it)
+    });
+    
+    // For 'newest', we assume the original array order is oldest first, so we reverse to get newest first. 
+    // Actually, new products are pushed to the end of the `products` array.
+    if (sortValue === 'newest') {
+      matched.reverse();
     }
   }
   
@@ -3728,45 +3699,41 @@ function removeEditTxItem(cartId) {
   recalculateEditTxSplit(baseId, totalQty);
 }
 
-let editTxSearchTimeout;
 function filterEditTxSearch() {
-  clearTimeout(editTxSearchTimeout);
-  editTxSearchTimeout = setTimeout(() => {
-    const input = document.getElementById('edit-tx-search-input');
-    const val = input.value.toLowerCase().trim();
-    const dropdown = document.getElementById('edit-tx-floating-results');
-    
-    if (val === '') {
-      closeEditTxFloatingResults();
-      return;
-    }
-    
-    let nameMatches = [];
-    let otherMatches = [];
-    
-    for (let i = 0; i < products.length; i++) {
-      const p = products[i];
-      if (String(p.nama).toLowerCase().includes(val)) {
-        nameMatches.push(p);
-      } else if (String(p.id).toLowerCase().includes(val) || (p.barcode && String(p.barcode).toLowerCase().includes(val))) {
-        otherMatches.push(p);
-      }
-    }
-    
-    let matched = nameMatches.concat(otherMatches);
-    
-    editTxFilteredProducts = matched.slice(0, 15);
-    
-    if (editTxFilteredProducts.length === 0) {
-      dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
-      dropdown.classList.add('active');
-      selectedEditTxFloatIndex = -1;
-      return;
-    }
-    
-    selectedEditTxFloatIndex = 0;
-    renderEditTxFloatingDropdown();
-  }, 250);
+  const input = document.getElementById('edit-tx-search-input');
+  const val = input.value.toLowerCase().trim();
+  const dropdown = document.getElementById('edit-tx-floating-results');
+  
+  if (val === '') {
+    closeEditTxFloatingResults();
+    return;
+  }
+  
+  let matched = products.filter(p => {
+    return String(p.nama).toLowerCase().includes(val) || 
+           String(p.id).toLowerCase().includes(val) ||
+           (p.barcode && String(p.barcode).toLowerCase().includes(val));
+  });
+  
+  matched.sort((a, b) => {
+    const aNameMatch = String(a.nama).toLowerCase().includes(val);
+    const bNameMatch = String(b.nama).toLowerCase().includes(val);
+    if (aNameMatch && !bNameMatch) return -1;
+    if (!aNameMatch && bNameMatch) return 1;
+    return 0;
+  });
+  
+  editTxFilteredProducts = matched.slice(0, 15);
+  
+  if (editTxFilteredProducts.length === 0) {
+    dropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Barang tidak ditemukan...</div>';
+    dropdown.classList.add('active');
+    selectedEditTxFloatIndex = -1;
+    return;
+  }
+  
+  selectedEditTxFloatIndex = 0;
+  renderEditTxFloatingDropdown();
 }
 
 function renderEditTxFloatingDropdown() {
@@ -5204,57 +5171,3 @@ document.addEventListener('DOMContentLoaded', () => {
     updateHeldCartsUI();
   }, 500);
 });
-
-// --- DELETE CONFIRM MODAL ---
-let pendingDeleteCartBaseId = null;
-
-function openDeleteConfirmModal(baseId, productName) {
-  pendingDeleteCartBaseId = baseId;
-  const modal = document.getElementById('delete-confirm-modal');
-  if (!modal) return;
-  const text = document.getElementById('delete-confirm-text');
-  if (text) text.textContent = `Hapus ${productName} dari keranjang?`;
-  modal.classList.add('active');
-  
-  document.addEventListener('keydown', handleDeleteConfirmKeydowns);
-  
-  setTimeout(() => {
-    const btnNo = document.getElementById('btn-delete-no');
-    if (btnNo) btnNo.focus();
-  }, 50);
-}
-
-function closeDeleteConfirmModal() {
-  pendingDeleteCartBaseId = null;
-  const modal = document.getElementById('delete-confirm-modal');
-  if (modal) modal.classList.remove('active');
-  document.removeEventListener('keydown', handleDeleteConfirmKeydowns);
-  renderCart(); // Sinkronkan ulang UI dengan state cart
-  focusSearchInput();
-}
-
-function executeCartDelete() {
-  if (!pendingDeleteCartBaseId) return;
-  cart = cart.filter(i => i.id !== pendingDeleteCartBaseId);
-  renderCart();
-  closeDeleteConfirmModal();
-}
-
-function handleDeleteConfirmKeydowns(e) {
-  const btnNo = document.getElementById('btn-delete-no');
-  const btnYes = document.getElementById('btn-delete-yes');
-  
-  if (!btnNo || !btnYes) return;
-  
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-    e.preventDefault();
-    if (document.activeElement === btnNo) {
-      btnYes.focus();
-    } else {
-      btnNo.focus();
-    }
-  } else if (e.key === 'Escape') {
-    e.preventDefault();
-    closeDeleteConfirmModal();
-  }
-}
