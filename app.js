@@ -55,12 +55,12 @@ let offlineQueue = JSON.parse(localStorage.getItem('kasir_offline_queue')) || []
 // Pengaturan Sistem Aplikasi
 let appConfig = JSON.parse(localStorage.getItem('kasir_app_config')) || {
   strictShift: false,
-  allowZeroStock: false,
-  customerMode: true,
-  enablePromo: true,
+  allowZeroStock: true,
+  customerMode: false,
+  enablePromo: false,
   showDiscountPos: false
 };
-if (appConfig.enablePromo === undefined) appConfig.enablePromo = true;
+if (appConfig.enablePromo === undefined) appConfig.enablePromo = false;
 if (appConfig.showDiscountPos === undefined) appConfig.showDiscountPos = false;
 
 // Pengaturan Nota / Struk Toko (Default)
@@ -90,6 +90,11 @@ if (receiptSettings.textFontSize === undefined) receiptSettings.textFontSize = 1
 if (receiptSettings.textTitleFontSize === undefined) receiptSettings.textTitleFontSize = 16;
 if (receiptSettings.textPaddingLeft === undefined) receiptSettings.textPaddingLeft = 3;
 if (receiptSettings.textWidth === undefined) receiptSettings.textWidth = 20;
+if (receiptSettings.headerPaddingLR === undefined) receiptSettings.headerPaddingLR = 0;
+if (receiptSettings.logoMarginLR === undefined) receiptSettings.logoMarginLR = 0;
+if (receiptSettings.nameMarginLR === undefined) receiptSettings.nameMarginLR = 0;
+if (receiptSettings.addressMarginLR === undefined) receiptSettings.addressMarginLR = 0;
+if (receiptSettings.phoneMarginLR === undefined) receiptSettings.phoneMarginLR = 0;
 
 let labelSettings = JSON.parse(localStorage.getItem('kasir_label_settings')) || {
   width: 60,
@@ -330,7 +335,7 @@ function loadData() {
     transactions = JSON.parse(cachedTransactions);
   } else {
     transactions = seedTransactions();
-    localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
+    saveTransactionsLocally();
   }
   
   const cachedShifts = localStorage.getItem('kasir_shifts');
@@ -362,6 +367,19 @@ function loadData() {
   const rpInput = document.getElementById('setting-rp-per-point');
   if (ptsInput) ptsInput.value = loyaltySettings.pointsPerRp;
   if (rpInput) rpInput.value = loyaltySettings.rpPerPoint;
+}
+
+// Batas maksimal transaksi yang disimpan di LocalStorage agar aplikasi tidak hang/freeze
+const MAX_LOCAL_TRANSACTIONS = 300;
+
+function saveTransactionsLocally() {
+  if (transactions.length > MAX_LOCAL_TRANSACTIONS) {
+    // Simpan hanya 300 transaksi terbaru di LocalStorage
+    const recentTransactions = transactions.slice(-MAX_LOCAL_TRANSACTIONS);
+    localStorage.setItem('kasir_transactions', JSON.stringify(recentTransactions));
+  } else {
+    localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
+  }
 }
 
 // Simpan data produk secara lokal
@@ -408,6 +426,21 @@ function loadReceiptSettings() {
   document.getElementById('text-padding-preview-val').textContent = `${receiptSettings.textPaddingLeft !== undefined ? receiptSettings.textPaddingLeft : 1}mm`;
   document.getElementById('receipt-text-width').value = receiptSettings.textWidth || 25;
   document.getElementById('text-width-preview-val').textContent = `${receiptSettings.textWidth || 25} karakter`;
+  
+  // Load Individual Header Element Margins
+  ['logo', 'name', 'address', 'phone'].forEach(item => {
+    const key = `${item}MarginLR`;
+    const val = receiptSettings[key] || 0;
+    const sHtml = document.getElementById(`receipt-${item}-margin`);
+    const sText = document.getElementById(`receipt-${item}-margin-text`);
+    if (sHtml) sHtml.value = val;
+    if (sText) sText.value = val;
+    
+    const lHtml = document.getElementById(`${item}-margin-preview-val`);
+    const lText = document.getElementById(`${item}-margin-preview-text-val`);
+    if (lHtml) lHtml.textContent = `${val}mm`;
+    if (lText) lText.textContent = `${val}mm`;
+  });
   
   applyReceiptSettings();
 }
@@ -505,11 +538,45 @@ function applyReceiptSettings() {
     recLogoContainer.style.display = 'none';
   }
   
-  // 3. Atur Font Size di Struk Cetak
+  // 3. Atur Font Size & Margin Masing-Masing Elemen Header
   const receiptCard = document.getElementById('receipt-card-print');
   
   const receiptHeader = receiptCard.querySelector('.receipt-header');
-  if (receiptHeader) receiptHeader.style.fontSize = `${receiptSettings.fontSizeHeader}px`;
+  if (receiptHeader) {
+    receiptHeader.style.fontSize = `${receiptSettings.fontSizeHeader}px`;
+  }
+  
+  // Terapkan margin kiri-kanan masing-masing elemen
+  const logoEl = document.getElementById('rec-logo-container');
+  if (logoEl) {
+    const m = receiptSettings.logoMarginLR || 0;
+    logoEl.style.paddingLeft = `${m}mm`;
+    logoEl.style.paddingRight = `${m}mm`;
+  }
+  
+  const nameEl = document.getElementById('rec-store-name');
+  if (nameEl) {
+    const m = receiptSettings.nameMarginLR || 0;
+    nameEl.style.paddingLeft = `${m}mm`;
+    nameEl.style.paddingRight = `${m}mm`;
+    nameEl.style.boxSizing = 'border-box';
+  }
+  
+  const addrEl = document.getElementById('rec-store-address');
+  if (addrEl) {
+    const m = receiptSettings.addressMarginLR || 0;
+    addrEl.style.paddingLeft = `${m}mm`;
+    addrEl.style.paddingRight = `${m}mm`;
+    addrEl.style.boxSizing = 'border-box';
+  }
+  
+  const phoneEl = document.getElementById('rec-store-phone');
+  if (phoneEl) {
+    const m = receiptSettings.phoneMarginLR || 0;
+    phoneEl.style.paddingLeft = `${m}mm`;
+    phoneEl.style.paddingRight = `${m}mm`;
+    phoneEl.style.boxSizing = 'border-box';
+  }
   
   const receiptItems = receiptCard.querySelector('.receipt-items');
   if (receiptItems) receiptItems.style.fontSize = `${receiptSettings.fontSizeItems}px`;
@@ -624,6 +691,39 @@ function updateTextWidthPreview(val) {
   document.documentElement.style.setProperty('--print-text-width', textWidth);
 }
 
+function updateItemMarginPreview(type, val) {
+  const marginVal = parseFloat(val) || 0;
+  const key = `${type}MarginLR`;
+  receiptSettings[key] = marginVal;
+  
+  // Sync HTML and Text sliders
+  const sHtml = document.getElementById(`receipt-${type}-margin`);
+  const sText = document.getElementById(`receipt-${type}-margin-text`);
+  if (sHtml) sHtml.value = marginVal;
+  if (sText) sText.value = marginVal;
+  
+  const lHtml = document.getElementById(`${type}-margin-preview-val`);
+  const lText = document.getElementById(`${type}-margin-preview-text-val`);
+  if (lHtml) lHtml.textContent = `${marginVal}mm`;
+  if (lText) lText.textContent = `${marginVal}mm`;
+
+  // Dynamic preview update
+  let targetId = '';
+  if (type === 'logo') targetId = 'rec-logo-container';
+  else if (type === 'name') targetId = 'rec-store-name';
+  else if (type === 'address') targetId = 'rec-store-address';
+  else if (type === 'phone') targetId = 'rec-store-phone';
+  
+  if (targetId) {
+    const el = document.getElementById(targetId);
+    if (el) {
+      el.style.paddingLeft = `${marginVal}mm`;
+      el.style.paddingRight = `${marginVal}mm`;
+      el.style.boxSizing = 'border-box';
+    }
+  }
+}
+
 function saveReceiptSettings() {
   receiptSettings.name = document.getElementById('store-name-input').value.trim() || 'Toko Sahil POS';
   receiptSettings.phone = document.getElementById('store-phone-input').value.trim() || '-';
@@ -632,6 +732,16 @@ function saveReceiptSettings() {
   receiptSettings.fontSizeHeader = parseInt(document.getElementById('receipt-font-header').value) || 14;
   receiptSettings.fontSizeItems = parseInt(document.getElementById('receipt-font-items').value) || 12;
   receiptSettings.fontSizeFooter = parseInt(document.getElementById('receipt-font-footer').value) || 12;
+  
+  ['logo', 'name', 'address', 'phone'].forEach(item => {
+    const sHtml = document.getElementById(`receipt-${item}-margin`);
+    const sText = document.getElementById(`receipt-${item}-margin-text`);
+    if (sHtml) {
+      receiptSettings[`${item}MarginLR`] = parseFloat(sHtml.value) || 0;
+    } else if (sText) {
+      receiptSettings[`${item}MarginLR`] = parseFloat(sText.value) || 0;
+    }
+  });
   
   receiptSettings.showLogo = document.getElementById('chk-show-logo').checked;
   receiptSettings.showName = document.getElementById('chk-show-name').checked;
@@ -1570,11 +1680,19 @@ function updateCartQty(cartId, delta) {
   const itemIndex = cart.findIndex(item => item.cartId === cartId);
   if (itemIndex === -1) return;
   const baseId = cart[itemIndex].id;
+  const item = cart[itemIndex];
   
   let totalQty = cart.filter(i => i.id === baseId).reduce((sum, i) => sum + i.qty, 0);
-  totalQty += delta;
+  const newTotalQty = totalQty + delta;
   
-  recalculateCartSplit(baseId, totalQty);
+  if (newTotalQty <= 0) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus "${item.nama}" dari keranjang?`)) {
+      focusSearchInput();
+      return;
+    }
+  }
+  
+  recalculateCartSplit(baseId, newTotalQty);
   focusSearchInput();
 }
 
@@ -1584,6 +1702,11 @@ function removeFromCart(cartId) {
   const baseId = cart[itemIndex].id;
   const itemToRemove = cart[itemIndex];
   
+  if (!confirm(`Apakah Anda yakin ingin menghapus "${itemToRemove.nama}" dari keranjang?`)) {
+    focusSearchInput();
+    return;
+  }
+  
   let totalQty = cart.filter(i => i.id === baseId).reduce((sum, i) => sum + i.qty, 0);
   totalQty -= itemToRemove.qty;
   
@@ -1592,13 +1715,22 @@ function removeFromCart(cartId) {
 }
 
 function setCartQtyDirect(cartId, value) {
-  const qty = parseInt(value) || 1;
+  const qty = parseInt(value);
   const item = cart.find(it => it.cartId === cartId);
   if (!item) return;
   const baseId = item.id;
   
+  if (isNaN(qty) || qty <= 0) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus "${item.nama}" dari keranjang?`)) {
+      renderCart();
+      focusSearchInput();
+      return;
+    }
+  }
+  
+  const targetQty = isNaN(qty) || qty <= 0 ? 0 : qty;
   let totalQty = cart.filter(i => i.id === baseId).reduce((sum, i) => sum + i.qty, 0);
-  totalQty = totalQty - item.qty + qty;
+  totalQty = totalQty - item.qty + targetQty;
   
   recalculateCartSplit(baseId, totalQty);
   focusSearchInput();
@@ -1669,11 +1801,13 @@ function recalculateCartSplit(baseId, totalQty) {
     });
   }
   
-  // Insert new items at the original position (or at the end if it wasn't there before)
+  // Insert new items at the original position (or at top index 0 if it wasn't in cart before)
   if (originalIndex !== -1) {
     cart.splice(originalIndex, 0, ...newItems);
+    selectedCartIndex = originalIndex;
   } else {
-    cart.push(...newItems);
+    cart.unshift(...newItems);
+    selectedCartIndex = 0;
   }
   
   renderCart();
@@ -2099,7 +2233,7 @@ async function processCheckout() {
   
   // 2. Simpan transaksi ke riwayat lokal untuk dashboard analisis
   transactions.push(transaction);
-  localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
+  saveTransactionsLocally();
   
   // 3. Tutup modal pembayaran & Kosongkan keranjang
   document.getElementById('payment-modal').classList.remove('active');
@@ -3151,7 +3285,7 @@ function clearLocalCache() {
     document.getElementById('gas-url-input').value = '';
     
     saveProductsLocally();
-    localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
+    saveTransactionsLocally();
     localStorage.setItem('kasir_receipt_settings', JSON.stringify(receiptSettings));
     
     loadReceiptSettings();
@@ -3569,7 +3703,7 @@ function deleteTransaction(txId) {
     
     // Simpan data
     saveProductsLocally();
-    localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
+    saveTransactionsLocally();
     
     // Render ulang UI
     renderTransactionsTable();
@@ -4055,7 +4189,7 @@ function saveEditedTransaction() {
   }
   
   saveProductsLocally();
-  localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
+  saveTransactionsLocally();
   
   closeEditTransactionModal();
   renderTransactionsTable();
@@ -4206,7 +4340,7 @@ async function syncTransactionsFromCloud() {
         };
       });
       
-      localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
+      saveTransactionsLocally();
       renderTransactionsTable();
       initAnalyticsFilter();
       updateAnalytics();
@@ -4759,7 +4893,7 @@ function submitSettleDebt() {
   }
   
   // Simpan ke LocalStorage
-  localStorage.setItem('kasir_transactions', JSON.stringify(transactions));
+  saveTransactionsLocally();
   
   // Update UI
   closeSettleDebtModal();

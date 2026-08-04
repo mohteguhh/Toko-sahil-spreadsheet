@@ -713,9 +713,13 @@ svg.icon-empty {
   transition: all 0.2s ease;
 }
 .cart-item-selected {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary-light);
-  box-shadow: 0 0 0 2px var(--color-primary-light);
+  border-color: var(--color-primary) !important;
+  background-color: var(--color-primary) !important;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3) !important;
+}
+.cart-item-selected .cart-item-name,
+.cart-item-selected .cart-item-price {
+  color: #ffffff !important;
 }
 .cart-item-info {
   flex: 1;
