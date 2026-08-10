@@ -1444,7 +1444,8 @@ function filterProducts() {
     const bNameMatch = String(b.nama).toLowerCase().includes(searchVal);
     if (aNameMatch && !bNameMatch) return -1;
     if (!aNameMatch && bNameMatch) return 1;
-    return 0;
+    // Dalam grup yang sama, urutkan berdasarkan abjad
+    return String(a.nama).toLowerCase().localeCompare(String(b.nama).toLowerCase(), 'id');
   });
   
   filteredProducts = matched.slice(0, 15);
