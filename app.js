@@ -18,6 +18,7 @@ function handleImageError(img) {
   img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="%23cbd5e1" stroke-width="2"><rect width="100" height="100" fill="%23f8fafc"/><circle cx="50" cy="45" r="15"/><path d="M20,80 C20,60 80,60 80,80"/></svg>';
 }
 let cart = JSON.parse(localStorage.getItem('kasir_active_cart')) || [];
+let lastTransactionChange = null;
 let heldCarts = JSON.parse(localStorage.getItem('kasir_held_carts')) || [];
 let transactions = []; // Riwayat transaksi lokal untuk analisis
 let categories = ['All'];
@@ -550,32 +551,25 @@ function applyReceiptSettings() {
   const logoEl = document.getElementById('rec-logo-container');
   if (logoEl) {
     const m = receiptSettings.logoMarginLR || 0;
-    logoEl.style.paddingLeft = `${m}mm`;
-    logoEl.style.paddingRight = `${m}mm`;
+    logoEl.style.transform = `translateX(${m}mm)`;
   }
   
   const nameEl = document.getElementById('rec-store-name');
   if (nameEl) {
     const m = receiptSettings.nameMarginLR || 0;
-    nameEl.style.paddingLeft = `${m}mm`;
-    nameEl.style.paddingRight = `${m}mm`;
-    nameEl.style.boxSizing = 'border-box';
+    nameEl.style.transform = `translateX(${m}mm)`;
   }
   
   const addrEl = document.getElementById('rec-store-address');
   if (addrEl) {
     const m = receiptSettings.addressMarginLR || 0;
-    addrEl.style.paddingLeft = `${m}mm`;
-    addrEl.style.paddingRight = `${m}mm`;
-    addrEl.style.boxSizing = 'border-box';
+    addrEl.style.transform = `translateX(${m}mm)`;
   }
   
   const phoneEl = document.getElementById('rec-store-phone');
   if (phoneEl) {
     const m = receiptSettings.phoneMarginLR || 0;
-    phoneEl.style.paddingLeft = `${m}mm`;
-    phoneEl.style.paddingRight = `${m}mm`;
-    phoneEl.style.boxSizing = 'border-box';
+    phoneEl.style.transform = `translateX(${m}mm)`;
   }
   
   const receiptItems = receiptCard.querySelector('.receipt-items');
@@ -717,9 +711,7 @@ function updateItemMarginPreview(type, val) {
   if (targetId) {
     const el = document.getElementById(targetId);
     if (el) {
-      el.style.paddingLeft = `${marginVal}mm`;
-      el.style.paddingRight = `${marginVal}mm`;
-      el.style.boxSizing = 'border-box';
+      el.style.transform = `translateX(${marginVal}mm)`;
     }
   }
 }
@@ -763,7 +755,7 @@ function saveReceiptSettings() {
   applyReceiptSettings();
   loadLabelSettings();
   loadProductLabelSettings();
-  renderProducts();
+  renderProductsTable();
   alert('Pengaturan Branding & Nota berhasil disimpan!');
 }
 
@@ -1505,7 +1497,7 @@ function renderFloatingDropdown() {
       <div class="floating-item-info">
         <span class="floating-item-name">${p.nama} (${p.id})</span>
         <div class="floating-item-meta" style="flex-wrap: wrap; gap: 0.2rem;">
-          <span class="floating-item-price">Jual: Rp ${formatRupiah(p.harga_jual)} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal; margin-left:0.5rem;">Beli: Rp ${formatRupiah(p.harga_beli || 0)}</span></span>
+          <span class="floating-item-price">Jual: Rp ${formatRupiah(p.harga_jual)} <span style="font-size:1rem; color:var(--text-muted); font-weight:normal; margin-left:0.5rem;">Beli: Rp ${formatRupiah(p.harga_beli || 0)}</span></span>
           <span class="floating-item-stock ${stockClass}">${stockText}</span>
         </div>
       </div>
@@ -1666,6 +1658,7 @@ function highlightSelectedCartItem() {
 
 // --- TAB POS: KERANJANG ---
 function addToCart(product) {
+  lastTransactionChange = null;
   if (appConfig.strictShift && !activeShift) {
     alert("Wajib buka shift terlebih dahulu untuk melakukan transaksi!");
     return;
@@ -1860,18 +1853,21 @@ function saveCart() {
 }
 
 function clearCart() {
-  if (cart.length === 0) return;
-  if (confirm("Apakah Anda yakin ingin mengosongkan keranjang belanja?")) {
-    cart = [];
-    selectedCartIndex = -1;
-    renderCart();
-  }
+  if (cart.length === 0 && lastTransactionChange === null) return;
+  if (cart.length > 0 && !confirm("Apakah Anda yakin ingin mengosongkan keranjang belanja?")) return;
+  cart = [];
+  lastTransactionChange = null;
+  selectedCartIndex = -1;
+  renderCart();
 }
 
 function renderCart() {
   saveCart();
   const container = document.getElementById('cart-list');
   container.innerHTML = '';
+  
+  const totalLabel = document.getElementById('total-label-text');
+  const totalRowContainer = document.getElementById('total-row-container');
   
   if (cart.length === 0) {
     container.innerHTML = `
@@ -1882,10 +1878,27 @@ function renderCart() {
     `;
     
     document.getElementById('subtotal-val').textContent = 'Rp 0';
-    document.getElementById('total-val').textContent = 'Rp 0';
+    
+    if (lastTransactionChange !== null && lastTransactionChange !== undefined) {
+      if (totalLabel) {
+        totalLabel.style.display = 'block';
+        totalLabel.textContent = 'KEMBALIAN';
+      }
+      if (totalRowContainer) totalRowContainer.classList.add('is-change');
+      document.getElementById('total-val').textContent = `Rp ${formatRupiah(lastTransactionChange)}`;
+    } else {
+      if (totalLabel) totalLabel.style.display = 'none';
+      if (totalRowContainer) totalRowContainer.classList.remove('is-change');
+      document.getElementById('total-val').textContent = 'Rp 0';
+    }
+    
     document.getElementById('btn-proceed').disabled = true;
     return;
   }
+  
+  lastTransactionChange = null;
+  if (totalLabel) totalLabel.style.display = 'none';
+  if (totalRowContainer) totalRowContainer.classList.remove('is-change');
   
   cart.forEach(item => {
     const div = document.createElement('div');
@@ -2238,6 +2251,7 @@ async function processCheckout() {
   // 3. Tutup modal pembayaran & Kosongkan keranjang
   document.getElementById('payment-modal').classList.remove('active');
   const lastCart = [...cart];
+  lastTransactionChange = change;
   cart = [];
   renderCart();
   
