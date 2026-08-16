@@ -408,6 +408,7 @@ svg.icon-empty {
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .fin-card-val {
@@ -415,6 +416,7 @@ svg.icon-empty {
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 .fin-card-val.text-amber {
   color: #d97706;
@@ -841,334 +843,6 @@ svg.icon-empty {
   padding: 2rem 0;
   color: #94a3b8;
   font-weight: 500;
-}
-
-/* --- Transaction History Modern Layout & Ornaments --- */
-.tx-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.tx-stat-card {
-  background-color: var(--bg-surface, #ffffff);
-  border-radius: 18px;
-  padding: 1.15rem 1.25rem;
-  border: 1px solid var(--border-color, #f1f5f9);
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.tx-stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-}
-
-.tx-stat-card.bg-blue-subtle { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe; }
-.tx-stat-card.bg-emerald-subtle { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-color: #a7f3d0; }
-.tx-stat-card.bg-purple-subtle { background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border-color: #e9d5ff; }
-.tx-stat-card.bg-amber-subtle { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-color: #fde68a; }
-
-.tx-stat-icon-box {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background-color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  flex-shrink: 0;
-}
-.tx-stat-icon-box.text-blue { color: #2563eb; }
-.tx-stat-icon-box.text-emerald { color: #059669; }
-.tx-stat-icon-box.text-purple { color: #9333ea; }
-.tx-stat-icon-box.text-amber { color: #d97706; }
-
-.tx-stat-label {
-  font-size: 0.68rem;
-  font-weight: 800;
-  color: #64748b;
-  letter-spacing: 0.05em;
-}
-.tx-stat-value {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: #0f172a;
-  margin-top: 0.15rem;
-  letter-spacing: -0.02em;
-}
-.tx-stat-value.text-emerald { color: #059669; }
-.tx-stat-value.text-amber { color: #d97706; }
-
-.tx-card-modern {
-  border-radius: 20px;
-  padding: 1.5rem;
-  background-color: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-color, #f1f5f9);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-}
-
-.tx-header-modern {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-.tx-title-modern {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: var(--text-main, #0f172a);
-  letter-spacing: -0.02em;
-}
-.tx-subtitle-modern {
-  font-size: 0.78rem;
-  color: var(--text-muted, #64748b);
-  margin-top: 0.2rem;
-}
-
-.btn-modern-action {
-  border-radius: 10px;
-  padding: 0.5rem 0.85rem;
-  font-weight: 700;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-
-.tx-filter-container {
-  background-color: var(--bg-surface-elevated, #f8fafc);
-  border-radius: 14px;
-  padding: 1rem;
-  border: 1px solid var(--border-color, #e2e8f0);
-  margin-bottom: 1.25rem;
-}
-
-.tx-filter-row {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.tx-search-modern {
-  flex: 1.5;
-  min-width: 280px;
-  background-color: #ffffff;
-  border-radius: 10px;
-}
-
-.tx-filter-controls {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.filter-group-item {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-.filter-group-item label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-muted, #64748b);
-}
-
-.tx-date-input, .tx-select-input {
-  padding: 0.4rem 0.65rem;
-  border: 1px solid var(--border-color, #cbd5e1);
-  border-radius: 8px;
-  font-family: var(--font-main);
-  font-size: 0.82rem;
-  font-weight: 600;
-  background-color: #ffffff;
-  color: var(--text-main, #1e293b);
-  outline: none;
-}
-.btn-reset-modern {
-  border-radius: 8px;
-  padding: 0.4rem 0.75rem;
-}
-
-.tx-search-meta {
-  margin-top: 0.65rem;
-}
-
-.tx-table-wrapper {
-  max-height: 520px;
-  overflow-y: auto;
-  border-radius: 12px;
-  border: 1px solid var(--border-color, #e2e8f0);
-}
-
-.tx-table-modern {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-.tx-table-modern th {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: var(--bg-surface-elevated, #f1f5f9);
-  color: var(--text-muted, #475569);
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0.85rem 1rem;
-  border-bottom: 2px solid var(--border-color, #cbd5e1);
-}
-
-.tx-row-modern {
-  transition: background-color 0.15s ease;
-}
-.tx-row-modern:hover {
-  background-color: var(--bg-surface-elevated, #f8fafc);
-}
-
-.tx-row-modern td {
-  padding: 0.85rem 1rem;
-  vertical-align: middle;
-  border-bottom: 1px solid var(--border-color, #f1f5f9);
-  font-size: 0.85rem;
-}
-
-.tx-id-badge {
-  font-family: monospace;
-  font-weight: 800;
-  color: #0f172a;
-  background-color: #f1f5f9;
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-  display: inline-block;
-  font-size: 0.8rem;
-}
-
-.tx-customer-sub {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.72rem;
-  color: #64748b;
-  margin-top: 0.25rem;
-  font-weight: 600;
-}
-
-.tx-time-date {
-  font-weight: 700;
-  color: var(--text-main, #334155);
-}
-.tx-time-clock {
-  font-size: 0.72rem;
-  color: var(--text-muted, #94a3b8);
-  margin-top: 0.1rem;
-}
-
-.tx-cashier-name {
-  font-weight: 600;
-  color: var(--text-main, #334155);
-}
-
-.tx-items-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  max-width: 280px;
-}
-
-.tx-item-chip {
-  display: inline-block;
-  background-color: #f1f5f9;
-  color: #334155;
-  font-size: 0.75rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
-}
-
-.tx-total-amount {
-  font-size: 0.95rem;
-  color: var(--text-main, #0f172a);
-}
-
-.tx-method-group {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.tx-method-badge {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-main, #334155);
-  background-color: #f1f5f9;
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-}
-
-.tx-status-pill {
-  font-size: 0.7rem;
-  font-weight: 800;
-  padding: 0.2rem 0.55rem;
-  border-radius: 9999px;
-  text-transform: uppercase;
-}
-.tx-status-pill.badge-lunas {
-  background-color: #d1fae5;
-  color: #047857;
-}
-.tx-status-pill.badge-bon {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
-
-.tx-paid-text {
-  color: var(--text-main, #334155);
-  font-weight: 600;
-}
-
-.tx-text-success { color: #059669; }
-.tx-text-danger { color: #dc2626; }
-.font-bold { font-weight: 700; }
-
-.tx-action-group {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.btn-settle-modern {
-  color: #059669 !important;
-  background-color: #d1fae5 !important;
-  border-radius: 8px !important;
-}
-.btn-edit-modern {
-  color: #2563eb !important;
-  background-color: #dbeafe !important;
-  border-radius: 8px !important;
-}
-.btn-print-modern {
-  color: #d97706 !important;
-  background-color: #fef3c7 !important;
-  border-radius: 8px !important;
-}
-.btn-delete-modern {
-  color: #dc2626 !important;
-  background-color: #fee2e2 !important;
-  border-radius: 8px !important;
-}
-
-.tx-empty-state {
-  text-align: center;
-  padding: 2.5rem 0;
-  color: #94a3b8;
-  font-weight: 600;
 }
 .chart-wrapper {
   height: 280px;
@@ -2655,33 +2329,134 @@ tr:hover td {
     text-align: right;
     display: block;
   }
-  /* 4. Tabel Produk Terlaris di Analisis Penjualan */
+  /* 4. Tabel & Card Analisis Penjualan di Mobile */
+  #pane-analytics .pane-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  #pane-analytics .pane-header .table-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  #pane-analytics .pane-header .table-actions button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+  .fin-card {
+    padding: 0.65rem 0.65rem 0.35rem 0.65rem;
+    border-radius: 16px;
+  }
+  .fin-card-top {
+    padding: 0.15rem 0.2rem 0.4rem 0.2rem;
+  }
+  .fin-card-title {
+    font-size: 0.8rem;
+  }
+  .fin-card-top-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+  .fin-card-white-box {
+    padding: 0.5rem 0.6rem;
+    border-radius: 12px;
+    min-height: 85px;
+  }
+  .fin-card-label {
+    font-size: 0.6rem;
+  }
+  .fin-card-main-content {
+    margin: 0.2rem 0 0.35rem 0;
+  }
+  .fin-card-val {
+    font-size: clamp(0.95rem, 3.5vw, 1.15rem);
+    white-space: nowrap;
+  }
+  .fin-card-arrow {
+    font-size: 0.85rem;
+  }
+  .mini-bar-graphic, .mini-line-graphic, .mini-bell-graphic {
+    width: 32px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+  .mini-donut-graphic {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .fin-card-desc {
+    font-size: 0.6rem;
+    line-height: 1.15;
+  }
+
   .best-seller-card .table-wrapper {
     max-height: 400px;
     overflow-x: auto;
   }
 }
 
-@media (max-width: 500px) {
-  /* Dynamic font scaling for financial card values on mobile */
+@media (max-width: 550px) {
+  /* Tampilan 1 Kolom untuk Kartu Keuangan di HP Sangat Kecil */
+  .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
   .fin-card-val {
-    font-size: 1.35rem;
+    font-size: 1.45rem;
   }
-  .fin-card-title {
-    font-size: 0.95rem;
-  }
-
-  /* Support responsive 7-Day Trend Chart SVG on mobile */
+  
+  /* Chart SVG height di Layar Ponsel */
   .chart-wrapper {
-    height: 180px;
+    height: 190px;
     padding: 0.25rem 0;
   }
   .chart-nominal-text {
-    font-size: 9px;
+    font-size: 10px;
   }
   
+  /* Best Seller Table Mobile Optimization */
+  .best-seller-card th {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.65rem;
+  }
+  .best-seller-row td {
+    padding: 0.5rem 0.65rem;
+  }
+  .best-seller-prod-info {
+    gap: 0.5rem;
+  }
+  .best-seller-img, .best-seller-box-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    max-width: 36px;
+    max-height: 36px;
+  }
+  .best-seller-prod-name {
+    font-size: 0.82rem;
+  }
+  .best-seller-prod-cat {
+    font-size: 0.65rem;
+  }
+  .qty-pill {
+    padding: 0.2rem 0.45rem;
+    font-size: 0.7rem;
+  }
+  .td-revenue {
+    font-size: 0.82rem;
+  }
+
   .bill-amount {
-    font-size: 1.6rem; /* Prevent layout breaking in payment modal */
+    font-size: 1.6rem;
   }
 }
 

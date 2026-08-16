@@ -4125,49 +4125,22 @@ function renderTransactionsTable() {
     }
   }
   
-  // Hitung ringkasan statistik untuk transaksi yang terfilter
-  let totalOmzetFiltered = 0;
-  let countLunas = 0;
-  let totalBonFiltered = 0;
-
-  filteredTxs.forEach(tx => {
-    totalOmzetFiltered += (tx.total || 0);
-    if (tx.status_pembayaran === 'Bon') {
-      totalBonFiltered += (tx.sisa_piutang || 0);
-    } else {
-      countLunas++;
-    }
-  });
-
-  const countValEl = document.getElementById('tx-stat-count-val');
-  const omzetValEl = document.getElementById('tx-stat-omzet-val');
-  const lunasValEl = document.getElementById('tx-stat-lunas-val');
-  const bonValEl = document.getElementById('tx-stat-bon-val');
-
-  if (countValEl) countValEl.textContent = filteredTxs.length;
-  if (omzetValEl) omzetValEl.textContent = `Rp ${formatRupiah(totalOmzetFiltered)}`;
-  if (lunasValEl) lunasValEl.textContent = countLunas;
-  if (bonValEl) bonValEl.textContent = `Rp ${formatRupiah(totalBonFiltered)}`;
-
   if (filteredTxs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="tx-empty-state">Tidak ada transaksi ditemukan.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Tidak ada transaksi ditemukan.</td></tr>`;
     return;
   }
   
   txsToRender.forEach(tx => {
     const tr = document.createElement('tr');
-    tr.className = 'tx-row-modern';
     
     let itemsDisplay = "";
     if (Array.isArray(tx.items)) {
-      itemsDisplay = tx.items.map(item => `<span class="tx-item-chip">${item.nama} <strong>(${item.qty}x)</strong></span>`).join(" ");
+      itemsDisplay = tx.items.map(item => `${item.nama} (${item.qty}x)`).join(", ");
     } else {
       itemsDisplay = tx.daftar_item || tx.items || "";
     }
     
-    const timeObj = new Date(tx.waktu);
-    const dateFormatted = timeObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-    const timeFormatted = timeObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const timeStr = new Date(tx.waktu).toLocaleString('id-ID', { hour12: false });
     
     // Status Pembayaran badge & kembalian display
     let statusBadge = '';
@@ -4175,52 +4148,41 @@ function renderTransactionsTable() {
     let settleBtnHtml = '';
     
     if (tx.status_pembayaran === 'Bon') {
-      statusBadge = `<span class="tx-status-pill badge-bon">Bon</span>`;
-      changeOrDebtDisplay = `<span class="tx-text-danger font-bold">Sisa: Rp ${formatRupiah(tx.sisa_piutang)}</span>`;
+      statusBadge = `<span class="cat-btn" style="background-color: rgba(239,68,68,0.1); color: var(--color-danger); border-color: rgba(239,68,68,0.2); cursor: default; margin: 0; font-size: 0.75rem;">Bon</span>`;
+      changeOrDebtDisplay = `<span style="color: var(--color-danger); font-weight: 700;">Sisa: Rp ${formatRupiah(tx.sisa_piutang)}</span>`;
       if (tx.sisa_piutang > 0) {
         settleBtnHtml = `
-          <button class="action-icon-btn btn-settle-modern" onclick="openSettleDebtModal('${tx.id}')" title="Pelunasan Bon">
+          <button class="action-icon-btn btn-edit" onclick="openSettleDebtModal('${tx.id}')" title="Pelunasan Bon" style="color: var(--color-success); background-color: rgba(16,185,129,0.1);">
             <svg viewBox="0 0 24 24" class="icon-sm" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           </button>
         `;
       }
     } else {
-      statusBadge = `<span class="tx-status-pill badge-lunas">Lunas</span>`;
-      changeOrDebtDisplay = `<span class="tx-text-success font-bold">Rp ${formatRupiah(tx.kembalian)}</span>`;
+      statusBadge = `<span class="cat-btn" style="background-color: rgba(16,185,129,0.1); color: var(--color-success); border-color: rgba(16,185,129,0.2); cursor: default; margin: 0; font-size: 0.75rem;">Lunas</span>`;
+      changeOrDebtDisplay = `<span style="color: var(--color-success); font-weight: 700;">Rp ${formatRupiah(tx.kembalian)}</span>`;
     }
     
-    const customerDisplay = tx.nama_pelanggan ? `<div class="tx-customer-sub"><svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${tx.nama_pelanggan}</div>` : '';
+    const customerDisplay = tx.nama_pelanggan ? `<br><small style="color: var(--text-muted); font-size: 0.75rem;">Pelanggan: <strong>${tx.nama_pelanggan}</strong></small>` : '';
     
     tr.innerHTML = `
-      <td>
-        <div class="tx-id-badge">${tx.id}</div>
-        ${customerDisplay}
-      </td>
-      <td>
-        <div class="tx-time-date">${dateFormatted}</div>
-        <div class="tx-time-clock">${timeFormatted}</div>
-      </td>
-      <td><span class="tx-cashier-name">${tx.kasir || 'Kasir Utama'}</span></td>
-      <td><div class="tx-items-wrap">${itemsDisplay}</div></td>
-      <td><strong class="tx-total-amount">Rp ${formatRupiah(tx.total)}</strong></td>
-      <td>
-        <div class="tx-method-group">
-          <span class="tx-method-badge">${tx.metode_pembayaran || 'Tunai'}</span>
-          ${statusBadge}
-        </div>
-      </td>
-      <td><span class="tx-paid-text">Rp ${formatRupiah(tx.bayar)}</span></td>
+      <td><strong>${tx.id}</strong>${customerDisplay}</td>
+      <td>${timeStr}</td>
+      <td><span style="font-weight: 600; font-size: 0.85rem;">${tx.kasir || 'Kasir Utama'}</span></td>
+      <td><span class="text-muted" style="font-size: 0.8rem;">${itemsDisplay}</span></td>
+      <td style="font-weight: 700;">Rp ${formatRupiah(tx.total)}</td>
+      <td><span style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.25rem;">${tx.metode_pembayaran || 'Tunai'} ${statusBadge}</span></td>
+      <td>Rp ${formatRupiah(tx.bayar)}</td>
       <td>${changeOrDebtDisplay}</td>
       <td>
-        <div class="tx-action-group">
+        <div style="display: flex; gap: 0.35rem;">
           ${settleBtnHtml}
-          <button class="action-icon-btn btn-edit-modern" onclick="openEditTransactionModal('${tx.id}')" title="Edit Transaksi">
+          <button class="action-icon-btn btn-edit" onclick="openEditTransactionModal('${tx.id}')" title="Edit Transaksi">
             <svg viewBox="0 0 24 24" class="icon-sm"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           </button>
-          <button class="action-icon-btn btn-print-modern" onclick="reprintReceipt('${tx.id}')" title="Cetak Nota">
+          <button class="action-icon-btn btn-edit" onclick="reprintReceipt('${tx.id}')" title="Cetak Uang / Reprint Nota" style="color: var(--color-primary); background-color: rgba(202,138,4,0.1);">
             <svg viewBox="0 0 24 24" class="icon-sm" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2m-10 0v4h8v-4"/></svg>
           </button>
-          <button class="action-icon-btn btn-delete-modern" onclick="deleteTransaction('${tx.id}')" title="Hapus Transaksi">
+          <button class="action-icon-btn btn-delete" onclick="deleteTransaction('${tx.id}')" title="Hapus Transaksi">
             <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
           </button>
         </div>

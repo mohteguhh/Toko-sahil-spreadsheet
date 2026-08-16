@@ -434,112 +434,57 @@
         </div>
       </section>
       
-      <!-- TAB TRANSAKSI: RIWAYAT TRANSAKSI (ULTRA MODERN DESIGN) -->
+      <!-- TAB TRANSAKSI: RIWAYAT TRANSAKSI -->
       <section id="pane-transactions" class="tab-pane">
-        
-        <!-- Summary Stats Quick Header -->
-        <div class="tx-stats-grid">
-          <div class="tx-stat-card bg-blue-subtle">
-            <div class="tx-stat-icon-box text-blue">
-              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            </div>
-            <div>
-              <span class="tx-stat-label">TOTAL TRANSAKSI</span>
-              <h3 class="tx-stat-value" id="tx-stat-count-val">0</h3>
-            </div>
-          </div>
-          <div class="tx-stat-card bg-emerald-subtle">
-            <div class="tx-stat-icon-box text-emerald">
-              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
-            </div>
-            <div>
-              <span class="tx-stat-label">TOTAL OMZET TAMPIL</span>
-              <h3 class="tx-stat-value text-emerald" id="tx-stat-omzet-val">Rp 0</h3>
-            </div>
-          </div>
-          <div class="tx-stat-card bg-purple-subtle">
-            <div class="tx-stat-icon-box text-purple">
-              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            </div>
-            <div>
-              <span class="tx-stat-label">TRANSAKSI LUNAS</span>
-              <h3 class="tx-stat-value" id="tx-stat-lunas-val">0</h3>
-            </div>
-          </div>
-          <div class="tx-stat-card bg-amber-subtle">
-            <div class="tx-stat-icon-box text-amber">
-              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </div>
-            <div>
-              <span class="tx-stat-label">PIUTANG (BON)</span>
-              <h3 class="tx-stat-value text-amber" id="tx-stat-bon-val">Rp 0</h3>
-            </div>
-          </div>
-        </div>
-
-        <div class="card tx-card-modern">
-          <!-- Table Main Header -->
-          <div class="tx-header-modern">
-            <div>
-              <h2 class="tx-title-modern">Riwayat Penjualan & Transaksi</h2>
-              <p class="tx-subtitle-modern">Pantau, cari, edit, cetak ulang nota, atau selesaikan pelunasan bon transaksi.</p>
-            </div>
+        <div class="card table-card">
+          <div class="table-header">
+            <h2>Riwayat Penjualan / Transaksi</h2>
             <div class="table-actions">
-              <button class="btn btn-success btn-sm btn-modern-action" onclick="exportTransactionsToCSV()">
+              <button class="btn btn-success btn-sm" onclick="exportTransactionsToCSV()">
                 <svg viewBox="0 0 24 24" class="icon-sm"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                <span>Unduh CSV</span>
+                <span>Unduh Laporan Penjualan (CSV)</span>
               </button>
-              <button class="btn btn-accent btn-sm btn-modern-action" onclick="syncTransactionsToCloud()">
+              <button class="btn btn-accent btn-sm" onclick="syncTransactionsToCloud()">
                 <svg viewBox="0 0 24 24" class="icon-sm"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                <span>Sync Cloud</span>
+                <span>Sync Transaksi ke Cloud</span>
               </button>
             </div>
           </div>
           
-          <!-- Modern Search & Filter Controls -->
-          <div class="tx-filter-container">
-            <div class="tx-filter-row">
-              <div class="search-bar tx-search-modern">
+          <!-- Search & Filter Controls -->
+          <div class="table-search-wrapper" style="margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; width: 100%;">
+              <div class="search-bar" style="flex: 1; min-width: 250px;">
                 <svg viewBox="0 0 24 24" class="icon-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                <input type="text" id="transaction-list-search" placeholder="Cari ID transaksi, nama barang, atau nama pelanggan..." oninput="filterTransactionsTable()">
+                <input type="text" id="transaction-list-search" placeholder="Cari ID transaksi, nama produk..." oninput="filterTransactionsTable()">
               </div>
-              
-              <div class="tx-filter-controls">
-                <div class="filter-group-item">
-                  <label for="tx-filter-start-date">Dari</label>
-                  <input type="date" id="tx-filter-start-date" onchange="filterTransactionsTable()" class="tx-date-input">
-                </div>
-                <div class="filter-group-item">
-                  <label for="tx-filter-end-date">s.d</label>
-                  <input type="date" id="tx-filter-end-date" onchange="filterTransactionsTable()" class="tx-date-input">
-                </div>
-                <div class="filter-group-item">
-                  <label for="tx-filter-status">Status</label>
-                  <select id="tx-filter-status" onchange="filterTransactionsTable()" class="tx-select-input">
-                    <option value="Semua">Semua Status</option>
-                    <option value="Lunas">Lunas</option>
-                    <option value="Bon">Bon / Piutang</option>
-                  </select>
-                </div>
-                <button class="btn btn-secondary btn-sm btn-reset-modern" onclick="clearTransactionFilters()">Reset</button>
+              <div style="display: flex; gap: 0.5rem; align-items: center; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); flex-wrap: wrap;">
+                <span>Dari:</span>
+                <input type="date" id="tx-filter-start-date" onchange="filterTransactionsTable()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main);">
+                <span>s.d:</span>
+                <input type="date" id="tx-filter-end-date" onchange="filterTransactionsTable()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main);">
+                <span>Status:</span>
+                <select id="tx-filter-status" onchange="filterTransactionsTable()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-size: 0.8rem; font-weight: 700; color: var(--text-muted); background-color: var(--bg-card); cursor: pointer; outline: none;">
+                  <option value="Semua">Semua Status</option>
+                  <option value="Lunas">Lunas</option>
+                  <option value="Bon">Bon / Piutang</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" onclick="clearTransactionFilters()" style="padding: 0.35rem 0.65rem;">Reset</button>
               </div>
             </div>
-            <div class="tx-search-meta">
-              <span class="help-text" id="transaction-search-count">Menampilkan data transaksi.</span>
-            </div>
+            <span class="help-text" id="transaction-search-count">Menampilkan data transaksi.</span>
           </div>
           
-          <!-- Modern Table Wrapper -->
-          <div class="table-wrapper tx-table-wrapper">
-            <table id="transactions-table" class="tx-table-modern">
+          <div class="table-wrapper">
+            <table id="transactions-table">
               <thead>
                 <tr>
-                  <th>ID & Pelanggan</th>
+                  <th>ID Transaksi</th>
                   <th>Waktu</th>
                   <th>Kasir</th>
-                  <th>Daftar Item Belanja</th>
-                  <th>Total Tagihan</th>
-                  <th>Metode & Status</th>
+                  <th>Daftar Item</th>
+                  <th>Total</th>
+                  <th>Metode</th>
                   <th>Bayar</th>
                   <th>Kembalian / Sisa Bon</th>
                   <th>Aksi</th>
