@@ -1393,10 +1393,10 @@ function render7DayChart() {
   
   // Ukuran viewBox SVG
   const width = 800;
-  const height = 200;
-  const paddingX = 25;
-  const paddingYTop = 35;
-  const paddingYBottom = 35;
+  const height = 220;
+  const paddingX = 40;
+  const paddingYTop = 38;
+  const paddingYBottom = 42;
   const chartWidth = width - (paddingX * 2);
   const chartHeight = height - paddingYTop - paddingYBottom;
   
@@ -1432,7 +1432,7 @@ function render7DayChart() {
   const areaPathD = `${linePathD} L ${points[points.length - 1].x},${height - paddingYBottom} L ${points[0].x},${height - paddingYBottom} Z`;
 
   let svgHTML = `
-    <svg viewBox="0 0 ${width} ${height}" class="smooth-line-chart" preserveAspectRatio="none" style="width: 100%; height: 100%; overflow: visible;">
+    <svg viewBox="0 0 ${width} ${height}" class="smooth-line-chart" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%; display: block;">
       <defs>
         <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="var(--color-primary, #3b82f6)" stop-opacity="0.35" />
@@ -1470,13 +1470,13 @@ function render7DayChart() {
         <circle cx="${pt.x}" cy="${pt.y}" r="4" fill="var(--bg-surface, #fff)" stroke="var(--color-primary, #3b82f6)" stroke-width="2.5" />
         
         <!-- Nominal Text on Top of Point -->
-        <text x="${pt.x}" y="${Math.max(15, pt.y - 10)}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--text-main, #1f2937)" class="chart-nominal-text">
+        <text x="${pt.x}" y="${Math.max(paddingYTop - 4, pt.y - 12)}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-main, #1f2937)" class="chart-nominal-text">
           ${shortText}
         </text>
         <title>${pt.day.label}: ${formattedNominal}</title>
 
         <!-- Date Label below Bottom Line -->
-        <text x="${pt.x}" y="${height - 8}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--text-muted, #6b7280)">
+        <text x="${pt.x}" y="${height - 10}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-muted, #6b7280)">
           ${pt.day.label}
         </text>
       </g>

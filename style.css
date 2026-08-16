@@ -327,7 +327,7 @@ svg.icon-empty {
 /* Financial Summary Grid Cards - Exact Screenshot Design */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.25rem;
   margin-bottom: 1.5rem;
 }
@@ -409,6 +409,7 @@ svg.icon-empty {
   align-items: center;
   gap: 0.35rem;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .fin-card-val {
@@ -650,16 +651,22 @@ svg.icon-empty {
   grid-template-columns: 1fr 350px;
   gap: 1.5rem;
   align-items: start;
+  width: 100%;
+  min-width: 0;
 }
 .dashboard-left {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
+  width: 100%;
 }
 .dashboard-right {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
+  width: 100%;
 }
 
 /* Tren Chart */
@@ -847,9 +854,11 @@ svg.icon-empty {
 .chart-wrapper {
   height: 280px;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   padding: 0.5rem 0;
+  width: 100%;
+  overflow: hidden;
 }
 .bar-chart {
   width: 100%;
@@ -858,6 +867,7 @@ svg.icon-empty {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 .chart-nominal-text {
   font-family: var(--font-main);
@@ -2329,11 +2339,18 @@ tr:hover td {
     text-align: right;
     display: block;
   }
-  /* 4. Tabel & Card Analisis Penjualan di Mobile */
+  /* 4. Tabel & Card Analisis Penjualan di Mobile - NO HORIZONTAL SCROLL */
+  #pane-analytics {
+    overflow-x: hidden;
+    max-width: 100vw;
+    box-sizing: border-box;
+  }
   #pane-analytics .pane-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
   }
   #pane-analytics .pane-header .table-actions {
     width: 100%;
@@ -2345,56 +2362,78 @@ tr:hover td {
     flex: 1 1 auto;
     justify-content: center;
   }
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .dashboard-left,
+  .dashboard-right {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .dashboard-left .card,
+  .dashboard-right .card,
+  .widget-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .best-seller-card .table-wrapper,
+  .chart-wrapper {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
 
   .metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.6rem;
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem;
   }
   .fin-card {
-    padding: 0.65rem 0.65rem 0.35rem 0.65rem;
-    border-radius: 16px;
+    padding: 0.85rem 0.85rem 0.5rem 0.85rem;
+    border-radius: 18px;
   }
   .fin-card-top {
-    padding: 0.15rem 0.2rem 0.4rem 0.2rem;
+    padding: 0.25rem 0.35rem 0.65rem 0.35rem;
   }
   .fin-card-title {
-    font-size: 0.8rem;
+    font-size: 0.95rem;
   }
   .fin-card-top-icon {
-    width: 1rem;
-    height: 1rem;
+    width: 1.2rem;
+    height: 1.2rem;
   }
   .fin-card-white-box {
-    padding: 0.5rem 0.6rem;
-    border-radius: 12px;
-    min-height: 85px;
+    padding: 0.85rem 0.85rem;
+    border-radius: 14px;
+    min-height: 95px;
   }
   .fin-card-label {
-    font-size: 0.6rem;
-  }
-  .fin-card-main-content {
-    margin: 0.2rem 0 0.35rem 0;
+    font-size: 0.7rem;
   }
   .fin-card-val {
-    font-size: clamp(0.95rem, 3.5vw, 1.15rem);
+    font-size: 1.45rem;
     white-space: nowrap;
   }
   .fin-card-arrow {
-    font-size: 0.85rem;
+    font-size: 1.1rem;
   }
   .mini-bar-graphic, .mini-line-graphic, .mini-bell-graphic {
-    width: 32px;
-    height: 22px;
-    flex-shrink: 0;
+    width: 48px;
+    height: 28px;
   }
   .mini-donut-graphic {
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
   }
   .fin-card-desc {
-    font-size: 0.6rem;
-    line-height: 1.15;
+    font-size: 0.7rem;
+    line-height: 1.25;
   }
 
   .best-seller-card .table-wrapper {
@@ -2403,10 +2442,21 @@ tr:hover td {
   }
 }
 
-@media (max-width: 550px) {
-  /* Tampilan 1 Kolom untuk Kartu Keuangan di HP Sangat Kecil */
+@media (max-width: 1100px) {
   .metrics-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 550px) {
+  .metrics-grid {
+    grid-template-columns: 1fr !important;
     gap: 0.75rem;
   }
   .fin-card-val {
@@ -2415,11 +2465,12 @@ tr:hover td {
   
   /* Chart SVG height di Layar Ponsel */
   .chart-wrapper {
-    height: 190px;
+    height: 230px;
     padding: 0.25rem 0;
+    overflow: hidden;
   }
   .chart-nominal-text {
-    font-size: 10px;
+    font-size: 11px;
   }
   
   /* Best Seller Table Mobile Optimization */
