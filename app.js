@@ -1183,19 +1183,32 @@ function updateAnalytics() {
   const breakdownContainer = document.getElementById('payment-method-breakdown');
   if (breakdownContainer) {
     breakdownContainer.innerHTML = '';
+    
+    // Config icon & warna per metode
+    const methodConfigs = {
+      'Tunai': { icon: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>`, bg: 'bg-emerald-light', text: 'text-emerald' },
+      'QRIS': { icon: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`, bg: 'bg-blue-light', text: 'text-blue' },
+      'Debit': { icon: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`, bg: 'bg-purple-light', text: 'text-purple' },
+      'Transfer': { icon: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`, bg: 'bg-amber-light', text: 'text-amber' }
+    };
+
     Object.keys(methodsBreakdown).forEach(m => {
       const amt = methodsBreakdown[m];
+      const cfg = methodConfigs[m] || { icon: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`, bg: 'bg-slate-light', text: 'text-slate' };
+      const isNonZero = amt > 0;
+      
       const div = document.createElement('div');
-      div.style.display = 'flex';
-      div.style.justify = 'space-between';
-      div.style.alignItems = 'center';
-      div.style.padding = '0.35rem 0.5rem';
-      div.style.backgroundColor = 'var(--bg-body)';
-      div.style.borderRadius = 'var(--border-radius-sm)';
-      div.style.fontSize = '0.85rem';
+      div.className = `widget-item ${isNonZero ? 'active-border' : 'muted-bg'}`;
       div.innerHTML = `
-        <span style="font-weight:600; color:var(--text-main);">${m}</span>
-        <span style="font-weight:700; color:var(--text-main);">Rp ${formatRupiah(amt)}</span>
+        <div class="widget-item-left">
+          <div class="widget-icon-box ${cfg.bg} ${cfg.text}">
+            ${cfg.icon}
+          </div>
+          <span class="widget-item-title">${m}</span>
+        </div>
+        <span class="widget-item-amount ${isNonZero ? 'font-bold-main' : 'font-muted'}">
+          Rp ${formatRupiah(amt)}
+        </span>
       `;
       breakdownContainer.appendChild(div);
     });
@@ -1204,22 +1217,38 @@ function updateAnalytics() {
   // 1. Hitung Stok Menipis (0 s.d. 2 pcs)
   const stockAlerts = products.filter(p => p.stok <= 2);
   const stockListEl = document.getElementById('stock-alerts-list');
+  const countBadgeEl = document.getElementById('stock-alert-count-badge');
+  if (countBadgeEl) {
+    countBadgeEl.textContent = `${stockAlerts.length} Item`;
+  }
+  
   stockListEl.innerHTML = '';
   
   if (stockAlerts.length === 0) {
-    stockListEl.innerHTML = '<li class="empty-alert">Stok aman terkendali.</li>';
+    stockListEl.innerHTML = '<div class="widget-empty">Stok aman terkendali.</div>';
   } else {
     stockAlerts.forEach(p => {
-      const li = document.createElement('li');
-      li.className = 'alert-item';
-      li.innerHTML = `
-        <div class="alert-item-left">
-          <span class="alert-item-name">${p.nama} (${p.id})</span>
-          <span class="alert-item-meta">Kategori: ${p.kategori || 'Umum'}</span>
+      const isHabis = p.stok === 0;
+      const itemEl = document.createElement('div');
+      itemEl.className = 'widget-item stock-item';
+      
+      const iconOrImg = p.gambar 
+        ? `<img src="${p.gambar}" alt="${p.nama}" class="stock-item-img" onerror="this.onerror=null; this.outerHTML='<div class=\\'widget-icon-box bg-white-border\\'><svg viewBox=\\'0 0 24 24\\' class=\\'w-4 h-4 text-muted\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\'><path d=\\'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z\\'/><polyline points=\\'3.27 6.96 12 12.01 20.73 6.96\\'/><line x1=\\'12\\' y1=\\'22.08\\' x2=\\'12\\' y2=\\'12\\'/></svg></div>';">`
+        : `<div class="widget-icon-box bg-white-border"><svg viewBox="0 0 24 24" class="w-4 h-4 text-muted" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>`;
+
+      itemEl.innerHTML = `
+        <div class="widget-item-left">
+          ${iconOrImg}
+          <div>
+            <h4 class="stock-item-title">${p.nama} <span class="stock-qty-sub">(${p.stok})</span></h4>
+            <p class="stock-category-sub">KATEGORI: ${p.kategori || 'UMUM'}</p>
+          </div>
         </div>
-        <span class="alert-item-badge ${p.stok === 0 ? '' : 'warning'}">${p.stok === 0 ? 'Habis' : p.stok + ' pcs'}</span>
+        <span class="stock-status-badge ${isHabis ? 'badge-rose' : 'badge-amber'}">
+          ${isHabis ? 'Habis' : 'Menipis'}
+        </span>
       `;
-      stockListEl.appendChild(li);
+      stockListEl.appendChild(itemEl);
     });
   }
   
@@ -1288,15 +1317,41 @@ function updateAnalytics() {
   const sortedSellers = Object.keys(sellCounts).sort((a, b) => sellCounts[b] - sellCounts[a]);
   
   if (sortedSellers.length === 0) {
-    bestSellersBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Belum ada penjualan.</td></tr>';
+    bestSellersBody.innerHTML = '<tr><td colspan="4" class="best-seller-empty">Belum ada penjualan pada periode ini.</td></tr>';
   } else {
     sortedSellers.forEach((nama, idx) => {
+      // Cari data produk asli berdasarkan nama
+      const p = products.find(prod => prod.nama === nama);
+      const category = p && p.kategori ? p.kategori : 'UMUM';
+      
+      const boxSvg = `<div class="best-seller-box-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>`;
+      
+      // Jika produk ada gambar, tampilkan HANYA elemen <img> (tidak ada div dus). Jika tidak ada gambar, tampilkan div dus.
+      const imgThumbnail = (p && p.gambar && p.gambar.trim() !== '')
+        ? `<img src="${p.gambar}" alt="${nama}" class="best-seller-img" onerror="this.outerHTML=\`<div class='best-seller-box-icon'><svg viewBox='0 0 24 24' width='20' height='20' fill='none' stroke='currentColor' stroke-width='2'><path d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'/><polyline points='3.27 6.96 12 12.01 20.73 6.96'/><line x1='12' y1='22.08' x2='12' y2='12'/></svg></div>\`;">`
+        : boxSvg;
+        
+      // Badge Ranking (#1 Gold, #2 Silver, #3 Bronze, dst)
+      let rankClass = 'rank-default';
+      if (idx === 0) rankClass = 'rank-gold';
+      else if (idx === 1) rankClass = 'rank-silver';
+      else if (idx === 2) rankClass = 'rank-bronze';
+
       const tr = document.createElement('tr');
+      tr.className = 'best-seller-row';
       tr.innerHTML = `
-        <td><strong>#${idx + 1}</strong></td>
-        <td>${nama}</td>
-        <td>${sellCounts[nama]}x</td>
-        <td>Rp ${formatRupiah(sellRevenue[nama])}</td>
+        <td class="td-rank"><span class="rank-badge ${rankClass}">#${idx + 1}</span></td>
+        <td class="td-product">
+          <div class="best-seller-prod-info">
+            ${imgThumbnail}
+            <div>
+              <div class="best-seller-prod-name">${nama}</div>
+              <div class="best-seller-prod-cat">${category}</div>
+            </div>
+          </div>
+        </td>
+        <td class="td-qty"><span class="qty-pill">${sellCounts[nama]} terjual</span></td>
+        <td class="td-revenue"><strong>Rp ${formatRupiah(sellRevenue[nama])}</strong></td>
       `;
       bestSellersBody.appendChild(tr);
     });
@@ -4070,22 +4125,49 @@ function renderTransactionsTable() {
     }
   }
   
+  // Hitung ringkasan statistik untuk transaksi yang terfilter
+  let totalOmzetFiltered = 0;
+  let countLunas = 0;
+  let totalBonFiltered = 0;
+
+  filteredTxs.forEach(tx => {
+    totalOmzetFiltered += (tx.total || 0);
+    if (tx.status_pembayaran === 'Bon') {
+      totalBonFiltered += (tx.sisa_piutang || 0);
+    } else {
+      countLunas++;
+    }
+  });
+
+  const countValEl = document.getElementById('tx-stat-count-val');
+  const omzetValEl = document.getElementById('tx-stat-omzet-val');
+  const lunasValEl = document.getElementById('tx-stat-lunas-val');
+  const bonValEl = document.getElementById('tx-stat-bon-val');
+
+  if (countValEl) countValEl.textContent = filteredTxs.length;
+  if (omzetValEl) omzetValEl.textContent = `Rp ${formatRupiah(totalOmzetFiltered)}`;
+  if (lunasValEl) lunasValEl.textContent = countLunas;
+  if (bonValEl) bonValEl.textContent = `Rp ${formatRupiah(totalBonFiltered)}`;
+
   if (filteredTxs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Tidak ada transaksi ditemukan.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="tx-empty-state">Tidak ada transaksi ditemukan.</td></tr>`;
     return;
   }
   
   txsToRender.forEach(tx => {
     const tr = document.createElement('tr');
+    tr.className = 'tx-row-modern';
     
     let itemsDisplay = "";
     if (Array.isArray(tx.items)) {
-      itemsDisplay = tx.items.map(item => `${item.nama} (${item.qty}x)`).join(", ");
+      itemsDisplay = tx.items.map(item => `<span class="tx-item-chip">${item.nama} <strong>(${item.qty}x)</strong></span>`).join(" ");
     } else {
       itemsDisplay = tx.daftar_item || tx.items || "";
     }
     
-    const timeStr = new Date(tx.waktu).toLocaleString('id-ID', { hour12: false });
+    const timeObj = new Date(tx.waktu);
+    const dateFormatted = timeObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const timeFormatted = timeObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     
     // Status Pembayaran badge & kembalian display
     let statusBadge = '';
@@ -4093,41 +4175,52 @@ function renderTransactionsTable() {
     let settleBtnHtml = '';
     
     if (tx.status_pembayaran === 'Bon') {
-      statusBadge = `<span class="cat-btn" style="background-color: rgba(239,68,68,0.1); color: var(--color-danger); border-color: rgba(239,68,68,0.2); cursor: default; margin: 0; font-size: 0.75rem;">Bon</span>`;
-      changeOrDebtDisplay = `<span style="color: var(--color-danger); font-weight: 700;">Sisa: Rp ${formatRupiah(tx.sisa_piutang)}</span>`;
+      statusBadge = `<span class="tx-status-pill badge-bon">Bon</span>`;
+      changeOrDebtDisplay = `<span class="tx-text-danger font-bold">Sisa: Rp ${formatRupiah(tx.sisa_piutang)}</span>`;
       if (tx.sisa_piutang > 0) {
         settleBtnHtml = `
-          <button class="action-icon-btn btn-edit" onclick="openSettleDebtModal('${tx.id}')" title="Pelunasan Bon" style="color: var(--color-success); background-color: rgba(16,185,129,0.1);">
+          <button class="action-icon-btn btn-settle-modern" onclick="openSettleDebtModal('${tx.id}')" title="Pelunasan Bon">
             <svg viewBox="0 0 24 24" class="icon-sm" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           </button>
         `;
       }
     } else {
-      statusBadge = `<span class="cat-btn" style="background-color: rgba(16,185,129,0.1); color: var(--color-success); border-color: rgba(16,185,129,0.2); cursor: default; margin: 0; font-size: 0.75rem;">Lunas</span>`;
-      changeOrDebtDisplay = `<span style="color: var(--color-success); font-weight: 700;">Rp ${formatRupiah(tx.kembalian)}</span>`;
+      statusBadge = `<span class="tx-status-pill badge-lunas">Lunas</span>`;
+      changeOrDebtDisplay = `<span class="tx-text-success font-bold">Rp ${formatRupiah(tx.kembalian)}</span>`;
     }
     
-    const customerDisplay = tx.nama_pelanggan ? `<br><small style="color: var(--text-muted); font-size: 0.75rem;">Pelanggan: <strong>${tx.nama_pelanggan}</strong></small>` : '';
+    const customerDisplay = tx.nama_pelanggan ? `<div class="tx-customer-sub"><svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${tx.nama_pelanggan}</div>` : '';
     
     tr.innerHTML = `
-      <td><strong>${tx.id}</strong>${customerDisplay}</td>
-      <td>${timeStr}</td>
-      <td><span style="font-weight: 600; font-size: 0.85rem;">${tx.kasir || 'Kasir Utama'}</span></td>
-      <td><span class="text-muted" style="font-size: 0.8rem;">${itemsDisplay}</span></td>
-      <td style="font-weight: 700;">Rp ${formatRupiah(tx.total)}</td>
-      <td><span style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.25rem;">${tx.metode_pembayaran || 'Tunai'} ${statusBadge}</span></td>
-      <td>Rp ${formatRupiah(tx.bayar)}</td>
+      <td>
+        <div class="tx-id-badge">${tx.id}</div>
+        ${customerDisplay}
+      </td>
+      <td>
+        <div class="tx-time-date">${dateFormatted}</div>
+        <div class="tx-time-clock">${timeFormatted}</div>
+      </td>
+      <td><span class="tx-cashier-name">${tx.kasir || 'Kasir Utama'}</span></td>
+      <td><div class="tx-items-wrap">${itemsDisplay}</div></td>
+      <td><strong class="tx-total-amount">Rp ${formatRupiah(tx.total)}</strong></td>
+      <td>
+        <div class="tx-method-group">
+          <span class="tx-method-badge">${tx.metode_pembayaran || 'Tunai'}</span>
+          ${statusBadge}
+        </div>
+      </td>
+      <td><span class="tx-paid-text">Rp ${formatRupiah(tx.bayar)}</span></td>
       <td>${changeOrDebtDisplay}</td>
       <td>
-        <div style="display: flex; gap: 0.35rem;">
+        <div class="tx-action-group">
           ${settleBtnHtml}
-          <button class="action-icon-btn btn-edit" onclick="openEditTransactionModal('${tx.id}')" title="Edit Transaksi">
+          <button class="action-icon-btn btn-edit-modern" onclick="openEditTransactionModal('${tx.id}')" title="Edit Transaksi">
             <svg viewBox="0 0 24 24" class="icon-sm"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           </button>
-          <button class="action-icon-btn btn-edit" onclick="reprintReceipt('${tx.id}')" title="Cetak Uang / Reprint Nota" style="color: var(--color-primary); background-color: rgba(202,138,4,0.1);">
+          <button class="action-icon-btn btn-print-modern" onclick="reprintReceipt('${tx.id}')" title="Cetak Nota">
             <svg viewBox="0 0 24 24" class="icon-sm" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2m-10 0v4h8v-4"/></svg>
           </button>
-          <button class="action-icon-btn btn-delete" onclick="deleteTransaction('${tx.id}')" title="Hapus Transaksi">
+          <button class="action-icon-btn btn-delete-modern" onclick="deleteTransaction('${tx.id}')" title="Hapus Transaksi">
             <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
           </button>
         </div>
