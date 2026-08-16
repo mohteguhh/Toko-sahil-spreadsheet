@@ -61,7 +61,7 @@ function handleResponse(data) {
 // Inisialisasi & Perbaikan Sheet jika belum lengkap (Schema Lengkap)
 function setupSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var headers = ["ID", "Nama", "Kategori", "Harga Beli", "Harga Jual", "Stok", "Barcode", "Gambar", "Tanggal Kadaluarsa"];
+  var headers = ["ID", "Nama", "Kategori", "Harga Beli", "Harga Jual", "Stok", "Barcode", "Gambar", "Tanggal Kadaluarsa", "Harga Diskon", "Kuota Diskon", "Has Unit Box", "Barcode Box", "Nama Box", "Isi Box", "Harga Box"];
   
   // 1. Sheet Produk
   var sheetProduk = ss.getSheetByName("Produk");
@@ -81,27 +81,24 @@ function setupSheets() {
       "https://m.media-amazon.com/images/I/71Bs3RzmTyL._SL1500_.jpg",
       "2027-12-31",
       0,
-      0
-    ]);
-    sheetProduk.appendRow([
-      "P002", 
-      "Teh Manis", 
-      "Minuman", 
-      2000, 
-      4000, 
-      100, 
-      "8996001300247", 
-      "https://images.unsplash.com/photo-1576092768241-dec231879fc3?q=80&w=300",
+      0,
+      "FALSE",
+      "",
       "",
       0,
       0
     ]);
   } else {
-    // Perbaikan Header jika kolom baru (seperti Tanggal Kadaluarsa / Harga Beli / Diskon) belum ada
+    // Perbaikan Header jika kolom baru belum ada
     var currentLastCol = Math.max(1, sheetProduk.getLastColumn());
     var existingHeaders = sheetProduk.getRange(1, 1, 1, currentLastCol).getValues()[0];
     
-    if (existingHeaders.length < headers.length || existingHeaders[3] !== "Harga Beli" || existingHeaders[8] !== "Tanggal Kadaluarsa") {
+    // Set format teks untuk kolom ID, Barcode, & Barcode Box agar 0 di depan tidak terhapus otomatis oleh Google Sheets
+    sheetProduk.getRange("A:A").setNumberFormat("@");
+    sheetProduk.getRange("G:G").setNumberFormat("@");
+    sheetProduk.getRange("M:M").setNumberFormat("@");
+    
+    if (existingHeaders.length < headers.length) {
       // Perbarui baris header tanpa menghapus data produk di bawahnya
       sheetProduk.getRange(1, 1, 1, headers.length).setValues([headers]);
     }
@@ -133,8 +130,15 @@ function getProductsData() {
   for (var i = 1; i < rows.length; i++) {
     var product = {};
     for (var j = 0; j < headers.length; j++) {
-      var key = headers[j].toString().toLowerCase().replace(" ", "_");
-      product[key] = rows[i][j];
+      var key = headers[j].toString().toLowerCase().replace(/ /g, "_");
+      var val = rows[i][j];
+      if (key === 'has_unit_box') {
+        val = val === true || val === "TRUE" || val === "true";
+      }
+      if (key === 'barcode' || key === 'barcode_box' || key === 'id') {
+        val = val !== null && val !== undefined ? val.toString().trim().replace(/^'/, '') : '';
+      }
+      product[key] = val;
     }
     products.push(product);
   }
@@ -218,10 +222,15 @@ function updateProducts(productsList) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName("Produk");
   
+  // Set format teks kolom barcode
+  sheet.getRange("A:A").setNumberFormat("@");
+  sheet.getRange("G:G").setNumberFormat("@");
+  sheet.getRange("M:M").setNumberFormat("@");
+  
   // Bersihkan data lama mulai baris kedua ke bawah
   var lastRow = sheet.getLastRow();
   if (lastRow > 1) {
-    sheet.getRange(2, 1, lastRow - 1, 9).clearContent();
+    sheet.getRange(2, 1, lastRow - 1, 16).clearContent();
   }
   
   if (productsList.length === 0) {
@@ -239,6 +248,12 @@ function updateProducts(productsList) {
       expDateStr = expDateStr.toISOString().slice(0, 10);
     }
     
+    var bcStr = p.barcode ? p.barcode.toString().trim() : "";
+    if (bcStr && !bcStr.startsWith("'")) bcStr = "'" + bcStr;
+    
+    var bcBoxStr = p.barcode_box ? p.barcode_box.toString().trim() : "";
+    if (bcBoxStr && !bcBoxStr.startsWith("'")) bcBoxStr = "'" + bcBoxStr;
+    
     values.push([
       p.id || "",
       p.nama || "",
@@ -246,16 +261,21 @@ function updateProducts(productsList) {
       Number(p.harga_beli) || 0,
       Number(p.harga_jual) || 0,
       Number(p.stok) || 0,
-      p.barcode || "",
+      bcStr,
       p.gambar || "",
       expDateStr,
       Number(p.harga_diskon) || 0,
-      Number(p.kuota_diskon) || 0
+      Number(p.kuota_diskon) || 0,
+      p.has_unit_box ? true : false,
+      bcBoxStr,
+      p.nama_box || "Kotak",
+      Number(p.isi_box) || 0,
+      Number(p.harga_box) || 0
     ]);
   }
   
   // Tulis massal dalam satu kali panggil API Google Sheets
-  sheet.getRange(2, 1, values.length, 11).setValues(values);
+  sheet.getRange(2, 1, values.length, 16).setValues(values);
   
   return { status: "success", message: "Sinkronisasi produk (" + productsList.length + " item) sukses secara instan!" };
 }
@@ -264,12 +284,24 @@ function updateProducts(productsList) {
 function upsertProduct(p) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName("Produk");
+  
+  // Set format teks kolom barcode
+  sheet.getRange("A:A").setNumberFormat("@");
+  sheet.getRange("G:G").setNumberFormat("@");
+  sheet.getRange("M:M").setNumberFormat("@");
+  
   var rows = sheet.getDataRange().getValues();
   
   var expDateStr = p.tanggal_kadaluarsa || "";
   if (expDateStr instanceof Date) {
     expDateStr = expDateStr.toISOString().slice(0, 10);
   }
+  
+  var bcStr = p.barcode ? p.barcode.toString().trim() : "";
+  if (bcStr && !bcStr.startsWith("'")) bcStr = "'" + bcStr;
+  
+  var bcBoxStr = p.barcode_box ? p.barcode_box.toString().trim() : "";
+  if (bcBoxStr && !bcBoxStr.startsWith("'")) bcBoxStr = "'" + bcBoxStr;
   
   var rowData = [
     p.id || "",
@@ -278,11 +310,16 @@ function upsertProduct(p) {
     Number(p.harga_beli) || 0,
     Number(p.harga_jual) || 0,
     Number(p.stok) || 0,
-    p.barcode || "",
+    bcStr,
     p.gambar || "",
     expDateStr,
     Number(p.harga_diskon) || 0,
-    Number(p.kuota_diskon) || 0
+    Number(p.kuota_diskon) || 0,
+    p.has_unit_box ? true : false,
+    bcBoxStr,
+    p.nama_box || "Kotak",
+    Number(p.isi_box) || 0,
+    Number(p.harga_box) || 0
   ];
   
   var found = false;

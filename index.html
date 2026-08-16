@@ -130,28 +130,89 @@
           </div>
         </div>
         
-        <!-- Metrics Grid -->
+        <!-- Metrics Grid (Financial Summary Grid) -->
         <div class="metrics-grid">
-          <div class="metric-card income">
-            <span class="metric-title">TOTAL OMZET (TUNAI)</span>
-            <h3 class="metric-value" id="stat-revenue">Rp 0</h3>
-            <span class="metric-sub">Hanya transaksi tunai</span>
+          
+          <!-- Card 1: Total Omzet (Tunai) -->
+          <div class="fin-card">
+            <div class="fin-card-header bg-teal">
+              <span class="fin-card-badge-title">Cash Revenue</span>
+              <svg viewBox="0 0 24 24" class="fin-card-icon" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+            </div>
+            <div class="fin-card-body">
+              <div>
+                <p class="fin-card-label">Penghasilan Tunai</p>
+                <div class="fin-card-value-wrap">
+                  <h3 class="fin-card-value" id="stat-revenue">Rp 0</h3>
+                </div>
+              </div>
+              <div class="fin-card-footer">
+                <p class="fin-card-desc">Berdasarkan semua transaksi tunai lunas.</p>
+                <svg viewBox="0 0 24 24" class="fin-card-watermark text-teal" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              </div>
+            </div>
           </div>
-          <div class="metric-card gross-profit">
-            <span class="metric-title">TOTAL PENJUALAN HARI INI</span>
-            <h3 class="metric-value" id="stat-gross-profit">Rp 0</h3>
-            <span class="metric-sub">Omset dikurang Laba Bersih</span>
+
+          <!-- Card 2: Total Penjualan Hari Ini -->
+          <div class="fin-card">
+            <div class="fin-card-header bg-purple">
+              <span class="fin-card-badge-title">Total Sales</span>
+              <svg viewBox="0 0 24 24" class="fin-card-icon" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            </div>
+            <div class="fin-card-body">
+              <div>
+                <p class="fin-card-label">Total Penjualan Hari Ini</p>
+                <div class="fin-card-value-wrap">
+                  <h3 class="fin-card-value" id="stat-gross-profit">Rp 0</h3>
+                </div>
+              </div>
+              <div class="fin-card-footer">
+                <p class="fin-card-desc">Penghasilan dikurangi total laba kotor.</p>
+                <svg viewBox="0 0 24 24" class="fin-card-watermark text-purple" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+              </div>
+            </div>
           </div>
-          <div class="metric-card net-profit">
-            <span class="metric-title">LABA BERSIH HARI INI</span>
-            <h3 class="metric-value" id="stat-net-profit">Rp 0</h3>
-            <span class="metric-sub">Omzet dikurang Harga Beli</span>
+
+          <!-- Card 3: Laba Bersih Hari Ini -->
+          <div class="fin-card">
+            <div class="fin-card-header bg-emerald">
+              <span class="fin-card-badge-title">Net Profit</span>
+              <svg viewBox="0 0 24 24" class="fin-card-icon" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+            </div>
+            <div class="fin-card-body">
+              <div>
+                <p class="fin-card-label">Laba Bersih Hari Ini</p>
+                <div class="fin-card-value-wrap">
+                  <h3 class="fin-card-value" id="stat-net-profit">Rp 0</h3>
+                </div>
+              </div>
+              <div class="fin-card-footer">
+                <p class="fin-card-desc">Pemasukan dikurangi harga pokok pembelian.</p>
+                <svg viewBox="0 0 24 24" class="fin-card-watermark text-emerald" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+              </div>
+            </div>
           </div>
-          <div class="metric-card warning-card debt-card">
-            <span class="metric-title debt-title">PIUTANG AKTIF (BON)</span>
-            <h3 class="metric-value debt-value" id="stat-debt">Rp 0</h3>
-            <span class="metric-sub debt-sub">Total kas bon belum lunas</span>
+
+          <!-- Card 4: Piutang Aktif (Bon) -->
+          <div class="fin-card">
+            <div class="fin-card-header bg-amber">
+              <span class="fin-card-badge-title">Active Debt (Bon)</span>
+              <svg viewBox="0 0 24 24" class="fin-card-icon" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
+            </div>
+            <div class="fin-card-body">
+              <div>
+                <p class="fin-card-label">Piutang Aktif (Bon)</p>
+                <div class="fin-card-value-wrap">
+                  <h3 class="fin-card-value text-amber" id="stat-debt">Rp 0</h3>
+                </div>
+              </div>
+              <div class="fin-card-footer">
+                <p class="fin-card-desc">Total piutang atau kas bon pelanggan belum lunas.</p>
+                <svg viewBox="0 0 24 24" class="fin-card-watermark text-amber" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+              </div>
+            </div>
           </div>
+
         </div>
         
         <!-- Dashboard Content Grid -->
@@ -573,6 +634,39 @@
                     </label>
                     <input type="date" id="prod-expiry" title="Boleh dikosongkan jika produk tidak memiliki masa kadaluarsa">
                   </div>
+                  
+                  <!-- FITUR KEMASAN MULTI-UNIT (KOTAK / DUS / PAK) -->
+                  <div class="form-group" style="margin-top: 0.75rem; padding: 0.75rem; background: var(--bg-body, #f8fafc); border: 1px dashed var(--border-color, #cbd5e1); border-radius: var(--border-radius-md, 8px);">
+                    <label for="prod-has-box" style="font-weight: 600; display: block; margin-bottom: 0.35rem;">Status Kemasan & Barcode Dus/Kotak</label>
+                    <select id="prod-has-box" onchange="toggleBoxPackagingFields()" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-md); background: var(--bg-surface); color: var(--text-main); outline: none;">
+                      <option value="no">Tidak Ada Kemasan Tambahan (Hanya Eceran/Satuan)</option>
+                      <option value="yes">Miliki Barcode & Harga Kemasan (Kotak / Dus / Pak)</option>
+                    </select>
+                    
+                    <div id="prod-box-fields" style="display: none; margin-top: 0.75rem; flex-direction: column; gap: 0.5rem;">
+                      <div class="form-grid-2">
+                        <div class="form-group">
+                          <label for="prod-barcode-box">Barcode Kemasan (Kotak/Dus)</label>
+                          <input type="text" id="prod-barcode-box" placeholder="Scan Barcode Kotak">
+                        </div>
+                        <div class="form-group">
+                          <label for="prod-unit-box-name">Label Kemasan</label>
+                          <input type="text" id="prod-unit-box-name" placeholder="Contoh: Kotak, Dus, Pak">
+                        </div>
+                      </div>
+                      <div class="form-grid-2">
+                        <div class="form-group">
+                          <label for="prod-qty-box">Isi Per Kemasan (Pcs)</label>
+                          <input type="number" id="prod-qty-box" min="2" placeholder="Contoh: 12">
+                        </div>
+                        <div class="form-group">
+                          <label for="prod-price-box">Harga 1 Kemasan (Rp)</label>
+                          <input type="number" id="prod-price-box" min="0" placeholder="Contoh: 22000">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div class="form-grid-2" id="promo-fields-container">
                     <div class="form-group">
                       <label for="prod-promo-price">Harga Diskon Promo (Opsional)</label>
@@ -826,8 +920,8 @@
               <div class="form-group" style="margin: 0;">
                 <label for="receipt-text-padding-left">Margin Kiri Kertas (mm)</label>
                 <div class="slider-group">
-                  <input type="range" id="receipt-text-padding-left" min="0" max="10" value="1" step="0.5" oninput="updateTextPaddingPreview(this.value)">
-                  <span id="text-padding-preview-val">1mm</span>
+                  <input type="range" id="receipt-text-padding-left" min="0" max="10" value="0" step="0.5" oninput="updateTextPaddingPreview(this.value)">
+                  <span id="text-padding-preview-val">0mm</span>
                 </div>
               </div>
               <div class="form-group" style="margin: 0;">
@@ -1070,7 +1164,7 @@
             
             <div class="form-group">
               <label for="gas-url-input">Google Apps Script Web App URL</label>
-              <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" style="font-family: monospace; font-size: 0.9rem;">
+              <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/AKfycbwbJCQIxhqOFu2iGSMzoL2YrJf7pvLoGVm2B6qs2DUQ2vIIrBlZBJO-vP557agNvlhNzg/exec" style="font-family: monospace; font-size: 0.9rem;">
             </div>
             
             <div class="settings-actions">
@@ -1385,7 +1479,7 @@
       <!-- Plain Text Version (For fast & clear printing) -->
       <div id="receipt-text-content" class="receipt-text-print-container" style="display: none;">
         <div class="text-receipt-wrapper">
-          <div class="receipt-text-header-title" id="rec-text-store-name">TOKO SAHIL</div>
+          <div class="receipt-text-logo-container" id="rec-text-logo-container"></div>
           <pre class="receipt-text-body" id="rec-text-body"></pre>
         </div>
       </div>
@@ -1417,8 +1511,8 @@
         <div class="form-group" style="margin-bottom: 1rem;">
           <label for="print-label-type">Tipe Label</label>
           <select id="print-label-type" onchange="updateLabelPreview()" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-weight: 600; outline: none;">
+            <option value="shelf" selected>Label Rak (Nama & Harga Besar, Tempel di Rak)</option>
             <option value="product">Label Produk (Dengan Barcode, Tempel di Produk)</option>
-            <option value="shelf">Label Rak (Nama & Harga Besar, Tempel di Rak)</option>
           </select>
         </div>
         
@@ -1452,8 +1546,8 @@
         <div class="form-group" style="margin-bottom: 1.25rem;">
           <label for="bulk-print-label-type">Tipe Label</label>
           <select id="bulk-print-label-type" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-weight: 600; outline: none;">
+            <option value="shelf" selected>Label Rak (Nama & Harga Besar, Tempel di Rak)</option>
             <option value="product">Label Produk (Dengan Barcode, Tempel di Produk)</option>
-            <option value="shelf">Label Rak (Nama & Harga Besar, Tempel di Rak)</option>
           </select>
         </div>
         
