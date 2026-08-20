@@ -3248,3 +3248,119 @@ body.print-format-html #receipt-text-content {
 .tr-scan-highlight {
   animation: rowPulse 2.5s ease-in-out forwards;
 }
+
+/* --- Modern Stock Mode Segmented Selector --- */
+.stock-mode-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.stock-mode-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--border-radius-md);
+  border: 2px solid var(--border-color);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  user-select: none;
+}
+
+.stock-mode-card:hover {
+  border-color: #cbd5e1;
+  background: var(--bg-surface-elevated);
+  transform: translateY(-1px);
+}
+
+.stock-mode-card input[type="radio"] {
+  display: none;
+}
+
+.stock-mode-card.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.12);
+}
+
+.stock-mode-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--bg-surface-elevated);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.stock-mode-card.active .stock-mode-icon-box {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.stock-mode-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.stock-mode-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stock-mode-card.active .stock-mode-title {
+  color: var(--color-primary);
+}
+
+.stock-mode-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.stock-mode-badge-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.2s ease;
+}
+
+.stock-mode-card.active .stock-mode-badge-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Stock Preview Banner */
+.stock-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-primary-light);
+  border: 1px dashed var(--color-primary);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.85rem;
+  color: var(--text-main);
+  margin-top: 0.5rem;
+}
+
