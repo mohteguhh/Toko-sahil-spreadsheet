@@ -2883,12 +2883,34 @@ function renderCart() {
   cart.forEach(item => {
     applyPricingToCartItem(item);
     
-    // Label "(Bayar X, Gratis Y)" jika ada gratis
+    // Label "Bayar X, Gratis Y" jika ada gratis
     const freeQty = item.freeQty || 0;
     const paidQty = item.paidQty !== undefined ? item.paidQty : item.qty;
     const freeLabel = freeQty > 0
       ? `<span class="qty-free-label">Bayar ${paidQty}, Gratis ${freeQty}</span>`
       : '';
+    
+    // Label dus/kotak jika harga bertingkat aktif
+    let boxLabel = '';
+    if (!item.isBox) {
+      const localProd = products.find(p => p.id === item.id) || {};
+      const isiBox = parseInt(localProd.isi_box) || 0;
+      const hargaBox = parseFloat(localProd.harga_box) || 0;
+      const grosirQty = parseInt(localProd.grosir_qty) || 0;
+      const grosirHarga = parseFloat(localProd.grosir_harga) || 0;
+      const boxMinQty = (isiBox > 1 && hargaBox > 0) ? isiBox : (grosirQty > 1 && grosirHarga > 0 ? grosirQty : 0);
+      const unitName = (isiBox > 1 && hargaBox > 0) ? (localProd.nama_box || 'Dus') : 'Dus';
+      
+      if (boxMinQty > 0 && paidQty >= boxMinQty) {
+        const packages = Math.floor(paidQty / boxMinQty);
+        const remaining = paidQty % boxMinQty;
+        const pkgText = packages > 1 ? `${packages} ${unitName}` : `1 ${unitName}`;
+        const remText = remaining > 0 ? ` + ${remaining} pcs` : '';
+        boxLabel = `<span class="qty-box-label">📦 ${pkgText}${remText}</span>`;
+      }
+    }
+    
+    const subLabel = freeLabel || boxLabel;
     
     const div = document.createElement('div');
     div.className = 'cart-item';
@@ -2904,7 +2926,7 @@ function renderCart() {
         <button class="qty-btn" onclick="updateCartQty('${item.cartId}', -1)">-</button>
         <div class="qty-input-wrap">
           <input type="number" class="qty-input" value="${item.qty}" min="1" onchange="setCartQtyDirect('${item.cartId}', this.value)">
-          ${freeLabel}
+          ${subLabel}
         </div>
         <button class="qty-btn" onclick="updateCartQty('${item.cartId}', 1)">+</button>
         <button class="remove-item-btn" onclick="removeFromCart('${item.cartId}')" title="Hapus">
