@@ -2087,8 +2087,8 @@ function renderFloatingDropdown() {
     
     let priceText = `<span class="badge-buy-price">Beli: Rp ${formatRupiah(p.harga_beli || 0)}</span><span class="badge-sell-price">Jual: Rp ${formatRupiah(p.harga_jual)}</span>`;
     let boxBtnHtml = '';
-    if (p.has_unit_box && p.harga_box) {
-      priceText += ` <span class="badge-box-price">📦 1 ${p.nama_box || 'Kotak'} (${p.isi_box || 12} pcs): Rp ${formatRupiah(p.harga_box)}</span>`;
+    if ((parseInt(p.isi_box) || 0) > 1 && (parseFloat(p.harga_box) || 0) > 0) {
+      priceText += ` <span class="badge-box-price">📦 1 ${p.nama_box || 'Kotak'} (${p.isi_box} pcs): Rp ${formatRupiah(p.harga_box)}</span>`;
       const prodIndex = products.findIndex(pr => pr.id === p.id);
       boxBtnHtml = `<button type="button" class="btn btn-sm btn-box-add" onclick="event.stopPropagation(); addBoxToCartByProductIndex(${prodIndex}); document.getElementById('search-input').value=''; closeFloatingResults(); focusSearchInput();" title="Tambah 1 ${p.nama_box || 'Kotak'}">+ 1 ${p.nama_box || 'Kotak'}</button>`;
     }
@@ -2351,19 +2351,27 @@ function calculateCartItemPricing(localProd, totalQty) {
     }
   }
   
-  // 2. Cek Aturan Harga Bertingkat Dus / Box Packaging ATAU Grosir (dari Paid Quantity)
+  // 2. Harga Bertingkat Dus/Kotak — otomatis aktif jika isi_box & harga_box diisi
+  //    (tidak perlu has_unit_box = true, cukup ada datanya)
   let boxUnitName = "Dus";
   let boxMinQty = 0;
   let boxPrice = 0;
   
-  if (localProd.has_unit_box && (parseInt(localProd.isi_box) || 0) > 1 && (parseFloat(localProd.harga_box) || 0) > 0) {
+  const isiBox = parseInt(localProd.isi_box) || 0;
+  const hargaBox = parseFloat(localProd.harga_box) || 0;
+  const grosirQty = parseInt(localProd.grosir_qty) || 0;
+  const grosirHarga = parseFloat(localProd.grosir_harga) || 0;
+  
+  if (isiBox > 1 && hargaBox > 0) {
+    // Prioritas: data kemasan dus/kotak
     boxUnitName = localProd.nama_box || "Dus";
-    boxMinQty = parseInt(localProd.isi_box) || 12;
-    boxPrice = parseFloat(localProd.harga_box) || 0;
-  } else if ((parseInt(localProd.grosir_qty) || 0) > 1 && (parseFloat(localProd.grosir_harga) || 0) > 0) {
+    boxMinQty = isiBox;
+    boxPrice = hargaBox;
+  } else if (grosirQty > 1 && grosirHarga > 0) {
+    // Fallback: data harga grosir
     boxUnitName = "Dus";
-    boxMinQty = parseInt(localProd.grosir_qty) || 12;
-    boxPrice = parseFloat(localProd.grosir_harga) || 0;
+    boxMinQty = grosirQty;
+    boxPrice = grosirHarga;
   }
   
   const hasBoxTier = boxMinQty > 1 && boxPrice > 0;
@@ -4262,13 +4270,13 @@ function renderProductsTable(highlightProductId = null) {
     }
     
     let barcodeDisplay = `<span style="font-family: monospace;">${p.barcode || '-'}</span>`;
-    if (p.has_unit_box && p.barcode_box) {
+    if (p.barcode_box) {
       barcodeDisplay += `<br><span style="font-size:0.75rem; color:var(--color-primary); font-weight:600;">📦 ${p.barcode_box} (${p.nama_box || 'Kotak'})</span>`;
     }
     
     let hargaJualDisplay = `Rp ${formatRupiah(p.harga_jual)}`;
-    if (p.has_unit_box && p.harga_box) {
-      hargaJualDisplay += `<br><span style="font-size:0.75rem; color:var(--color-primary); font-weight:600; background:rgba(79,70,229,0.1); padding:0.1rem 0.35rem; border-radius:4px; display:inline-block; margin-top:0.2rem;">📦 1 ${p.nama_box || 'Kotak'} (${p.isi_box || 12} pcs): Rp ${formatRupiah(p.harga_box)}</span>`;
+    if ((parseInt(p.isi_box) || 0) > 1 && (parseFloat(p.harga_box) || 0) > 0) {
+      hargaJualDisplay += `<br><span style="font-size:0.75rem; color:var(--color-primary); font-weight:600; background:rgba(79,70,229,0.1); padding:0.1rem 0.35rem; border-radius:4px; display:inline-block; margin-top:0.2rem;">📦 1 ${p.nama_box || 'Kotak'} (${p.isi_box} pcs): Rp ${formatRupiah(p.harga_box)}</span>`;
     }
     if (p.grosir_qty > 0 && p.grosir_harga > 0) {
       hargaJualDisplay += `<br><span style="font-size:0.75rem; color:#2563eb; font-weight:600; background:rgba(37,99,235,0.1); padding:0.1rem 0.35rem; border-radius:4px; display:inline-block; margin-top:0.2rem;">🏷️ Grosir: ${p.grosir_qty} pcs = Rp ${formatRupiah(p.grosir_harga)}</span>`;
