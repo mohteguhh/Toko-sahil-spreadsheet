@@ -2748,7 +2748,12 @@ function checkPromoBanner() {
   const marqueeContent = document.getElementById('promo-marquee-content');
   if (!container || !marqueeContent) return;
   
-  const promos = appConfig.enablePromo ? products.filter(p => (parseFloat(p.harga_diskon) > 0) || (p.promo_beli_x > 0 && p.promo_gratis_y > 0) || (p.grosir_qty > 0 && p.grosir_harga > 0)) : [];
+  // Selalu tampilkan promo Beli X Gratis Y tanpa perlu enablePromo
+  const promos = products.filter(p => {
+    if (p.promo_beli_x > 0 && p.promo_gratis_y > 0) return true;
+    if (!appConfig.enablePromo) return false;
+    return (parseFloat(p.harga_diskon) > 0) || (p.grosir_qty > 0 && p.grosir_harga > 0);
+  });
   
   if (promos.length === 0) {
     container.style.display = 'none';
@@ -2760,18 +2765,32 @@ function checkPromoBanner() {
   let html = '';
   
   promos.forEach((p, i) => {
-    let promoText = '';
-    if (parseFloat(p.harga_diskon) > 0) {
-      promoText = `${p.nama}: <span class="highlight">Rp ${formatRupiah(p.harga_diskon)}</span> <s style="color: var(--color-danger); opacity: 0.8; margin-left: 0.25rem;">Rp ${formatRupiah(p.harga_jual)}</s>`;
-    } else if (p.promo_beli_x > 0 && p.promo_gratis_y > 0) {
-      promoText = `${p.nama}: <span class="highlight">🎁 Beli ${p.promo_beli_x} Gratis ${p.promo_gratis_y}</span> (@Rp ${formatRupiah(p.harga_jual)})`;
+    const imgUrl = p.gambar || '';
+    const imgTag = imgUrl
+      ? `<img src="${imgUrl}" class="promo-card-img" alt="${p.nama}" onerror="this.style.display='none'">`
+      : `<div class="promo-card-img-placeholder">🏷️</div>`;
+    
+    let badge = '';
+    let desc = '';
+    if (p.promo_beli_x > 0 && p.promo_gratis_y > 0) {
+      badge = `🎁 Beli ${p.promo_beli_x} Gratis ${p.promo_gratis_y}`;
+      desc = `Rp ${formatRupiah(p.harga_jual)} / pcs`;
+    } else if (parseFloat(p.harga_diskon) > 0) {
+      badge = `⚡ Diskon`;
+      desc = `Rp ${formatRupiah(p.harga_diskon)} <s style="opacity:0.55; font-size:0.78rem;">Rp ${formatRupiah(p.harga_jual)}</s>`;
     } else if (p.grosir_qty > 0 && p.grosir_harga > 0) {
-      promoText = `${p.nama}: <span class="highlight">🏷️ Grosir ${p.grosir_qty} pcs = Rp ${formatRupiah(p.grosir_harga)}</span> (@Rp ${formatRupiah(p.harga_jual)})`;
+      badge = `📦 ${p.grosir_qty} pcs = Rp ${formatRupiah(p.grosir_harga)}`;
+      desc = `Harga satuan Rp ${formatRupiah(p.harga_jual)}`;
     }
     
     html += `
       <div class="promo-marquee-item ${i === 0 ? 'active' : ''}">
-        ${promoText}
+        ${imgTag}
+        <div class="promo-card-text">
+          <div class="promo-card-name">${p.nama}</div>
+          <div class="promo-card-badge">${badge}</div>
+          <div class="promo-card-desc">${desc}</div>
+        </div>
       </div>
     `;
   });
@@ -2789,7 +2808,7 @@ function checkPromoBanner() {
       items[currentIndex].classList.remove('active');
       currentIndex = (currentIndex + 1) % items.length;
       items[currentIndex].classList.add('active');
-    }, 3000);
+    }, 3500);
   }
 }
 
@@ -2848,6 +2867,12 @@ function renderCart() {
   cart.forEach(item => {
     applyPricingToCartItem(item);
     
+    // Opsi A: tampilkan qty yang DIBAYAR (bukan qty fisik yang termasuk gratis)
+    const displayQty = (item.paidQty !== undefined && item.freeQty > 0) ? item.paidQty : item.qty;
+    const freeLabel = (item.freeQty > 0 && !item.isBox)
+      ? `<span class="cart-free-label">+${item.freeQty} Gratis</span>`
+      : '';
+    
     const div = document.createElement('div');
     div.className = 'cart-item';
     div.innerHTML = `
@@ -2855,12 +2880,15 @@ function renderCart() {
         <div class="cart-item-name">${item.nama}</div>
         <div class="cart-item-price-row">
           <span class="cart-item-price">Rp ${formatRupiah(item.subtotal)}</span>
-          ${item.qty > 1 && !item.isBox ? `<span class="cart-item-unit-price">(${item.qty} pcs @Rp ${formatRupiah(Math.round(item.subtotal / item.qty))})</span>` : ''}
+          ${displayQty > 1 && !item.isBox ? `<span class="cart-item-unit-price">(${displayQty} pcs @Rp ${formatRupiah(Math.round(item.subtotal / displayQty))})</span>` : ''}
         </div>
       </div>
       <div class="cart-item-controls">
         <button class="qty-btn" onclick="updateCartQty('${item.cartId}', -1)">-</button>
-        <input type="number" class="qty-input" value="${item.qty}" min="1" onchange="setCartQtyDirect('${item.cartId}', this.value)">
+        <div class="qty-input-wrap">
+          <input type="number" class="qty-input" value="${displayQty}" min="1" onchange="setCartQtyDirect('${item.cartId}', this.value)">
+          ${freeLabel}
+        </div>
         <button class="qty-btn" onclick="updateCartQty('${item.cartId}', 1)">+</button>
         <button class="remove-item-btn" onclick="removeFromCart('${item.cartId}')" title="Hapus">
           <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
