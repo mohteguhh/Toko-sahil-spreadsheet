@@ -2251,6 +2251,11 @@ function handleSearchInputKeydowns(e) {
           return;
         }
         
+        // Jangan hapus item jika focus sedang di qty-input (user sedang mengetik angka)
+        if (document.activeElement && document.activeElement.classList.contains('qty-input')) {
+          return;
+        }
+        
         e.preventDefault();
         const item = cart[selectedCartIndex];
         removeFromCart(item.cartId);
@@ -2914,6 +2919,18 @@ function renderCart() {
     selectedCartIndex = cart.length - 1;
   }
   highlightSelectedCartItem();
+  
+  // Jika keranjang hanya 1 item, otomatis seleksi (highlight) qty input-nya
+  // agar kasir langsung bisa ketik qty tanpa perlu klik dulu
+  if (cart.length === 1) {
+    requestAnimationFrame(() => {
+      const qtyInput = container.querySelector('.qty-input');
+      if (qtyInput) {
+        qtyInput.focus();
+        qtyInput.select();
+      }
+    });
+  }
   
   calculateTotal();
 }
