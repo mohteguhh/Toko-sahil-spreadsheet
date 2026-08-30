@@ -801,7 +801,7 @@
                 <h3 id="form-title">Tambah Produk Baru</h3>
                 <button type="button" class="close-modal-btn" onclick="closeProductModal()">&times;</button>
               </div>
-              <form id="product-form" onsubmit="saveProduct(event)" style="display: flex; flex-direction: column; max-height: calc(90vh - 120px);">
+              <form id="product-form" onsubmit="saveProduct(event)" onkeydown="if(event.key==='Enter' && event.target.tagName !== 'BUTTON'){event.preventDefault();}" style="display: flex; flex-direction: column; max-height: calc(90vh - 120px);">
                 <div class="modal-body" style="overflow-y: auto; padding-right: 10px;">
                   <input type="hidden" id="edit-index" value="-1">
                   
