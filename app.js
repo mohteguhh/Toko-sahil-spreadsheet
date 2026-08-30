@@ -2280,6 +2280,29 @@ function highlightSelectedCartItem() {
   });
 }
 
+// --- TOAST NOTIFIKASI KASIR ---
+function showPosToast(message, type = 'promo') {
+  let container = document.getElementById('pos-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'pos-toast-container';
+    container.className = 'pos-toast-container';
+    document.body.appendChild(container);
+  }
+  
+  const toast = document.createElement('div');
+  toast.className = `pos-toast ${type}`;
+  toast.innerHTML = message;
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.classList.add('fade-out');
+    setTimeout(() => {
+      if (toast.parentElement) toast.parentElement.removeChild(toast);
+    }, 300);
+  }, 3500);
+}
+
 // --- TAB POS: KERANJANG & ATURAN HARGA / PROMO ---
 function calculateCartItemPricing(localProd, totalQty) {
   const result = {
@@ -2323,7 +2346,7 @@ function calculateCartItemPricing(localProd, totalQty) {
     if (freeQty > 0) {
       result.badges.push({
         type: 'active',
-        text: `🎁 Promo: ${freeQty} Pcs Gratis (Hemat Rp ${formatRupiah(freeQty * basePrice)})`
+        text: `🎁 Promo Beli ${buyX} Gratis ${getY}: ${freeQty} Pcs GRATIS (Hemat Rp ${formatRupiah(freeQty * basePrice)})`
       });
       result.promoInfo = `Beli ${buyX} Gratis ${getY} (${freeQty} gratis)`;
     } else {
@@ -2333,7 +2356,7 @@ function calculateCartItemPricing(localProd, totalQty) {
         result.bonusToClaim = getY;
         result.badges.push({
           type: 'eligible',
-          text: `🎁 Beli ${buyX} Gratis ${getY}!`,
+          text: `🎉 Promo Beli ${buyX} Gratis ${getY}: Anda berhak dapat ${getY} pcs GRATIS!`,
           canClaim: true,
           claimQty: getY
         });
@@ -2341,27 +2364,38 @@ function calculateCartItemPricing(localProd, totalQty) {
         const needMore = buyX - (totalQty % cycle);
         result.badges.push({
           type: 'info',
-          text: `🎁 Beli ${buyX} Gratis ${getY} (Beli ${needMore} lagi dapat ${getY} gratis)`
+          text: `💡 Promo Beli ${buyX} Gratis ${getY}: Beli ${needMore} pcs lagi dapat ${getY} GRATIS!`
         });
       }
     }
   }
   
-  // 2. Cek Aturan Harga Bertingkat / Grosir (dari Paid Quantity)
-  const grosirQty = parseInt(localProd.grosir_qty) || 0;
-  const grosirPrice = parseFloat(localProd.grosir_harga) || 0;
-  const hasGrosir = grosirQty > 1 && grosirPrice > 0;
+  // 2. Cek Aturan Harga Bertingkat Dus / Box Packaging ATAU Grosir (dari Paid Quantity)
+  let boxUnitName = "Dus";
+  let boxMinQty = 0;
+  let boxPrice = 0;
   
+  if (localProd.has_unit_box && (parseInt(localProd.isi_box) || 0) > 1 && (parseFloat(localProd.harga_box) || 0) > 0) {
+    boxUnitName = localProd.nama_box || "Dus";
+    boxMinQty = parseInt(localProd.isi_box) || 12;
+    boxPrice = parseFloat(localProd.harga_box) || 0;
+  } else if ((parseInt(localProd.grosir_qty) || 0) > 1 && (parseFloat(localProd.grosir_harga) || 0) > 0) {
+    boxUnitName = "Dus";
+    boxMinQty = parseInt(localProd.grosir_qty) || 12;
+    boxPrice = parseFloat(localProd.grosir_harga) || 0;
+  }
+  
+  const hasBoxTier = boxMinQty > 1 && boxPrice > 0;
   let subtotal = 0;
   
-  if (hasGrosir && paidQty >= grosirQty) {
-    const packages = Math.floor(paidQty / grosirQty);
-    const remaining = paidQty % grosirQty;
-    const grosirTotal = packages * grosirPrice;
+  if (hasBoxTier && paidQty >= boxMinQty) {
+    const packages = Math.floor(paidQty / boxMinQty);
+    const remaining = paidQty % boxMinQty;
+    const boxTotal = packages * boxPrice;
     
     result.grosirPackages = packages;
     result.grosirRemaining = remaining;
-    result.grosirTotal = grosirTotal;
+    result.grosirTotal = boxTotal;
     
     // Remaining items unit pricing (cek promo diskon satuan jika ada)
     const hargaDiskon = parseFloat(localProd.harga_diskon) || 0;
@@ -2375,24 +2409,24 @@ function calculateCartItemPricing(localProd, totalQty) {
       remTotal = remaining * basePrice;
     }
     
-    subtotal = grosirTotal + remTotal;
+    subtotal = boxTotal + remTotal;
     
-    const pkgText = packages > 1 ? `${packages}x ` : '';
+    const pkgText = packages > 1 ? `${packages} ${boxUnitName}` : `1 ${boxUnitName}`;
     const remText = remaining > 0 ? ` + ${remaining} pcs eceran` : '';
     result.badges.push({
       type: 'grosir',
-      text: `🏷️ Harga Grosir (${pkgText}${grosirQty} pcs = Rp ${formatRupiah(grosirTotal)}${remText})`
+      text: `📦 Harga ${pkgText} (${packages * boxMinQty} pcs = Rp ${formatRupiah(boxTotal)})${remText}`
     });
     if (!result.promoInfo) {
-      result.promoInfo = `Grosir ${pkgText}${grosirQty} pcs`;
+      result.promoInfo = `${pkgText}${remText}`;
     }
   } else {
-    // Belum mencapai grosir
-    if (hasGrosir && paidQty < grosirQty) {
-      const needGrosir = grosirQty - paidQty;
+    // Belum mencapai 1 dus / grosir
+    if (hasBoxTier && paidQty < boxMinQty) {
+      const needMore = boxMinQty - paidQty;
       result.badges.push({
         type: 'info',
-        text: `🏷️ Grosir: Beli ${grosirQty} pcs = Rp ${formatRupiah(grosirPrice)} (Kurang ${needGrosir} pcs)`
+        text: `📦 1 ${boxUnitName} isi ${boxMinQty} = Rp ${formatRupiah(boxPrice)} (Kurang ${needMore} pcs lagi)`
       });
     }
     
@@ -2457,6 +2491,20 @@ function addToCart(product) {
     }
     existingItem.qty = newQty;
     applyPricingToCartItem(existingItem);
+    
+    // Notifikasi Toast
+    const buyX = parseInt(product.promo_beli_x) || 0;
+    const getY = parseInt(product.promo_gratis_y) || 0;
+    if (buyX > 0 && getY > 0 && newQty === buyX) {
+      showPosToast(`🎉 <b>Promo Aktif!</b> <b>${product.nama}</b> sudah ${buyX} pcs, berhak dapat <b>${getY} pcs GRATIS</b>!`, 'promo');
+    }
+    
+    let boxMinQty = (product.has_unit_box && parseInt(product.isi_box)) ? parseInt(product.isi_box) : (parseInt(product.grosir_qty) || 0);
+    let boxPrice = (product.has_unit_box && parseFloat(product.harga_box)) ? parseFloat(product.harga_box) : (parseFloat(product.grosir_harga) || 0);
+    let boxUnitName = product.nama_box || 'Dus';
+    if (boxMinQty > 1 && boxPrice > 0 && newQty === boxMinQty) {
+      showPosToast(`📦 <b>Harga ${boxUnitName} Aktif!</b> <b>${product.nama}</b> (${boxMinQty} pcs = Rp ${formatRupiah(boxPrice)})`, 'box');
+    }
   } else {
     if (product.stok <= 0 && !appConfig.allowZeroStock) {
       alert("Stok barang habis!");
@@ -2475,6 +2523,13 @@ function addToCart(product) {
     };
     applyPricingToCartItem(newItem);
     cart.unshift(newItem);
+    
+    // Notifikasi Toast info saat pertama kali tambah
+    const buyX = parseInt(product.promo_beli_x) || 0;
+    const getY = parseInt(product.promo_gratis_y) || 0;
+    if (buyX > 0 && getY > 0) {
+      showPosToast(`🎁 <b>Promo Beli ${buyX} Gratis ${getY}</b> tersedia untuk <b>${product.nama}</b>!`, 'promo');
+    }
   }
   
   playBeep();
@@ -2495,6 +2550,7 @@ function claimBonusItem(cartId, bonusQty = 1) {
   item.qty += bonusQty;
   applyPricingToCartItem(item);
   playBeep();
+  showPosToast(`✅ <b>${bonusQty} Pcs Gratis</b> berhasil ditambahkan ke keranjang untuk <b>${item.nama}</b>!`, 'promo');
   renderCart();
   focusSearchInput();
 }
@@ -2800,14 +2856,24 @@ function renderCart() {
   cart.forEach(item => {
     applyPricingToCartItem(item);
     
-    let badgesHtml = '';
+    let bannersHtml = '';
     if (item.badges && item.badges.length > 0) {
-      badgesHtml = item.badges.map(b => {
-        let claimBtn = '';
+      bannersHtml = item.badges.map(b => {
         if (b.canClaim) {
-          claimBtn = `<button type="button" class="btn-claim-bonus" onclick="event.stopPropagation(); claimBonusItem('${item.cartId}', ${b.claimQty});" title="Klaim ${b.claimQty} bonus gratis">+${b.claimQty} Klaim Gratis</button>`;
+          return `
+            <div class="cart-promo-banner-claim">
+              <span>${b.text}</span>
+              <button type="button" class="btn-claim-bonus-lg" onclick="event.stopPropagation(); claimBonusItem('${item.cartId}', ${b.claimQty});">+${b.claimQty} Ambil Gratis</button>
+            </div>
+          `;
+        } else if (b.type === 'active') {
+          return `<div class="cart-promo-banner-active"><span>${b.text}</span></div>`;
+        } else if (b.type === 'info') {
+          return `<div class="cart-promo-banner-info"><span>${b.text}</span></div>`;
+        } else if (b.type === 'grosir') {
+          return `<div class="cart-promo-badge badge-grosir" style="font-size:0.78rem; font-weight:700; padding:0.25rem 0.5rem; margin-top:0.35rem;">${b.text}</div>`;
         }
-        return `<div class="cart-promo-badge badge-${b.type}">${b.text} ${claimBtn}</div>`;
+        return `<div class="cart-promo-badge badge-${b.type}">${b.text}</div>`;
       }).join(' ');
     }
     
@@ -2820,7 +2886,7 @@ function renderCart() {
           <span class="cart-item-price">Rp ${formatRupiah(item.subtotal)}</span>
           ${item.qty > 1 && !item.isBox ? `<span class="cart-item-unit-price">(${item.qty} pcs @Rp ${formatRupiah(Math.round(item.subtotal / item.qty))})</span>` : ''}
         </div>
-        ${badgesHtml ? `<div style="display:flex; flex-wrap:wrap; gap:0.25rem; margin-top:0.2rem;">${badgesHtml}</div>` : ''}
+        ${bannersHtml ? `<div style="display:flex; flex-direction:column; gap:0.25rem; margin-top:0.25rem;">${bannersHtml}</div>` : ''}
       </div>
       <div class="cart-item-controls">
         <button class="qty-btn" onclick="updateCartQty('${item.cartId}', -1)">-</button>

@@ -1350,12 +1350,74 @@ svg.icon-empty {
 .btn-claim-bonus:hover {
   background: #059669;
 }
-.cart-item-selected .cart-promo-badge {
+.cart-promo-banner-claim {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  padding: 0.4rem 0.65rem;
+  border-radius: 6px;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+.btn-claim-bonus-lg {
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-claim-bonus-lg:hover {
+  background: #059669;
+}
+.cart-promo-banner-active {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(16, 185, 129, 0.12);
+  color: #065f46;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.cart-promo-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(59, 130, 246, 0.08);
+  color: #1e40af;
+  border: 1px dashed rgba(59, 130, 246, 0.3);
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+.cart-item-selected .cart-promo-badge,
+.cart-item-selected .cart-promo-banner-claim,
+.cart-item-selected .cart-promo-banner-active,
+.cart-item-selected .cart-promo-banner-info {
   background: rgba(255, 255, 255, 0.25) !important;
   color: #ffffff !important;
   border-color: rgba(255, 255, 255, 0.4) !important;
 }
-.cart-item-selected .btn-claim-bonus {
+.cart-item-selected .btn-claim-bonus,
+.cart-item-selected .btn-claim-bonus-lg {
   background: #ffffff !important;
   color: var(--color-primary) !important;
 }
@@ -3451,5 +3513,52 @@ body.print-format-html #receipt-text-content {
   font-size: 0.85rem;
   color: var(--text-main);
   margin-top: 0.5rem;
+}
+
+/* POS Toast Notification */
+.pos-toast-container {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 999999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+.pos-toast {
+  background: var(--bg-surface-elevated, #ffffff);
+  color: var(--text-main, #1e293b);
+  border: 1px solid var(--border-color, #e2e8f0);
+  padding: 0.75rem 1.1rem;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  font-size: 0.88rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: auto;
+  animation: slideInToast 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.3s ease;
+  max-width: 380px;
+}
+.pos-toast.promo {
+  border-left: 4px solid #10b981;
+  background: #f0fdf4;
+  color: #166534;
+}
+.pos-toast.box {
+  border-left: 4px solid #3b82f6;
+  background: #eff6ff;
+  color: #1e40af;
+}
+.pos-toast.fade-out {
+  opacity: 0;
+  transform: translateX(30px);
+}
+@keyframes slideInToast {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
