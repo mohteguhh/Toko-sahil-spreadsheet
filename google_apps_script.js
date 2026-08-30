@@ -181,7 +181,10 @@ function saveTransaction(tx) {
   
   // Format items ke string terbaca
   var itemsString = tx.items.map(function(item) {
-    return item.nama + " (" + item.qty + "x @" + item.harga + ")";
+    var sub = item.subtotal !== undefined ? item.subtotal : (item.harga * item.qty);
+    var pInfo = item.promoInfo ? " [" + item.promoInfo + "]" : "";
+    var unitP = item.qty > 0 ? Math.round(sub / item.qty) : item.harga;
+    return item.nama + pInfo + " (" + item.qty + "x @" + unitP + ")";
   }).join(", ");
   
   sheetTx.appendRow([
@@ -205,7 +208,7 @@ function saveTransaction(tx) {
   for (var i = 0; i < tx.items.length; i++) {
     var soldItem = tx.items[i];
     var soldId = soldItem.id.toString().toLowerCase();
-    var soldQty = soldItem.qty;
+    var soldQty = soldItem.isBox ? (soldItem.qty * (soldItem.isiBox || 12)) : soldItem.qty;
     
     for (var j = 1; j < prodRows.length; j++) {
       var prodId = prodRows[j][0].toString().toLowerCase();
@@ -233,8 +236,9 @@ function updateProducts(productsList) {
   
   // Bersihkan data lama mulai baris kedua ke bawah
   var lastRow = sheet.getLastRow();
+  var lastCol = Math.max(20, sheet.getLastColumn());
   if (lastRow > 1) {
-    sheet.getRange(2, 1, lastRow - 1, 16).clearContent();
+    sheet.getRange(2, 1, lastRow - 1, lastCol).clearContent();
   }
   
   if (productsList.length === 0) {
