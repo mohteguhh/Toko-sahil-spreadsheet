@@ -2325,7 +2325,7 @@ function calculateCartItemPricing(localProd, totalQty) {
   const basePrice = parseFloat(localProd.harga_jual) || 0;
   const standardTotal = totalQty * basePrice;
   
-  // 1. Cek Aturan Promo Beli X Gratis Y (Buy X Get Y Free) - Selalu aktif jika diatur di produk
+  // 1. Cek Aturan Promo Beli X Gratis Y (Buy X Get Y Free) - Selalu aktif, gratis otomatis
   const buyX = parseInt(localProd.promo_beli_x) || 0;
   const getY = parseInt(localProd.promo_gratis_y) || 0;
   const hasBuyGetPromo = buyX > 0 && getY > 0;
@@ -2345,30 +2345,9 @@ function calculateCartItemPricing(localProd, totalQty) {
     result.buyX = buyX;
     result.getY = getY;
     
+    // Hanya tampilkan badge jika sudah ada gratis (tidak tampilkan info / eligible)
     if (freeQty > 0) {
-      result.badges.push({
-        type: 'active',
-        text: `🎁 Gratis ${freeQty} pcs (${localProd.nama})`
-      });
       result.promoInfo = `Beli ${buyX} Gratis ${getY} (${freeQty} gratis)`;
-    } else {
-      // Cek apakah memenuhi syarat untuk klaim bonus gratis
-      if (totalQty >= buyX && (totalQty % cycle) >= buyX) {
-        result.canClaimBonus = true;
-        result.bonusToClaim = getY;
-        result.badges.push({
-          type: 'eligible',
-          text: `🎁 Gratis ${getY} pcs (${localProd.nama})`,
-          canClaim: true,
-          claimQty: getY
-        });
-      } else {
-        const needMore = buyX - (totalQty % cycle);
-        result.badges.push({
-          type: 'info',
-          text: `💡 Beli ${needMore} pcs lagi Gratis ${getY} pcs (${localProd.nama})`
-        });
-      }
     }
   }
   
@@ -2483,9 +2462,27 @@ function addToCart(product) {
     return;
   }
   
+  const buyX = parseInt(product.promo_beli_x) || 0;
+  const getY = parseInt(product.promo_gratis_y) || 0;
+  const hasBuyGet = buyX > 0 && getY > 0;
+  const cycle = hasBuyGet ? (buyX + getY) : 0;
+  
   let existingItem = cart.find(it => it.id === product.id && !it.isBox);
   if (existingItem) {
-    let newQty = existingItem.qty + 1;
+    // Hitung berapa qty seharusnya (tanpa gratis) sebelum penambahan
+    const prevPaidQty = existingItem.paidQty || existingItem.qty;
+    let newPaidQty = prevPaidQty + 1;
+    
+    // Hitung total qty nyata termasuk gratis otomatis
+    let newQty;
+    if (hasBuyGet) {
+      const fullCycles = Math.floor(newPaidQty / buyX);
+      const rem = newPaidQty % buyX;
+      newQty = (fullCycles * cycle) + rem;
+    } else {
+      newQty = existingItem.qty + 1;
+    }
+    
     if (newQty > product.stok && !appConfig.allowZeroStock) {
       alert(`Stok tidak mencukupi! Hanya tersisa ${product.stok} pcs.`);
       focusSearchInput();
@@ -2518,21 +2515,9 @@ function addToCart(product) {
   focusSearchInput();
 }
 
+// claimBonusItem tetap ada untuk kompatibilitas tapi tidak lagi dibutuhkan (gratis sudah otomatis)
 function claimBonusItem(cartId, bonusQty = 1) {
-  const item = cart.find(it => it.cartId === cartId);
-  if (!item) return;
-  const localProd = products.find(p => p.id === item.id);
-  if (localProd && !appConfig.allowZeroStock) {
-    if (item.qty + bonusQty > localProd.stok) {
-      alert(`Stok tidak mencukupi untuk mengambil ${bonusQty} barang gratis! Sisa stok: ${localProd.stok} pcs.`);
-      return;
-    }
-  }
-  item.qty += bonusQty;
-  applyPricingToCartItem(item);
-  playBeep();
-  renderCart();
-  focusSearchInput();
+  // No-op: gratis sudah otomatis masuk saat qty terpenuhi
 }
 
 function addBoxToCart(product) {
@@ -2628,14 +2613,31 @@ function updateCartQty(cartId, delta) {
     return;
   }
   
-  const newQty = item.qty + delta;
-  if (newQty < 1) {
+  // Hitung qty baru untuk item non-box, dengan auto-gratis
+  const localProd = products.find(p => p.id === item.id);
+  const buyX = localProd ? (parseInt(localProd.promo_beli_x) || 0) : 0;
+  const getY = localProd ? (parseInt(localProd.promo_gratis_y) || 0) : 0;
+  const hasBuyGet = buyX > 0 && getY > 0;
+  const cycle = hasBuyGet ? (buyX + getY) : 0;
+  
+  // Paid qty sebelum perubahan (qty nyata dikurangi gratis sebelumnya)
+  const prevPaidQty = item.paidQty !== undefined ? item.paidQty : item.qty;
+  let newPaidQty = prevPaidQty + delta;
+  if (newPaidQty < 1) {
     // Tidak boleh kosong/kurang dari 1. Jika ingin hapus gunakan tombol Delete / ikon Hapus.
     focusSearchInput();
     return;
   }
   
-  const localProd = products.find(p => p.id === item.id);
+  let newQty;
+  if (hasBuyGet) {
+    const fullCycles = Math.floor(newPaidQty / buyX);
+    const rem = newPaidQty % buyX;
+    newQty = (fullCycles * cycle) + rem;
+  } else {
+    newQty = newPaidQty;
+  }
+  
   if (localProd && !appConfig.allowZeroStock) {
     const boxPcs = cart.filter(it => it.id === item.id && it.isBox).reduce((sum, it) => sum + (it.qty * (it.isiBox || 12)), 0);
     if (newQty + boxPcs > localProd.stok) {
@@ -2669,14 +2671,14 @@ function removeFromCart(cartId, askConfirm = true) {
 }
 
 function setCartQtyDirect(cartId, value) {
-  let qty = parseInt(value);
+  let inputPaidQty = parseInt(value);
   const itemIndex = cart.findIndex(it => it.cartId === cartId);
   if (itemIndex === -1) return;
   const item = cart[itemIndex];
   
-  // Jika input kosong, tidak valid, atau < 1, otomatis kembalikan ke minimal 1 (jangan hapus produk)
-  if (isNaN(qty) || qty < 1) {
-    qty = 1;
+  // Jika input kosong atau < 1, kembalikan ke minimal 1
+  if (isNaN(inputPaidQty) || inputPaidQty < 1) {
+    inputPaidQty = 1;
   }
   
   if (item.isBox) {
@@ -2684,7 +2686,7 @@ function setCartQtyDirect(cartId, value) {
     if (localProd && !appConfig.allowZeroStock) {
       const totalPcsInCart = cart.reduce((sum, it) => {
         if (it.id === item.id) {
-          const q = it.cartId === cartId ? qty : it.qty;
+          const q = it.cartId === cartId ? inputPaidQty : it.qty;
           return sum + (it.isBox ? q * (it.isiBox || 12) : it.qty);
         }
         return sum;
@@ -2697,19 +2699,37 @@ function setCartQtyDirect(cartId, value) {
         return;
       }
     }
-    item.qty = qty;
+    item.qty = inputPaidQty;
     item.subtotal = item.qty * item.harga;
     renderCart();
     focusSearchInput();
     return;
   }
   
+  // Untuk item non-box: input user = qty yang DIBAYAR, hitung total qty dengan gratis otomatis
   const localProd = products.find(p => p.id === item.id);
+  const buyX = localProd ? (parseInt(localProd.promo_beli_x) || 0) : 0;
+  const getY = localProd ? (parseInt(localProd.promo_gratis_y) || 0) : 0;
+  const hasBuyGet = buyX > 0 && getY > 0;
+  const cycle = hasBuyGet ? (buyX + getY) : 0;
+  
+  let newQty;
+  if (hasBuyGet) {
+    const fullCycles = Math.floor(inputPaidQty / buyX);
+    const rem = inputPaidQty % buyX;
+    newQty = (fullCycles * cycle) + rem;
+  } else {
+    newQty = inputPaidQty;
+  }
+  
   if (localProd && !appConfig.allowZeroStock) {
     const boxPcs = cart.filter(it => it.id === item.id && it.isBox).reduce((sum, it) => sum + (it.qty * (it.isiBox || 12)), 0);
-    if (qty + boxPcs > localProd.stok) {
+    if (newQty + boxPcs > localProd.stok) {
       alert(`Stok tidak mencukupi! Hanya tersisa ${localProd.stok - boxPcs} pcs.`);
-      item.qty = Math.max(1, localProd.stok - boxPcs);
+      const safePaid = Math.max(1, localProd.stok - boxPcs);
+      const sfCycles = hasBuyGet ? Math.floor(safePaid / buyX) : 0;
+      const sfRem = hasBuyGet ? (safePaid % buyX) : safePaid;
+      item.qty = hasBuyGet ? (sfCycles * cycle) + sfRem : safePaid;
       applyPricingToCartItem(item);
       renderCart();
       focusSearchInput();
@@ -2717,7 +2737,7 @@ function setCartQtyDirect(cartId, value) {
     }
   }
   
-  item.qty = qty;
+  item.qty = newQty;
   applyPricingToCartItem(item);
   renderCart();
   focusSearchInput();
@@ -2885,7 +2905,7 @@ function calculateTotal() {
   document.getElementById('subtotal-val').textContent = `Rp ${formatRupiah(subtotal)}`;
   document.getElementById('total-val').textContent = `Rp ${formatRupiah(globalTotal)}`;
   
-  // Render Keterangan Promo & Bonus Di Bawah Nominal Total Belanja Di Atas Tombol Lanjutkan Pembayaran
+  // Render Keterangan Gratis — hanya tampil jika sudah ada barang gratis
   const promoContainer = document.getElementById('cart-promo-summary-container');
   if (promoContainer) {
     if (cart.length === 0) {
@@ -2895,55 +2915,31 @@ function calculateTotal() {
       let promoCardsHtml = '';
       cart.forEach(item => {
         const localProd = products.find(p => p.id === item.id) || {};
-        const imgUrl = item.gambar || localProd.gambar || 'https://via.placeholder.com/80?text=Produk';
-        const buyX = parseInt(item.buyX || localProd.promo_beli_x) || 0;
-        const getY = parseInt(item.getY || localProd.promo_gratis_y) || 0;
+        const imgUrl = item.gambar || localProd.gambar || '';
+        const imgTag = imgUrl
+          ? `<img src="${imgUrl}" class="cart-promo-thumb" alt="${item.nama}" onerror="this.style.display='none'">`
+          : '';
         
-        // 1. Cek Promo Beli X Gratis Y
-        if (buyX > 0 && getY > 0) {
-          if (item.canClaimBonus) {
-            const claimQty = item.bonusToClaim || getY;
-            promoCardsHtml += `
-              <div class="cart-promo-summary-card eligible">
-                <img src="${imgUrl}" class="cart-promo-thumb" alt="${item.nama}" onerror="this.src='https://via.placeholder.com/80?text=Produk'">
-                <div class="cart-promo-content">
-                  <div class="cart-promo-title">🎁 Gratis ${claimQty} pcs (${item.nama})</div>
-                  <div class="cart-promo-subtitle">Promo Beli ${buyX} Gratis ${getY} aktif! Klik tombol untuk klaim</div>
-                </div>
-                <button type="button" class="btn-claim-bonus-lg" onclick="event.stopPropagation(); claimBonusItem('${item.cartId}', ${claimQty});">+${claimQty} Ambil Gratis</button>
+        // Hanya tampilkan jika ada freeQty aktif (bukan eligible/info)
+        if ((item.freeQty || 0) > 0) {
+          promoCardsHtml += `
+            <div class="cart-promo-summary-card">
+              ${imgTag}
+              <div class="cart-promo-content">
+                <div class="cart-promo-title">🎁 Gratis ${item.freeQty} pcs (${item.nama})</div>
               </div>
-            `;
-          } else if (item.freeQty > 0) {
-            promoCardsHtml += `
-              <div class="cart-promo-summary-card">
-                <img src="${imgUrl}" class="cart-promo-thumb" alt="${item.nama}" onerror="this.src='https://via.placeholder.com/80?text=Produk'">
-                <div class="cart-promo-content">
-                  <div class="cart-promo-title">🎁 Gratis ${item.freeQty} pcs (${item.nama})</div>
-                  <div class="cart-promo-subtitle">Hanya bayar ${item.paidQty} pcs (Hemat Rp ${formatRupiah(item.savings)})</div>
-                </div>
-              </div>
-            `;
-          } else {
-            const cycle = buyX + getY;
-            const needMore = buyX - (item.qty % cycle);
-            promoCardsHtml += `
-              <div class="cart-promo-summary-card info">
-                <img src="${imgUrl}" class="cart-promo-thumb" alt="${item.nama}" onerror="this.src='https://via.placeholder.com/80?text=Produk'">
-                <div class="cart-promo-content">
-                  <div class="cart-promo-title">💡 Beli ${needMore} pcs lagi Gratis ${getY} pcs (${item.nama})</div>
-                  <div class="cart-promo-subtitle">Promo Beli ${buyX} Gratis ${getY}</div>
-                </div>
-              </div>
-            `;
-          }
-        } else if (item.grosirPackages > 0) {
-          const unitName = item.boxUnitName || 'Dus';
+            </div>
+          `;
+        }
+        
+        // Dus/Grosir tier
+        if ((item.grosirPackages || 0) > 0) {
+          const unitName = item.boxUnitName || localProd.nama_box || 'Dus';
           promoCardsHtml += `
             <div class="cart-promo-summary-card box">
-              <img src="${imgUrl}" class="cart-promo-thumb" alt="${item.nama}" onerror="this.src='https://via.placeholder.com/80?text=Produk'">
+              ${imgTag}
               <div class="cart-promo-content">
-                <div class="cart-promo-title">📦 Harga 1 ${unitName} (${item.nama})</div>
-                <div class="cart-promo-subtitle">${item.qty} pcs = Rp ${formatRupiah(item.subtotal)}</div>
+                <div class="cart-promo-title">📦 Harga ${item.grosirPackages} ${unitName} (${item.nama})</div>
               </div>
             </div>
           `;
