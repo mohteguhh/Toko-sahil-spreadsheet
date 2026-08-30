@@ -61,7 +61,7 @@ function handleResponse(data) {
 // Inisialisasi & Perbaikan Sheet jika belum lengkap (Schema Lengkap)
 function setupSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var headers = ["ID", "Nama", "Kategori", "Harga Beli", "Harga Jual", "Stok", "Barcode", "Gambar", "Tanggal Kadaluarsa", "Harga Diskon", "Kuota Diskon", "Has Unit Box", "Barcode Box", "Nama Box", "Isi Box", "Harga Box"];
+  var headers = ["ID", "Nama", "Kategori", "Harga Beli", "Harga Jual", "Stok", "Barcode", "Gambar", "Tanggal Kadaluarsa", "Harga Diskon", "Kuota Diskon", "Has Unit Box", "Barcode Box", "Nama Box", "Isi Box", "Harga Box", "Grosir Qty", "Grosir Harga", "Promo Beli X", "Promo Gratis Y"];
   
   // 1. Sheet Produk
   var sheetProduk = ss.getSheetByName("Produk");
@@ -85,6 +85,10 @@ function setupSheets() {
       "FALSE",
       "",
       "",
+      0,
+      0,
+      0,
+      0,
       0,
       0
     ]);
@@ -270,12 +274,16 @@ function updateProducts(productsList) {
       bcBoxStr,
       p.nama_box || "Kotak",
       Number(p.isi_box) || 0,
-      Number(p.harga_box) || 0
+      Number(p.harga_box) || 0,
+      Number(p.grosir_qty) || 0,
+      Number(p.grosir_harga) || 0,
+      Number(p.promo_beli_x) || 0,
+      Number(p.promo_gratis_y) || 0
     ]);
   }
   
   // Tulis massal dalam satu kali panggil API Google Sheets
-  sheet.getRange(2, 1, values.length, 16).setValues(values);
+  sheet.getRange(2, 1, values.length, 20).setValues(values);
   
   return { status: "success", message: "Sinkronisasi produk (" + productsList.length + " item) sukses secara instan!" };
 }
@@ -319,7 +327,11 @@ function upsertProduct(p) {
     bcBoxStr,
     p.nama_box || "Kotak",
     Number(p.isi_box) || 0,
-    Number(p.harga_box) || 0
+    Number(p.harga_box) || 0,
+    Number(p.grosir_qty) || 0,
+    Number(p.grosir_harga) || 0,
+    Number(p.promo_beli_x) || 0,
+    Number(p.promo_gratis_y) || 0
   ];
   
   var found = false;

@@ -2092,6 +2092,12 @@ function renderFloatingDropdown() {
       const prodIndex = products.findIndex(pr => pr.id === p.id);
       boxBtnHtml = `<button type="button" class="btn btn-sm btn-box-add" onclick="event.stopPropagation(); addBoxToCartByProductIndex(${prodIndex}); document.getElementById('search-input').value=''; closeFloatingResults(); focusSearchInput();" title="Tambah 1 ${p.nama_box || 'Kotak'}">+ 1 ${p.nama_box || 'Kotak'}</button>`;
     }
+    if (p.grosir_qty > 0 && p.grosir_harga > 0) {
+      priceText += ` <span class="badge-grosir-price">🏷️ Grosir: ${p.grosir_qty} pcs = Rp ${formatRupiah(p.grosir_harga)}</span>`;
+    }
+    if (p.promo_beli_x > 0 && p.promo_gratis_y > 0) {
+      priceText += ` <span class="badge-promo-buyget">🎁 Beli ${p.promo_beli_x} Gratis ${p.promo_gratis_y}</span>`;
+    }
     
     div.innerHTML = `
       <img src="${imgUrl}" alt="${p.nama}" class="floating-item-img" onerror="handleImageError(this)">
@@ -2274,16 +2280,222 @@ function highlightSelectedCartItem() {
   });
 }
 
-// --- TAB POS: KERANJANG ---
+// --- TAB POS: KERANJANG & ATURAN HARGA / PROMO ---
+function calculateCartItemPricing(localProd, totalQty) {
+  const result = {
+    qty: totalQty,
+    subtotal: 0,
+    freeQty: 0,
+    paidQty: totalQty,
+    grosirPackages: 0,
+    grosirRemaining: 0,
+    grosirTotal: 0,
+    savings: 0,
+    badges: [],
+    promoInfo: '',
+    canClaimBonus: false,
+    bonusToClaim: 0
+  };
+  
+  if (!localProd || totalQty <= 0) return result;
+  
+  const basePrice = parseFloat(localProd.harga_jual) || 0;
+  const standardTotal = totalQty * basePrice;
+  
+  // 1. Cek Aturan Promo Beli X Gratis Y (Buy X Get Y Free)
+  const buyX = parseInt(localProd.promo_beli_x) || 0;
+  const getY = parseInt(localProd.promo_gratis_y) || 0;
+  const hasBuyGetPromo = appConfig.enablePromo && buyX > 0 && getY > 0;
+  
+  let freeQty = 0;
+  let paidQty = totalQty;
+  
+  if (hasBuyGetPromo) {
+    const cycle = buyX + getY;
+    const fullCycles = Math.floor(totalQty / cycle);
+    const rem = totalQty % cycle;
+    freeQty = (fullCycles * getY) + Math.max(0, rem - buyX);
+    paidQty = totalQty - freeQty;
+    
+    result.freeQty = freeQty;
+    result.paidQty = paidQty;
+    
+    if (freeQty > 0) {
+      result.badges.push({
+        type: 'active',
+        text: `🎁 Promo: ${freeQty} Pcs Gratis (Hemat Rp ${formatRupiah(freeQty * basePrice)})`
+      });
+      result.promoInfo = `Beli ${buyX} Gratis ${getY} (${freeQty} gratis)`;
+    } else {
+      // Cek apakah memenuhi syarat untuk klaim bonus gratis
+      if (totalQty >= buyX && (totalQty % cycle) >= buyX) {
+        result.canClaimBonus = true;
+        result.bonusToClaim = getY;
+        result.badges.push({
+          type: 'eligible',
+          text: `🎁 Beli ${buyX} Gratis ${getY}!`,
+          canClaim: true,
+          claimQty: getY
+        });
+      } else {
+        const needMore = buyX - (totalQty % cycle);
+        result.badges.push({
+          type: 'info',
+          text: `🎁 Beli ${buyX} Gratis ${getY} (Beli ${needMore} lagi dapat ${getY} gratis)`
+        });
+      }
+    }
+  }
+  
+  // 2. Cek Aturan Harga Bertingkat / Grosir (dari Paid Quantity)
+  const grosirQty = parseInt(localProd.grosir_qty) || 0;
+  const grosirPrice = parseFloat(localProd.grosir_harga) || 0;
+  const hasGrosir = grosirQty > 1 && grosirPrice > 0;
+  
+  let subtotal = 0;
+  
+  if (hasGrosir && paidQty >= grosirQty) {
+    const packages = Math.floor(paidQty / grosirQty);
+    const remaining = paidQty % grosirQty;
+    const grosirTotal = packages * grosirPrice;
+    
+    result.grosirPackages = packages;
+    result.grosirRemaining = remaining;
+    result.grosirTotal = grosirTotal;
+    
+    // Remaining items unit pricing (cek promo diskon satuan jika ada)
+    const hargaDiskon = parseFloat(localProd.harga_diskon) || 0;
+    const kuotaDiskon = (parseInt(localProd.kuota_diskon) || 0) > 0 ? parseInt(localProd.kuota_diskon) : Infinity;
+    let remTotal = 0;
+    if (appConfig.enablePromo && hargaDiskon > 0 && remaining > 0) {
+      const pQty = Math.min(remaining, kuotaDiskon);
+      const rQty = remaining - pQty;
+      remTotal = (pQty * hargaDiskon) + (rQty * basePrice);
+    } else {
+      remTotal = remaining * basePrice;
+    }
+    
+    subtotal = grosirTotal + remTotal;
+    
+    const pkgText = packages > 1 ? `${packages}x ` : '';
+    const remText = remaining > 0 ? ` + ${remaining} pcs eceran` : '';
+    result.badges.push({
+      type: 'grosir',
+      text: `🏷️ Harga Grosir (${pkgText}${grosirQty} pcs = Rp ${formatRupiah(grosirTotal)}${remText})`
+    });
+    if (!result.promoInfo) {
+      result.promoInfo = `Grosir ${pkgText}${grosirQty} pcs`;
+    }
+  } else {
+    // Belum mencapai grosir
+    if (hasGrosir && paidQty < grosirQty) {
+      const needGrosir = grosirQty - paidQty;
+      result.badges.push({
+        type: 'info',
+        text: `🏷️ Grosir: Beli ${grosirQty} pcs = Rp ${formatRupiah(grosirPrice)} (Kurang ${needGrosir} pcs)`
+      });
+    }
+    
+    // Unit pricing dengan diskon langsung (jika ada)
+    const hargaDiskon = parseFloat(localProd.harga_diskon) || 0;
+    const kuotaDiskon = (parseInt(localProd.kuota_diskon) || 0) > 0 ? parseInt(localProd.kuota_diskon) : Infinity;
+    if (appConfig.enablePromo && hargaDiskon > 0 && paidQty > 0) {
+      const pQty = Math.min(paidQty, kuotaDiskon);
+      const rQty = paidQty - pQty;
+      subtotal = (pQty * hargaDiskon) + (rQty * basePrice);
+      if (pQty > 0) {
+        result.badges.push({
+          type: 'active',
+          text: `⚡ Diskon Promo: ${pQty}x @Rp ${formatRupiah(hargaDiskon)}`
+        });
+      }
+    } else {
+      subtotal = paidQty * basePrice;
+    }
+  }
+  
+  result.subtotal = subtotal;
+  result.savings = Math.max(0, standardTotal - subtotal);
+  return result;
+}
+
+function applyPricingToCartItem(item) {
+  if (item.isBox) {
+    item.subtotal = item.qty * item.harga;
+    return;
+  }
+  const localProd = products.find(p => p.id === item.id);
+  if (!localProd) return;
+  const pricing = calculateCartItemPricing(localProd, item.qty);
+  item.subtotal = pricing.subtotal;
+  item.harga = item.qty > 0 ? (pricing.subtotal / item.qty) : localProd.harga_jual;
+  item.baseHarga = localProd.harga_jual;
+  item.freeQty = pricing.freeQty;
+  item.paidQty = pricing.paidQty;
+  item.grosirPackages = pricing.grosirPackages;
+  item.savings = pricing.savings;
+  item.badges = pricing.badges;
+  item.promoInfo = pricing.promoInfo;
+  item.canClaimBonus = pricing.canClaimBonus;
+  item.bonusToClaim = pricing.bonusToClaim;
+}
+
 function addToCart(product) {
   lastTransactionChange = null;
   if (appConfig.strictShift && !activeShift) {
     alert("Wajib buka shift terlebih dahulu untuk melakukan transaksi!");
     return;
   }
-  let totalQty = cart.filter(i => i.id === product.id && !i.isBox).reduce((sum, i) => sum + i.qty, 0);
-  totalQty += 1;
-  recalculateCartSplit(product.id, totalQty);
+  
+  let existingItem = cart.find(it => it.id === product.id && !it.isBox);
+  if (existingItem) {
+    let newQty = existingItem.qty + 1;
+    if (newQty > product.stok && !appConfig.allowZeroStock) {
+      alert(`Stok tidak mencukupi! Hanya tersisa ${product.stok} pcs.`);
+      focusSearchInput();
+      return;
+    }
+    existingItem.qty = newQty;
+    applyPricingToCartItem(existingItem);
+  } else {
+    if (product.stok <= 0 && !appConfig.allowZeroStock) {
+      alert("Stok barang habis!");
+      focusSearchInput();
+      return;
+    }
+    const newItem = {
+      cartId: product.id,
+      id: product.id,
+      nama: product.nama,
+      harga: product.harga_jual,
+      harga_beli: product.harga_beli || 0,
+      qty: 1,
+      isBox: false,
+      gambar: product.gambar
+    };
+    applyPricingToCartItem(newItem);
+    cart.unshift(newItem);
+  }
+  
+  playBeep();
+  renderCart();
+  focusSearchInput();
+}
+
+function claimBonusItem(cartId, bonusQty = 1) {
+  const item = cart.find(it => it.cartId === cartId);
+  if (!item) return;
+  const localProd = products.find(p => p.id === item.id);
+  if (localProd && !appConfig.allowZeroStock) {
+    if (item.qty + bonusQty > localProd.stok) {
+      alert(`Stok tidak mencukupi untuk mengambil ${bonusQty} barang gratis! Sisa stok: ${localProd.stok} pcs.`);
+      return;
+    }
+  }
+  item.qty += bonusQty;
+  applyPricingToCartItem(item);
+  playBeep();
+  renderCart();
   focusSearchInput();
 }
 
@@ -2314,12 +2526,14 @@ function addBoxToCart(product) {
   const existingItem = cart.find(item => item.cartId === cartId);
   if (existingItem) {
     existingItem.qty += 1;
+    existingItem.subtotal = existingItem.qty * existingItem.harga;
   } else {
     cart.push({
       cartId: cartId,
       id: product.id,
       nama: `${product.nama} (1 ${boxUnitName} @${boxQtyRequired} pcs)`,
       harga: boxPrice,
+      subtotal: boxPrice,
       harga_beli: (product.harga_beli || 0) * boxQtyRequired,
       qty: 1,
       isBox: true,
@@ -2363,7 +2577,7 @@ function updateCartQty(cartId, delta) {
       const totalPcsInCart = cart.reduce((sum, it) => {
         if (it.id === item.id) {
           const q = it.cartId === cartId ? newQty : it.qty;
-          return sum + (it.isBox ? q * (it.isiBox || 12) : q);
+          return sum + (it.isBox ? q * (it.isiBox || 12) : it.qty);
         }
         return sum;
       }, 0);
@@ -2375,30 +2589,41 @@ function updateCartQty(cartId, delta) {
       }
     }
     item.qty = newQty;
+    item.subtotal = item.qty * item.harga;
     renderCart();
     focusSearchInput();
     return;
   }
   
-  const baseId = item.id;
-  let totalQty = cart.filter(i => i.id === baseId && !i.isBox).reduce((sum, i) => sum + i.qty, 0);
-  const newTotalQty = totalQty + delta;
+  const newQty = item.qty + delta;
+  if (newQty <= 0) {
+    if (confirm(`Apakah Anda yakin ingin menghapus "${item.nama}" dari keranjang?`)) {
+      cart.splice(itemIndex, 1);
+      renderCart();
+    }
+    focusSearchInput();
+    return;
+  }
   
-  if (newTotalQty <= 0) {
-    if (!confirm(`Apakah Anda yakin ingin menghapus "${item.nama}" dari keranjang?`)) {
+  const localProd = products.find(p => p.id === item.id);
+  if (localProd && !appConfig.allowZeroStock) {
+    const boxPcs = cart.filter(it => it.id === item.id && it.isBox).reduce((sum, it) => sum + (it.qty * (it.isiBox || 12)), 0);
+    if (newQty + boxPcs > localProd.stok) {
+      alert(`Stok tidak mencukupi! Hanya tersisa ${localProd.stok - boxPcs} pcs.`);
       focusSearchInput();
       return;
     }
   }
   
-  recalculateCartSplit(baseId, newTotalQty);
+  item.qty = newQty;
+  applyPricingToCartItem(item);
+  renderCart();
   focusSearchInput();
 }
 
 function removeFromCart(cartId) {
   const itemIndex = cart.findIndex(item => item.cartId === cartId);
   if (itemIndex === -1) return;
-  const baseId = cart[itemIndex].id;
   const itemToRemove = cart[itemIndex];
   
   if (!confirm(`Apakah Anda yakin ingin menghapus "${itemToRemove.nama}" dari keranjang?`)) {
@@ -2406,33 +2631,33 @@ function removeFromCart(cartId) {
     return;
   }
   
-  let totalQty = cart.filter(i => i.id === baseId).reduce((sum, i) => sum + i.qty, 0);
-  totalQty -= itemToRemove.qty;
-  
-  recalculateCartSplit(baseId, totalQty);
+  cart.splice(itemIndex, 1);
+  renderCart();
   focusSearchInput();
 }
 
 function setCartQtyDirect(cartId, value) {
   const qty = parseInt(value);
-  const item = cart.find(it => it.cartId === cartId);
-  if (!item) return;
+  const itemIndex = cart.findIndex(it => it.cartId === cartId);
+  if (itemIndex === -1) return;
+  const item = cart[itemIndex];
+  
+  if (isNaN(qty) || qty <= 0) {
+    if (confirm(`Apakah Anda yakin ingin menghapus "${item.nama}" dari keranjang?`)) {
+      cart.splice(itemIndex, 1);
+      renderCart();
+    }
+    focusSearchInput();
+    return;
+  }
   
   if (item.isBox) {
-    if (isNaN(qty) || qty <= 0) {
-      if (confirm(`Apakah Anda yakin ingin menghapus "${item.nama}" dari keranjang?`)) {
-        cart = cart.filter(it => it.cartId !== cartId);
-        renderCart();
-      }
-      focusSearchInput();
-      return;
-    }
     const localProd = products.find(p => p.id === item.id);
     if (localProd && !appConfig.allowZeroStock) {
       const totalPcsInCart = cart.reduce((sum, it) => {
         if (it.id === item.id) {
           const q = it.cartId === cartId ? qty : it.qty;
-          return sum + (it.isBox ? q * (it.isiBox || 12) : q);
+          return sum + (it.isBox ? q * (it.isiBox || 12) : it.qty);
         }
         return sum;
       }, 0);
@@ -2445,104 +2670,29 @@ function setCartQtyDirect(cartId, value) {
       }
     }
     item.qty = qty;
+    item.subtotal = item.qty * item.harga;
     renderCart();
     focusSearchInput();
     return;
   }
   
-  const baseId = item.id;
-  
-  if (isNaN(qty) || qty <= 0) {
-    if (!confirm(`Apakah Anda yakin ingin menghapus "${item.nama}" dari keranjang?`)) {
+  const localProd = products.find(p => p.id === item.id);
+  if (localProd && !appConfig.allowZeroStock) {
+    const boxPcs = cart.filter(it => it.id === item.id && it.isBox).reduce((sum, it) => sum + (it.qty * (it.isiBox || 12)), 0);
+    if (qty + boxPcs > localProd.stok) {
+      alert(`Stok tidak mencukupi! Hanya tersisa ${localProd.stok - boxPcs} pcs.`);
+      item.qty = Math.max(1, localProd.stok - boxPcs);
+      applyPricingToCartItem(item);
       renderCart();
       focusSearchInput();
       return;
     }
   }
   
-  const targetQty = isNaN(qty) || qty <= 0 ? 0 : qty;
-  let totalQty = cart.filter(i => i.id === baseId && !i.isBox).reduce((sum, i) => sum + i.qty, 0);
-  totalQty = totalQty - item.qty + targetQty;
-  
-  recalculateCartSplit(baseId, totalQty);
-  focusSearchInput();
-}
-
-function recalculateCartSplit(baseId, totalQty) {
-  // Find the original index to preserve position
-  const originalIndex = cart.findIndex(i => i.id === baseId);
-  
-  // Hapus semua item lama dengan baseId yang sama
-  cart = cart.filter(i => i.id !== baseId);
-  
-  if (totalQty <= 0) {
-    renderCart();
-    return;
-  }
-  
-  const localProd = products.find(p => p.id === baseId);
-  if (!localProd) return;
-  
-  if (totalQty > localProd.stok && !appConfig.allowZeroStock) {
-    alert(`Stok tidak mencukupi! Hanya tersisa ${localProd.stok} barang.`);
-    totalQty = localProd.stok;
-  }
-  
-  const hargaDiskon = parseFloat(localProd.harga_diskon) || 0;
-  const kuotaDiskon = (parseInt(localProd.kuota_diskon) || 0) > 0 ? parseInt(localProd.kuota_diskon) : Infinity;
-  const hasPromo = appConfig.enablePromo && hargaDiskon > 0;
-  
-  let newItems = [];
-  
-  if (hasPromo) {
-    const promoQty = Math.min(totalQty, kuotaDiskon);
-    const regQty = totalQty - promoQty;
-    
-    if (promoQty > 0) {
-      newItems.push({
-        id: baseId,
-        cartId: baseId + '_promo',
-        nama: localProd.nama + ' (Promo)',
-        harga: hargaDiskon,
-        harga_beli: parseFloat(localProd.harga_beli) || 0,
-        qty: promoQty,
-        isPromo: true
-      });
-    }
-    
-    if (regQty > 0) {
-      newItems.push({
-        id: baseId,
-        cartId: baseId + '_reguler',
-        nama: localProd.nama,
-        harga: localProd.harga_jual,
-        harga_beli: localProd.harga_beli,
-        qty: regQty,
-        isPromo: false
-      });
-    }
-  } else {
-    newItems.push({
-      id: baseId,
-      cartId: baseId + '_reguler',
-      nama: localProd.nama,
-      harga: localProd.harga_jual,
-      harga_beli: localProd.harga_beli,
-      qty: totalQty,
-      isPromo: false
-    });
-  }
-  
-  // Insert new items at the original position (or at top index 0 if it wasn't in cart before)
-  if (originalIndex !== -1) {
-    cart.splice(originalIndex, 0, ...newItems);
-    selectedCartIndex = originalIndex;
-  } else {
-    cart.unshift(...newItems);
-    selectedCartIndex = 0;
-  }
-  
+  item.qty = qty;
+  applyPricingToCartItem(item);
   renderCart();
+  focusSearchInput();
 }
 
 function checkPromoBanner() {
@@ -2550,7 +2700,7 @@ function checkPromoBanner() {
   const marqueeContent = document.getElementById('promo-marquee-content');
   if (!container || !marqueeContent) return;
   
-  const promos = appConfig.enablePromo ? products.filter(p => parseFloat(p.harga_diskon) > 0) : [];
+  const promos = appConfig.enablePromo ? products.filter(p => (parseFloat(p.harga_diskon) > 0) || (p.promo_beli_x > 0 && p.promo_gratis_y > 0) || (p.grosir_qty > 0 && p.grosir_harga > 0)) : [];
   
   if (promos.length === 0) {
     container.style.display = 'none';
@@ -2562,10 +2712,18 @@ function checkPromoBanner() {
   let html = '';
   
   promos.forEach((p, i) => {
+    let promoText = '';
+    if (parseFloat(p.harga_diskon) > 0) {
+      promoText = `${p.nama}: <span class="highlight">Rp ${formatRupiah(p.harga_diskon)}</span> <s style="color: var(--color-danger); opacity: 0.8; margin-left: 0.25rem;">Rp ${formatRupiah(p.harga_jual)}</s>`;
+    } else if (p.promo_beli_x > 0 && p.promo_gratis_y > 0) {
+      promoText = `${p.nama}: <span class="highlight">🎁 Beli ${p.promo_beli_x} Gratis ${p.promo_gratis_y}</span> (@Rp ${formatRupiah(p.harga_jual)})`;
+    } else if (p.grosir_qty > 0 && p.grosir_harga > 0) {
+      promoText = `${p.nama}: <span class="highlight">🏷️ Grosir ${p.grosir_qty} pcs = Rp ${formatRupiah(p.grosir_harga)}</span> (@Rp ${formatRupiah(p.harga_jual)})`;
+    }
+    
     html += `
       <div class="promo-marquee-item ${i === 0 ? 'active' : ''}">
-        ${p.nama}: <span class="highlight">Rp ${formatRupiah(p.harga_diskon)}</span> 
-        <s style="color: var(--color-danger); opacity: 0.8; margin-left: 0.25rem;">Rp ${formatRupiah(p.harga_jual)}</s>
+        ${promoText}
       </div>
     `;
   });
@@ -2640,18 +2798,35 @@ function renderCart() {
   if (totalRowContainer) totalRowContainer.classList.remove('is-change');
   
   cart.forEach(item => {
+    applyPricingToCartItem(item);
+    
+    let badgesHtml = '';
+    if (item.badges && item.badges.length > 0) {
+      badgesHtml = item.badges.map(b => {
+        let claimBtn = '';
+        if (b.canClaim) {
+          claimBtn = `<button type="button" class="btn-claim-bonus" onclick="event.stopPropagation(); claimBonusItem('${item.cartId}', ${b.claimQty});" title="Klaim ${b.claimQty} bonus gratis">+${b.claimQty} Klaim Gratis</button>`;
+        }
+        return `<div class="cart-promo-badge badge-${b.type}">${b.text} ${claimBtn}</div>`;
+      }).join(' ');
+    }
+    
     const div = document.createElement('div');
     div.className = 'cart-item';
     div.innerHTML = `
       <div class="cart-item-info">
         <div class="cart-item-name">${item.nama}</div>
-        <div class="cart-item-price">Rp ${formatRupiah(item.harga)}</div>
+        <div class="cart-item-price-row">
+          <span class="cart-item-price">Rp ${formatRupiah(item.subtotal)}</span>
+          ${item.qty > 1 && !item.isBox ? `<span class="cart-item-unit-price">(${item.qty} pcs @Rp ${formatRupiah(Math.round(item.subtotal / item.qty))})</span>` : ''}
+        </div>
+        ${badgesHtml ? `<div style="display:flex; flex-wrap:wrap; gap:0.25rem; margin-top:0.2rem;">${badgesHtml}</div>` : ''}
       </div>
       <div class="cart-item-controls">
         <button class="qty-btn" onclick="updateCartQty('${item.cartId}', -1)">-</button>
         <input type="number" class="qty-input" value="${item.qty}" min="1" onchange="setCartQtyDirect('${item.cartId}', this.value)">
         <button class="qty-btn" onclick="updateCartQty('${item.cartId}', 1)">+</button>
-        <button class="remove-item-btn" onclick="removeFromCart('${item.cartId}')">
+        <button class="remove-item-btn" onclick="removeFromCart('${item.cartId}')" title="Hapus">
           <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
         </button>
       </div>
@@ -2674,7 +2849,7 @@ let globalTotal = 0;
 function calculateTotal() {
   let subtotal = 0;
   cart.forEach(item => {
-    subtotal += item.harga * item.qty;
+    subtotal += (item.subtotal !== undefined ? item.subtotal : (item.harga * item.qty));
   });
   
   const discountRowWrapper = document.getElementById('discount-row-wrapper');
@@ -2968,9 +3143,9 @@ async function processCheckout() {
   cart.forEach(cartItem => {
     const localProd = products.find(p => p.id === cartItem.id);
     if (localProd) {
-      const pcsToDeduct = cartItem.isBox ? (cartItem.qty * (cartItem.isiBox || 1)) : cartItem.qty;
+      const pcsToDeduct = cartItem.isBox ? (cartItem.qty * (cartItem.isiBox || 1)) : (cartItem.isGrosir ? (cartItem.qty * (cartItem.grosirQty || 1)) : cartItem.qty);
       localProd.stok = Math.max(0, localProd.stok - pcsToDeduct);
-      if (cartItem.isPromo) {
+      if (cartItem.isPromo && !cartItem.isBonus) {
         let prevKuota = parseInt(localProd.kuota_diskon) || 0;
         if (prevKuota > 0) {
           localProd.kuota_diskon = Math.max(0, prevKuota - cartItem.qty);
@@ -3105,13 +3280,20 @@ function generatePlainTextReceipt(tx, items) {
   // 3. Daftar Barang
   let subtotal = 0;
   items.forEach((item, index) => {
-    subtotal += item.harga * item.qty;
-    const nameLines = wrapText(item.nama, width);
+    const itemTotal = item.subtotal !== undefined ? item.subtotal : (item.harga * item.qty);
+    const unitPrice = item.qty > 0 ? Math.round(itemTotal / item.qty) : item.harga;
+    subtotal += itemTotal;
+    
+    let itemName = item.nama;
+    if (item.promoInfo) {
+      itemName += ` [${item.promoInfo}]`;
+    }
+    const nameLines = wrapText(itemName, width);
     nameLines.forEach(line => {
       text += line + "\n";
     });
-    const qtyPriceStr = `${item.qty}x @Rp ${formatRupiah(item.harga)} =`;
-    const totalItemStr = `Rp ${formatRupiah(item.harga * item.qty)}`;
+    const qtyPriceStr = `${item.qty}x @Rp ${formatRupiah(unitPrice)} =`;
+    const totalItemStr = `Rp ${formatRupiah(itemTotal)}`;
     const plainLineText = qtyPriceStr + " " + totalItemStr;
     const leftPadding = Math.floor((width - plainLineText.length) / 2);
     const paddedLine = " ".repeat(Math.max(0, leftPadding)) + qtyPriceStr + " <b>" + totalItemStr + "</b>";
@@ -3198,7 +3380,9 @@ function showReceipt(tx, items) {
   
   let subtotal = 0;
   items.forEach((item, index) => {
-    subtotal += item.harga * item.qty;
+    const itemTotal = item.subtotal !== undefined ? item.subtotal : (item.harga * item.qty);
+    const unitPrice = item.qty > 0 ? Math.round(itemTotal / item.qty) : item.harga;
+    subtotal += itemTotal;
     const row = document.createElement('div');
     row.className = 'receipt-item-row';
     
@@ -3210,10 +3394,10 @@ function showReceipt(tx, items) {
     
     row.innerHTML = `
       <div class="receipt-item-row-top" style="align-items: flex-start;">
-        <span style="flex: 1; padding-right: 0.5rem;">${item.nama}</span>
+        <span style="flex: 1; padding-right: 0.5rem;">${item.nama}${item.promoInfo ? ` <small style="color:#059669; font-weight:600;">[${item.promoInfo}]</small>` : ''}</span>
         <div style="text-align: right; display: flex; flex-direction: column;">
-          <span>Rp ${formatRupiah(item.harga * item.qty)}</span>
-          <span style="font-size: 0.9em; font-weight: 500; color: #444; margin-top: 2px;">${item.qty}x @Rp ${formatRupiah(item.harga)}</span>
+          <span>Rp ${formatRupiah(itemTotal)}</span>
+          <span style="font-size: 0.9em; font-weight: 500; color: #444; margin-top: 2px;">${item.qty}x @Rp ${formatRupiah(unitPrice)}</span>
         </div>
       </div>
     `;
@@ -3449,6 +3633,11 @@ function renderKulakFloatingDropdown() {
     `;
     dropdown.appendChild(div);
   });
+  
+  const selectedEl = dropdown.querySelector('.floating-item.selected');
+  if (selectedEl) {
+    selectedEl.scrollIntoView({ block: 'nearest' });
+  }
 }
 
 function closeKulakFloatingResults() {
@@ -3954,6 +4143,12 @@ function renderProductsTable(highlightProductId = null) {
     if (p.has_unit_box && p.harga_box) {
       hargaJualDisplay += `<br><span style="font-size:0.75rem; color:var(--color-primary); font-weight:600; background:rgba(79,70,229,0.1); padding:0.1rem 0.35rem; border-radius:4px; display:inline-block; margin-top:0.2rem;">📦 1 ${p.nama_box || 'Kotak'} (${p.isi_box || 12} pcs): Rp ${formatRupiah(p.harga_box)}</span>`;
     }
+    if (p.grosir_qty > 0 && p.grosir_harga > 0) {
+      hargaJualDisplay += `<br><span style="font-size:0.75rem; color:#2563eb; font-weight:600; background:rgba(37,99,235,0.1); padding:0.1rem 0.35rem; border-radius:4px; display:inline-block; margin-top:0.2rem;">🏷️ Grosir: ${p.grosir_qty} pcs = Rp ${formatRupiah(p.grosir_harga)}</span>`;
+    }
+    if (p.promo_beli_x > 0 && p.promo_gratis_y > 0) {
+      hargaJualDisplay += `<br><span style="font-size:0.75rem; color:#059669; font-weight:600; background:rgba(16,185,129,0.1); padding:0.1rem 0.35rem; border-radius:4px; display:inline-block; margin-top:0.2rem;">🎁 Beli ${p.promo_beli_x} Gratis ${p.promo_gratis_y}</span>`;
+    }
     
     tr.innerHTML = `
       <td style="text-align: center; padding: 0.5rem;">
@@ -4127,6 +4322,10 @@ function saveProduct(event) {
   const imageInput = document.getElementById('prod-image').value.trim();
   const promoPriceInput = parseFloat(document.getElementById('prod-promo-price').value) || 0;
   const promoQuotaInput = parseInt(document.getElementById('prod-promo-quota').value) || 0;
+  const grosirQtyInput = parseInt(document.getElementById('prod-grosir-qty') ? document.getElementById('prod-grosir-qty').value : 0) || 0;
+  const grosirPriceInput = parseFloat(document.getElementById('prod-grosir-price') ? document.getElementById('prod-grosir-price').value : 0) || 0;
+  const promoBuyXInput = parseInt(document.getElementById('prod-promo-buy-x') ? document.getElementById('prod-promo-buy-x').value : 0) || 0;
+  const promoGetYInput = parseInt(document.getElementById('prod-promo-get-y') ? document.getElementById('prod-promo-get-y').value : 0) || 0;
   
   if (editIndex === -1) {
     const isDuplicate = products.some(p => p.id.toLowerCase() === idInput.toLowerCase());
@@ -4165,6 +4364,12 @@ function saveProduct(event) {
     gambar: imageInput,
     harga_diskon: promoPriceInput,
     kuota_diskon: promoQuotaInput,
+    
+    // Fitur Harga Khusus Grosir & Promo Beli X Gratis Y
+    grosir_qty: grosirQtyInput,
+    grosir_harga: grosirPriceInput,
+    promo_beli_x: promoBuyXInput,
+    promo_gratis_y: promoGetYInput,
     
     // Fitur Kemasan Multi-Unit
     has_unit_box: hasBox,
@@ -4239,6 +4444,10 @@ function editProduct(index) {
   document.getElementById('prod-image').value = p.gambar || '';
   document.getElementById('prod-promo-price').value = p.harga_diskon || '';
   document.getElementById('prod-promo-quota').value = p.kuota_diskon || '';
+  document.getElementById('prod-grosir-qty').value = p.grosir_qty || '';
+  document.getElementById('prod-grosir-price').value = p.grosir_harga || '';
+  document.getElementById('prod-promo-buy-x').value = p.promo_beli_x || '';
+  document.getElementById('prod-promo-get-y').value = p.promo_gratis_y || '';
   
   const hasBox = !!p.has_unit_box;
   const selectHasBox = document.getElementById('prod-has-box');
@@ -4310,6 +4519,10 @@ function resetProductForm() {
   document.getElementById('prod-image').value = "";
   document.getElementById('prod-promo-price').value = "";
   document.getElementById('prod-promo-quota').value = "";
+  document.getElementById('prod-grosir-qty').value = "";
+  document.getElementById('prod-grosir-price').value = "";
+  document.getElementById('prod-promo-buy-x').value = "";
+  document.getElementById('prod-promo-get-y').value = "";
   
   const selectHasBox = document.getElementById('prod-has-box');
   if (selectHasBox) {
@@ -4475,7 +4688,11 @@ async function syncFromCloud() {
         barcode_box: p.barcode_box ? p.barcode_box.toString().trim().replace(/^'/, '') : '',
         nama_box: p.nama_box ? p.nama_box.toString() : 'Kotak',
         isi_box: parseInt(p.isi_box) || 0,
-        harga_box: parseFloat(p.harga_box) || 0
+        harga_box: parseFloat(p.harga_box) || 0,
+        grosir_qty: parseInt(p.grosir_qty || p.grosir_min_qty) || 0,
+        grosir_harga: parseFloat(p.grosir_harga) || 0,
+        promo_beli_x: parseInt(p.promo_beli_x) || 0,
+        promo_gratis_y: parseInt(p.promo_gratis_y) || 0
       }));
       
       saveProductsLocally();
@@ -5014,8 +5231,8 @@ function deleteTransaction(txId) {
       tx.items.forEach(item => {
         const product = products.find(p => p.id === item.id);
         if (product) {
-          product.stok += item.qty;
-          if (item.isPromo) {
+          product.stok += (item.isBox ? (item.qty * (item.isiBox || 1)) : (item.isGrosir ? (item.qty * (item.grosirQty || 1)) : item.qty));
+          if (item.isPromo && !item.isBonus) {
             product.kuota_diskon = (parseInt(product.kuota_diskon) || 0) + item.qty;
           }
         }
@@ -5125,20 +5342,30 @@ function renderEditTxItems() {
   }
   
   editTxItems.forEach(item => {
-    const subtotal = item.harga * item.qty;
+    applyPricingToEditTxItem(item);
+    const subtotal = item.subtotal !== undefined ? item.subtotal : (item.harga * item.qty);
     total += subtotal;
+    
+    let badgesHtml = '';
+    if (item.badges && item.badges.length > 0) {
+      badgesHtml = item.badges.map(b => `<span class="cart-promo-badge badge-${b.type}">${b.text}</span>`).join(' ');
+    }
     
     const div = document.createElement('div');
     div.className = 'edit-tx-item-row';
     div.innerHTML = `
       <div class="edit-tx-item-info">
         <div class="edit-tx-item-name">${item.nama}</div>
-        <div class="edit-tx-item-price">Rp ${formatRupiah(item.harga)}</div>
+        <div class="edit-tx-item-price-row" style="display:flex; align-items:baseline; gap:0.35rem; flex-wrap:wrap;">
+          <span class="edit-tx-item-price">Rp ${formatRupiah(subtotal)}</span>
+          ${item.qty > 1 && !item.isBox ? `<span style="font-size:0.75rem; color:var(--text-muted);">(${item.qty} pcs @Rp ${formatRupiah(Math.round(subtotal / item.qty))})</span>` : ''}
+        </div>
+        ${badgesHtml ? `<div style="display:flex; flex-wrap:wrap; gap:0.25rem; margin-top:0.2rem;">${badgesHtml}</div>` : ''}
       </div>
       <div class="edit-tx-item-controls">
         <input type="number" class="edit-tx-qty-input" value="${item.qty}" min="1" onchange="updateEditTxQty('${item.cartId}', this.value)">
         <span class="edit-tx-item-subtotal">Rp ${formatRupiah(subtotal)}</span>
-        <button class="remove-item-btn" onclick="removeEditTxItem('${item.cartId}')" style="margin-left: 0.5rem;">
+        <button class="remove-item-btn" onclick="removeEditTxItem('${item.cartId}')" style="margin-left: 0.5rem;" title="Hapus">
           <svg viewBox="0 0 24 24" class="icon-sm"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
         </button>
       </div>
@@ -5150,27 +5377,56 @@ function renderEditTxItems() {
   calculateChangeEditTx();
 }
 
+function applyPricingToEditTxItem(item) {
+  if (item.isBox) {
+    item.subtotal = item.qty * item.harga;
+    return;
+  }
+  const localProd = products.find(p => p.id === item.id);
+  if (!localProd) return;
+  const pricing = calculateCartItemPricing(localProd, item.qty);
+  item.subtotal = pricing.subtotal;
+  item.harga = item.qty > 0 ? (pricing.subtotal / item.qty) : localProd.harga_jual;
+  item.badges = pricing.badges;
+  item.promoInfo = pricing.promoInfo;
+}
+
 function updateEditTxQty(cartId, value) {
-  const qty = parseInt(value) || 1;
-  const item = editTxItems.find(it => it.cartId === cartId);
-  if (!item) return;
-  const baseId = item.id;
+  const qty = parseInt(value);
+  const itemIndex = editTxItems.findIndex(it => it.cartId === cartId);
+  if (itemIndex === -1) return;
+  const item = editTxItems[itemIndex];
   
-  let totalQty = editTxItems.filter(i => i.id === baseId).reduce((sum, i) => sum + i.qty, 0);
-  totalQty = totalQty - item.qty + qty;
+  if (isNaN(qty) || qty <= 0) {
+    removeEditTxItem(cartId);
+    return;
+  }
   
-  recalculateEditTxSplit(baseId, totalQty);
+  const localProd = products.find(p => p.id === item.id);
+  if (localProd && !appConfig.allowZeroStock) {
+    const origItem = editTxOriginalItems.find(it => it.id === item.id);
+    const origQty = origItem ? (origItem.isBox ? origItem.qty * (origItem.isiBox || 12) : origItem.qty) : 0;
+    const maxAvailable = localProd.stok + origQty;
+    
+    if (qty > maxAvailable) {
+      alert(`Stok tidak mencukupi! Batas maksimum adalah ${maxAvailable} pcs (Stok sisa + Asli).`);
+      item.qty = maxAvailable;
+      applyPricingToEditTxItem(item);
+      renderEditTxItems();
+      return;
+    }
+  }
+  
+  item.qty = qty;
+  applyPricingToEditTxItem(item);
+  renderEditTxItems();
 }
 
 function removeEditTxItem(cartId) {
-  const item = editTxItems.find(it => it.cartId === cartId);
-  if (!item) return;
-  const baseId = item.id;
-  
-  let totalQty = editTxItems.filter(i => i.id === baseId).reduce((sum, i) => sum + i.qty, 0);
-  totalQty -= item.qty;
-  
-  recalculateEditTxSplit(baseId, totalQty);
+  const itemIndex = editTxItems.findIndex(it => it.cartId === cartId);
+  if (itemIndex === -1) return;
+  editTxItems.splice(itemIndex, 1);
+  renderEditTxItems();
 }
 
 function filterEditTxSearch() {
@@ -5231,12 +5487,20 @@ function renderEditTxFloatingDropdown() {
     
     const imgUrl = p.gambar || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=100';
     
+    let priceText = `Rp ${formatRupiah(p.harga_jual)}`;
+    if (p.grosir_qty > 0 && p.grosir_harga > 0) {
+      priceText += ` <span class="badge-grosir-price">🏷️ Grosir ${p.grosir_qty} pcs: Rp ${formatRupiah(p.grosir_harga)}</span>`;
+    }
+    if (p.promo_beli_x > 0 && p.promo_gratis_y > 0) {
+      priceText += ` <span class="badge-promo-buyget">🎁 Beli ${p.promo_beli_x} Gratis ${p.promo_gratis_y}</span>`;
+    }
+    
     div.innerHTML = `
       <img src="${imgUrl}" alt="${p.nama}" class="floating-item-img" onerror="handleImageError(this)">
       <div class="floating-item-info">
         <span class="floating-item-name">${p.nama} (${p.id})</span>
-        <div class="floating-item-meta">
-          <span class="floating-item-price">Rp ${formatRupiah(p.harga_jual)}</span>
+        <div class="floating-item-meta" style="flex-wrap: wrap; gap: 0.2rem; align-items: center;">
+          <span class="floating-item-price">${priceText}</span>
           <span class="floating-item-stock">Stok: ${p.stok}</span>
         </div>
       </div>
@@ -5284,84 +5548,36 @@ function handleEditTxSearchInputKeydowns(e) {
 }
 
 function addEditTxItem(product) {
-  let totalQty = editTxItems.filter(i => i.id === product.id).reduce((sum, i) => sum + i.qty, 0);
-  totalQty += 1;
-  recalculateEditTxSplit(product.id, totalQty);
+  let existingItem = editTxItems.find(it => it.id === product.id && !it.isBox);
+  if (existingItem) {
+    let newQty = existingItem.qty + 1;
+    const origItem = editTxOriginalItems.find(it => it.id === product.id);
+    const origQty = origItem ? (origItem.isBox ? origItem.qty * (origItem.isiBox || 12) : origItem.qty) : 0;
+    const maxAvailable = product.stok + origQty;
+    
+    if (newQty > maxAvailable && !appConfig.allowZeroStock) {
+      alert(`Stok tidak mencukupi! Batas maksimum adalah ${maxAvailable} pcs.`);
+      return;
+    }
+    existingItem.qty = newQty;
+    applyPricingToEditTxItem(existingItem);
+  } else {
+    const newItem = {
+      cartId: product.id,
+      id: product.id,
+      nama: product.nama,
+      harga: product.harga_jual,
+      harga_beli: product.harga_beli || 0,
+      qty: 1,
+      isBox: false,
+      gambar: product.gambar
+    };
+    applyPricingToEditTxItem(newItem);
+    editTxItems.unshift(newItem);
+  }
   
   document.getElementById('edit-tx-search-input').value = '';
   closeEditTxFloatingResults();
-}
-
-function recalculateEditTxSplit(baseId, totalQty) {
-  // Hapus semua item lama dengan baseId yang sama
-  editTxItems = editTxItems.filter(i => i.id !== baseId);
-  
-  if (totalQty <= 0) {
-    renderEditTxItems();
-    return;
-  }
-  
-  const localProd = products.find(p => p.id === baseId);
-  if (!localProd) return;
-  
-  const origItems = editTxOriginalItems.filter(it => it.id === baseId);
-  const origQty = origItems.reduce((sum, it) => sum + it.qty, 0);
-  const maxAvailable = localProd.stok + origQty;
-  
-  if (totalQty > maxAvailable && !appConfig.allowZeroStock) {
-    alert(`Stok tidak mencukupi! Batas maksimum untuk barang ini adalah ${maxAvailable} pcs (Stok tersisa + Kuantitas asli).`);
-    totalQty = maxAvailable;
-  }
-  
-  const hargaDiskon = parseFloat(localProd.harga_diskon) || 0;
-  let origPromoQty = 0;
-  origItems.forEach(it => {
-    if (it.isPromo) origPromoQty += it.qty;
-  });
-  
-  const totalKuotaTersedia = (parseInt(localProd.kuota_diskon) || 0) + origPromoQty;
-  const kuotaDiskon = totalKuotaTersedia > 0 ? totalKuotaTersedia : Infinity;
-  const hasPromo = appConfig.enablePromo && hargaDiskon > 0;
-  
-  if (hasPromo && totalKuotaTersedia > 0) {
-    const promoQty = Math.min(totalQty, kuotaDiskon);
-    const regQty = totalQty - promoQty;
-    
-    if (promoQty > 0) {
-      editTxItems.push({
-        id: baseId,
-        cartId: baseId + '_promo',
-        nama: localProd.nama + ' (Promo)',
-        harga: hargaDiskon,
-        harga_beli: parseFloat(localProd.harga_beli) || 0,
-        qty: promoQty,
-        isPromo: true
-      });
-    }
-    
-    if (regQty > 0) {
-      editTxItems.push({
-        id: baseId,
-        cartId: baseId + '_reguler',
-        nama: localProd.nama,
-        harga: localProd.harga_jual,
-        harga_beli: parseFloat(localProd.harga_beli) || 0,
-        qty: regQty,
-        isPromo: false
-      });
-    }
-  } else {
-    editTxItems.push({
-      id: baseId,
-      cartId: baseId + '_reguler',
-      nama: localProd.nama,
-      harga: localProd.harga_jual,
-      harga_beli: parseFloat(localProd.harga_beli) || 0,
-      qty: totalQty,
-      isPromo: false
-    });
-  }
-  
   renderEditTxItems();
 }
 
@@ -5474,18 +5690,17 @@ function saveEditedTransaction() {
   ]);
   
   allProductIds.forEach(id => {
-    const origItem = editTxOriginalItems.find(it => it.id === id);
-    const newItem = editTxItems.find(it => it.id === id);
-    
-    const origQty = origItem ? origItem.qty : 0;
-    const newQty = newItem ? newItem.qty : 0;
+    const origQty = editTxOriginalItems.filter(it => it.id === id).reduce((sum, it) => sum + (it.isGrosir ? it.qty * (it.grosirQty || 1) : (it.isBox ? it.qty * (it.isiBox || 12) : it.qty)), 0);
+    const newQty = editTxItems.filter(it => it.id === id).reduce((sum, it) => sum + (it.isGrosir ? it.qty * (it.grosirQty || 1) : (it.isBox ? it.qty * (it.isiBox || 12) : it.qty)), 0);
     const delta = newQty - origQty;
     
     if (delta !== 0) {
       const product = products.find(p => p.id === id);
       if (product) {
         product.stok = Math.max(0, product.stok - delta);
-        if ((origItem && origItem.isPromo) || (newItem && newItem.isPromo)) {
+        const origPromo = editTxOriginalItems.some(it => it.id === id && it.isPromo && !it.isBonus);
+        const newPromo = editTxItems.some(it => it.id === id && it.isPromo && !it.isBonus);
+        if (origPromo || newPromo) {
           let prevKuota = parseInt(product.kuota_diskon) || 0;
           if (prevKuota > 0) {
             product.kuota_diskon = Math.max(0, prevKuota - delta);
