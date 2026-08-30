@@ -2619,11 +2619,8 @@ function updateCartQty(cartId, delta) {
   
   if (item.isBox) {
     const newQty = item.qty + delta;
-    if (newQty <= 0) {
-      if (confirm(`Apakah Anda yakin ingin menghapus "${item.nama}" dari keranjang?`)) {
-        cart.splice(itemIndex, 1);
-        renderCart();
-      }
+    if (newQty < 1) {
+      // Tidak boleh kosong/kurang dari 1. Jika ingin hapus gunakan tombol Delete / ikon Hapus.
       focusSearchInput();
       return;
     }
@@ -2652,11 +2649,8 @@ function updateCartQty(cartId, delta) {
   }
   
   const newQty = item.qty + delta;
-  if (newQty <= 0) {
-    if (confirm(`Apakah Anda yakin ingin menghapus "${item.nama}" dari keranjang?`)) {
-      cart.splice(itemIndex, 1);
-      renderCart();
-    }
+  if (newQty < 1) {
+    // Tidak boleh kosong/kurang dari 1. Jika ingin hapus gunakan tombol Delete / ikon Hapus.
     focusSearchInput();
     return;
   }
@@ -2677,14 +2671,16 @@ function updateCartQty(cartId, delta) {
   focusSearchInput();
 }
 
-function removeFromCart(cartId) {
+function removeFromCart(cartId, askConfirm = true) {
   const itemIndex = cart.findIndex(item => item.cartId === cartId);
   if (itemIndex === -1) return;
   const itemToRemove = cart[itemIndex];
   
-  if (!confirm(`Apakah Anda yakin ingin menghapus "${itemToRemove.nama}" dari keranjang?`)) {
-    focusSearchInput();
-    return;
+  if (askConfirm) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus "${itemToRemove.nama}" dari keranjang?`)) {
+      focusSearchInput();
+      return;
+    }
   }
   
   cart.splice(itemIndex, 1);
@@ -2693,18 +2689,14 @@ function removeFromCart(cartId) {
 }
 
 function setCartQtyDirect(cartId, value) {
-  const qty = parseInt(value);
+  let qty = parseInt(value);
   const itemIndex = cart.findIndex(it => it.cartId === cartId);
   if (itemIndex === -1) return;
   const item = cart[itemIndex];
   
-  if (isNaN(qty) || qty <= 0) {
-    if (confirm(`Apakah Anda yakin ingin menghapus "${item.nama}" dari keranjang?`)) {
-      cart.splice(itemIndex, 1);
-      renderCart();
-    }
-    focusSearchInput();
-    return;
+  // Jika input kosong, tidak valid, atau < 1, otomatis kembalikan ke minimal 1 (jangan hapus produk)
+  if (isNaN(qty) || qty < 1) {
+    qty = 1;
   }
   
   if (item.isBox) {
@@ -5458,14 +5450,13 @@ function applyPricingToEditTxItem(item) {
 }
 
 function updateEditTxQty(cartId, value) {
-  const qty = parseInt(value);
+  let qty = parseInt(value);
   const itemIndex = editTxItems.findIndex(it => it.cartId === cartId);
   if (itemIndex === -1) return;
   const item = editTxItems[itemIndex];
   
-  if (isNaN(qty) || qty <= 0) {
-    removeEditTxItem(cartId);
-    return;
+  if (isNaN(qty) || qty < 1) {
+    qty = 1;
   }
   
   const localProd = products.find(p => p.id === item.id);
