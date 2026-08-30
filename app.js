@@ -2325,10 +2325,10 @@ function calculateCartItemPricing(localProd, totalQty) {
   const basePrice = parseFloat(localProd.harga_jual) || 0;
   const standardTotal = totalQty * basePrice;
   
-  // 1. Cek Aturan Promo Beli X Gratis Y (Buy X Get Y Free)
+  // 1. Cek Aturan Promo Beli X Gratis Y (Buy X Get Y Free) - Selalu aktif jika diatur di produk
   const buyX = parseInt(localProd.promo_beli_x) || 0;
   const getY = parseInt(localProd.promo_gratis_y) || 0;
-  const hasBuyGetPromo = appConfig.enablePromo && buyX > 0 && getY > 0;
+  const hasBuyGetPromo = buyX > 0 && getY > 0;
   
   let freeQty = 0;
   let paidQty = totalQty;
@@ -2342,11 +2342,13 @@ function calculateCartItemPricing(localProd, totalQty) {
     
     result.freeQty = freeQty;
     result.paidQty = paidQty;
+    result.buyX = buyX;
+    result.getY = getY;
     
     if (freeQty > 0) {
       result.badges.push({
         type: 'active',
-        text: `🎁 Promo Beli ${buyX} Gratis ${getY}: ${freeQty} Pcs GRATIS (Hemat Rp ${formatRupiah(freeQty * basePrice)})`
+        text: `🎁 Gratis ${freeQty} pcs (${localProd.nama})`
       });
       result.promoInfo = `Beli ${buyX} Gratis ${getY} (${freeQty} gratis)`;
     } else {
@@ -2356,7 +2358,7 @@ function calculateCartItemPricing(localProd, totalQty) {
         result.bonusToClaim = getY;
         result.badges.push({
           type: 'eligible',
-          text: `🎉 Promo Beli ${buyX} Gratis ${getY}: Anda berhak dapat ${getY} pcs GRATIS!`,
+          text: `🎁 Gratis ${getY} pcs (${localProd.nama})`,
           canClaim: true,
           claimQty: getY
         });
@@ -2364,7 +2366,7 @@ function calculateCartItemPricing(localProd, totalQty) {
         const needMore = buyX - (totalQty % cycle);
         result.badges.push({
           type: 'info',
-          text: `💡 Promo Beli ${buyX} Gratis ${getY}: Beli ${needMore} pcs lagi dapat ${getY} GRATIS!`
+          text: `💡 Beli ${needMore} pcs lagi Gratis ${getY} pcs (${localProd.nama})`
         });
       }
     }
@@ -2890,30 +2892,66 @@ function calculateTotal() {
       promoContainer.innerHTML = '';
       promoContainer.style.display = 'none';
     } else {
-      let promoItemsHtml = '';
+      let promoCardsHtml = '';
       cart.forEach(item => {
-        if (item.badges && item.badges.length > 0) {
-          item.badges.forEach(b => {
-            if (b.canClaim) {
-              promoItemsHtml += `
-                <div class="cart-promo-summary-item eligible">
-                  <span>${b.text}</span>
-                  <button type="button" class="btn-claim-bonus-lg" onclick="event.stopPropagation(); claimBonusItem('${item.cartId}', ${b.claimQty});">+${b.claimQty} Klaim Gratis</button>
+        const localProd = products.find(p => p.id === item.id) || {};
+        const imgUrl = item.gambar || localProd.gambar || 'https://via.placeholder.com/80?text=Produk';
+        const buyX = parseInt(item.buyX || localProd.promo_beli_x) || 0;
+        const getY = parseInt(item.getY || localProd.promo_gratis_y) || 0;
+        
+        // 1. Cek Promo Beli X Gratis Y
+        if (buyX > 0 && getY > 0) {
+          if (item.canClaimBonus) {
+            const claimQty = item.bonusToClaim || getY;
+            promoCardsHtml += `
+              <div class="cart-promo-summary-card eligible">
+                <img src="${imgUrl}" class="cart-promo-thumb" alt="${item.nama}" onerror="this.src='https://via.placeholder.com/80?text=Produk'">
+                <div class="cart-promo-content">
+                  <div class="cart-promo-title">🎁 Gratis ${claimQty} pcs (${item.nama})</div>
+                  <div class="cart-promo-subtitle">Promo Beli ${buyX} Gratis ${getY} aktif! Klik tombol untuk klaim</div>
                 </div>
-              `;
-            } else if (b.type === 'active') {
-              promoItemsHtml += `<div class="cart-promo-summary-item"><span>${b.text}</span></div>`;
-            } else if (b.type === 'info') {
-              promoItemsHtml += `<div class="cart-promo-summary-item info"><span>${b.text}</span></div>`;
-            } else if (b.type === 'grosir') {
-              promoItemsHtml += `<div class="cart-promo-summary-item box"><span>${b.text}</span></div>`;
-            }
-          });
+                <button type="button" class="btn-claim-bonus-lg" onclick="event.stopPropagation(); claimBonusItem('${item.cartId}', ${claimQty});">+${claimQty} Ambil Gratis</button>
+              </div>
+            `;
+          } else if (item.freeQty > 0) {
+            promoCardsHtml += `
+              <div class="cart-promo-summary-card">
+                <img src="${imgUrl}" class="cart-promo-thumb" alt="${item.nama}" onerror="this.src='https://via.placeholder.com/80?text=Produk'">
+                <div class="cart-promo-content">
+                  <div class="cart-promo-title">🎁 Gratis ${item.freeQty} pcs (${item.nama})</div>
+                  <div class="cart-promo-subtitle">Hanya bayar ${item.paidQty} pcs (Hemat Rp ${formatRupiah(item.savings)})</div>
+                </div>
+              </div>
+            `;
+          } else {
+            const cycle = buyX + getY;
+            const needMore = buyX - (item.qty % cycle);
+            promoCardsHtml += `
+              <div class="cart-promo-summary-card info">
+                <img src="${imgUrl}" class="cart-promo-thumb" alt="${item.nama}" onerror="this.src='https://via.placeholder.com/80?text=Produk'">
+                <div class="cart-promo-content">
+                  <div class="cart-promo-title">💡 Beli ${needMore} pcs lagi Gratis ${getY} pcs (${item.nama})</div>
+                  <div class="cart-promo-subtitle">Promo Beli ${buyX} Gratis ${getY}</div>
+                </div>
+              </div>
+            `;
+          }
+        } else if (item.grosirPackages > 0) {
+          const unitName = item.boxUnitName || 'Dus';
+          promoCardsHtml += `
+            <div class="cart-promo-summary-card box">
+              <img src="${imgUrl}" class="cart-promo-thumb" alt="${item.nama}" onerror="this.src='https://via.placeholder.com/80?text=Produk'">
+              <div class="cart-promo-content">
+                <div class="cart-promo-title">📦 Harga 1 ${unitName} (${item.nama})</div>
+                <div class="cart-promo-subtitle">${item.qty} pcs = Rp ${formatRupiah(item.subtotal)}</div>
+              </div>
+            </div>
+          `;
         }
       });
       
-      if (promoItemsHtml) {
-        promoContainer.innerHTML = promoItemsHtml;
+      if (promoCardsHtml) {
+        promoContainer.innerHTML = promoCardsHtml;
         promoContainer.style.display = 'flex';
       } else {
         promoContainer.innerHTML = '';

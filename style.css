@@ -1426,38 +1426,90 @@ svg.icon-empty {
 .cart-promo-summary-container {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+  margin-bottom: 0.85rem;
 }
-.cart-promo-summary-item {
-  background: #f0fdf4;
-  border: 1px solid #86efac;
-  color: #166534;
-  padding: 0.6rem 0.85rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
+.cart-promo-summary-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  line-height: 1.35;
+  gap: 0.85rem;
+  background: #f0fdf4;
+  border: 2px solid #22c55e;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
+  transition: all 0.2s ease;
 }
-.cart-promo-summary-item.eligible {
+.cart-promo-summary-card.eligible {
   background: #fffbeb;
-  border-color: #fcd34d;
-  color: #92400e;
+  border-color: #f59e0b;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.18);
+  animation: pulse-promo 2s infinite;
 }
-.cart-promo-summary-item.info {
+.cart-promo-summary-card.info {
   background: #eff6ff;
-  border-color: #bfdbfe;
-  color: #1e40af;
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
 }
-.cart-promo-summary-item.box {
+.cart-promo-summary-card.box {
   background: #f8fafc;
-  border-color: #cbd5e1;
+  border-color: #64748b;
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.1);
+}
+.cart-promo-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+}
+.cart-promo-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.cart-promo-title {
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #15803d;
+  line-height: 1.25;
+}
+.cart-promo-summary-card.eligible .cart-promo-title {
+  color: #b45309;
+}
+.cart-promo-summary-card.info .cart-promo-title {
+  font-size: 1.02rem;
+  color: #1d4ed8;
+}
+.cart-promo-summary-card.box .cart-promo-title {
+  font-size: 1.02rem;
   color: #334155;
+}
+.cart-promo-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted, #64748b);
+  font-weight: 500;
+}
+.btn-claim-bonus-lg {
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.btn-claim-bonus-lg:hover {
+  background: #059669;
+  transform: translateY(-1px);
 }
 .cart-item-controls {
   display: flex;
