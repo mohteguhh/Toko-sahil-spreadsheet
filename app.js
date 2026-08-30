@@ -2826,16 +2826,6 @@ function renderCart() {
   cart.forEach(item => {
     applyPricingToCartItem(item);
     
-    let badgesHtml = '';
-    if (item.badges && item.badges.length > 0) {
-      badgesHtml = item.badges.map(b => {
-        if (b.canClaim) {
-          return `<button type="button" class="btn-claim-bonus" onclick="event.stopPropagation(); claimBonusItem('${item.cartId}', ${b.claimQty});" title="Klaim bonus gratis">+${b.claimQty} Klaim Gratis</button>`;
-        }
-        return `<span class="cart-promo-badge badge-${b.type}">${b.text}</span>`;
-      }).join(' ');
-    }
-    
     const div = document.createElement('div');
     div.className = 'cart-item';
     div.innerHTML = `
@@ -2844,7 +2834,6 @@ function renderCart() {
         <div class="cart-item-price-row">
           <span class="cart-item-price">Rp ${formatRupiah(item.subtotal)}</span>
           ${item.qty > 1 && !item.isBox ? `<span class="cart-item-unit-price">(${item.qty} pcs @Rp ${formatRupiah(Math.round(item.subtotal / item.qty))})</span>` : ''}
-          ${badgesHtml ? `<span style="display:inline-flex; align-items:center; gap:0.25rem; margin-left:0.25rem;">${badgesHtml}</span>` : ''}
         </div>
       </div>
       <div class="cart-item-controls">
@@ -2894,41 +2883,42 @@ function calculateTotal() {
   document.getElementById('subtotal-val').textContent = `Rp ${formatRupiah(subtotal)}`;
   document.getElementById('total-val').textContent = `Rp ${formatRupiah(globalTotal)}`;
   
-  // Keterangan Promo Di Bawah Nominal Total Belanja
-  const promoSummaryEl = document.getElementById('cart-promo-summary-note');
-  if (promoSummaryEl) {
-    let notes = [];
-    cart.forEach(item => {
-      if (item.isBox) return;
-      const localProd = products.find(p => p.id === item.id);
-      if (!localProd) return;
-      
-      const buyX = parseInt(localProd.promo_beli_x) || 0;
-      const getY = parseInt(localProd.promo_gratis_y) || 0;
-      if (appConfig.enablePromo && buyX > 0 && getY > 0) {
-        if (item.freeQty > 0) {
-          notes.push(`🎁 <b>${item.nama}:</b> Beli ${buyX} Gratis ${getY} aktif (${item.freeQty} pcs gratis, hemat Rp ${formatRupiah(item.freeQty * localProd.harga_jual)})`);
-        } else if (item.canClaimBonus) {
-          notes.push(`🎉 <b>${item.nama}:</b> Beli ${buyX} Gratis ${getY} (Berhak dapat ${item.bonusToClaim} pcs gratis!) <button type="button" class="btn-claim-bonus" onclick="claimBonusItem('${item.cartId}', ${item.bonusToClaim})">+${item.bonusToClaim} Klaim Gratis</button>`);
-        } else if (item.qty < buyX) {
-          notes.push(`💡 <b>${item.nama}:</b> Beli ${buyX} Gratis ${getY} (Beli ${buyX - item.qty} pcs lagi dapat ${getY} gratis)`);
-        }
-      }
-      
-      if (item.grosirPackages > 0) {
-        const unitName = (localProd.has_unit_box && localProd.nama_box) ? localProd.nama_box : 'Dus';
-        const pkgText = item.grosirPackages > 1 ? `${item.grosirPackages} ${unitName}` : `1 ${unitName}`;
-        const remText = item.grosirRemaining > 0 ? ` + ${item.grosirRemaining} pcs eceran` : '';
-        notes.push(`📦 <b>${item.nama}:</b> Harga ${pkgText} aktif (${item.grosirPackages * (item.grosirQty || localProd.isi_box || 12)} pcs = Rp ${formatRupiah(item.grosirTotal)}${remText})`);
-      }
-    });
-    
-    if (notes.length > 0) {
-      promoSummaryEl.innerHTML = notes.map(n => `<div class="promo-summary-line">${n}</div>`).join('');
-      promoSummaryEl.style.display = 'flex';
+  // Render Keterangan Promo & Bonus Di Bawah Nominal Total Belanja Di Atas Tombol Lanjutkan Pembayaran
+  const promoContainer = document.getElementById('cart-promo-summary-container');
+  if (promoContainer) {
+    if (cart.length === 0) {
+      promoContainer.innerHTML = '';
+      promoContainer.style.display = 'none';
     } else {
-      promoSummaryEl.innerHTML = '';
-      promoSummaryEl.style.display = 'none';
+      let promoItemsHtml = '';
+      cart.forEach(item => {
+        if (item.badges && item.badges.length > 0) {
+          item.badges.forEach(b => {
+            if (b.canClaim) {
+              promoItemsHtml += `
+                <div class="cart-promo-summary-item eligible">
+                  <span>${b.text}</span>
+                  <button type="button" class="btn-claim-bonus-lg" onclick="event.stopPropagation(); claimBonusItem('${item.cartId}', ${b.claimQty});">+${b.claimQty} Klaim Gratis</button>
+                </div>
+              `;
+            } else if (b.type === 'active') {
+              promoItemsHtml += `<div class="cart-promo-summary-item"><span>${b.text}</span></div>`;
+            } else if (b.type === 'info') {
+              promoItemsHtml += `<div class="cart-promo-summary-item info"><span>${b.text}</span></div>`;
+            } else if (b.type === 'grosir') {
+              promoItemsHtml += `<div class="cart-promo-summary-item box"><span>${b.text}</span></div>`;
+            }
+          });
+        }
+      });
+      
+      if (promoItemsHtml) {
+        promoContainer.innerHTML = promoItemsHtml;
+        promoContainer.style.display = 'flex';
+      } else {
+        promoContainer.innerHTML = '';
+        promoContainer.style.display = 'none';
+      }
     }
   }
   

@@ -1422,28 +1422,42 @@ svg.icon-empty {
   color: var(--color-primary) !important;
 }
 
-/* Keterangan Promo Di Bawah Nominal Total Belanja */
-.cart-promo-summary-note {
+/* Keterangan Promo & Bonus Di Bawah Nominal Total Belanja */
+.cart-promo-summary-container {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.55rem 0.75rem;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px dashed rgba(16, 185, 129, 0.4);
-  border-radius: 6px;
-  margin-top: 0.5rem;
-  font-size: 0.78rem;
-  color: var(--text-main, #1e293b);
-  line-height: 1.35;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
 }
-.promo-summary-line {
+.cart-promo-summary-item {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  line-height: 1.35;
 }
-.promo-summary-line b {
-  color: #047857;
+.cart-promo-summary-item.eligible {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+.cart-promo-summary-item.info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e40af;
+}
+.cart-promo-summary-item.box {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
 }
 .cart-item-controls {
   display: flex;
