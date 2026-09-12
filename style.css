@@ -2469,6 +2469,49 @@ tr:hover td {
   .cart-summary-card .proceed-btn .badge-shortcut {
     display: none;
   }
+
+  /* Sembunyikan carousel promo di mobile — hemat ruang */
+  .promo-carousel-container {
+    display: none !important;
+  }
+
+  /* Perkecil font total belanja di sticky bottom bar */
+  .cart-summary-card .summary-row.total-row {
+    font-size: 0.95rem !important;
+  }
+  .cart-summary-card .summary-row.total-row span:last-child {
+    font-size: 1.05rem !important;
+    font-weight: 800;
+  }
+
+  /* Tipis & compact navbar di mobile */
+  .navbar {
+    padding: 0.45rem 0.85rem !important;
+    gap: 0.5rem !important;
+    flex-wrap: nowrap !important;
+  }
+  .brand-text h1 {
+    font-size: 1rem !important;
+  }
+  .sub-brand {
+    display: none;
+  }
+  #app-logo-container {
+    max-height: 30px;
+  }
+  .navbar-logo-img {
+    height: 28px;
+    max-height: 28px;
+  }
+
+  /* Perkecil cart header */
+  .cart-header {
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.4rem;
+  }
+  .cart-header h2 {
+    font-size: 0.9rem;
+  }
 }
 
 @media (max-width: 600px) {
