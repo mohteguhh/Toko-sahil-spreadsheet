@@ -2475,13 +2475,57 @@ tr:hover td {
     display: none !important;
   }
 
-  /* Perkecil font total belanja di sticky bottom bar */
+  /* ====== MOBILE: Sembunyikan sticky bar, ganti dengan FAB ====== */
+  
+  /* Sembunyikan sticky bottom bar di mobile (default) */
+  .pos-right-section {
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 1rem 1rem 1.25rem !important;
+    border-radius: 16px 16px 0 0 !important;
+    box-shadow: 0 -8px 30px rgba(15, 23, 42, 0.15) !important;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  
+  /* Slide up saat FAB diklik */
+  .pos-right-section.mobile-panel-open {
+    transform: translateY(0);
+  }
+
+  /* Tampilkan FAB di mobile */
+  .mobile-cart-fab {
+    display: flex !important;
+  }
+
+  /* Font total belanja besar */
   .cart-summary-card .summary-row.total-row {
-    font-size: 0.95rem !important;
+    font-size: 1.3rem !important;
+    flex-direction: column;
+    align-items: center !important;
+    text-align: center;
   }
   .cart-summary-card .summary-row.total-row span:last-child {
-    font-size: 1.05rem !important;
+    font-size: 1.6rem !important;
     font-weight: 800;
+  }
+  
+  /* Summary layout vertical di panel slide-up */
+  .cart-summary-card .summary-details {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  .cart-summary-card .proceed-btn {
+    width: 100% !important;
+    order: 10 !important;
+    padding: 0.85rem 1.25rem !important;
+    font-size: 1rem !important;
+    border-radius: 12px !important;
+  }
+
+  /* Tidak perlu padding bawah untuk sticky bar lagi */
+  .pos-layout {
+    padding-bottom: 10px !important;
   }
 
   /* Tipis & compact navbar di mobile */
@@ -3444,6 +3488,69 @@ body.print-format-html #receipt-text-content {
   transform: translateY(0);
   position: relative;
   pointer-events: auto;
+}
+
+/* ====== MOBILE CART FAB BUTTON ====== */
+.mobile-cart-fab {
+  display: none; /* Tampil hanya di mobile via media query */
+  position: fixed;
+  bottom: 20px;
+  right: 16px;
+  z-index: 200;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d97706 0%, #ca8a04 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(202, 138, 4, 0.4), 0 2px 6px rgba(0,0,0,0.15);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.mobile-cart-fab:active {
+  transform: scale(0.92);
+}
+.mobile-cart-fab svg {
+  width: 26px;
+  height: 26px;
+  stroke: white;
+  fill: none;
+}
+.mobile-cart-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: none; /* Hanya tampil jika ada item */
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+/* Overlay backdrop */
+.mobile-checkout-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  transition: opacity 0.3s;
+  opacity: 0;
+}
+.mobile-checkout-overlay.active {
+  display: block;
+  opacity: 1;
 }
 
 /* Qty input wrap + label gratis */

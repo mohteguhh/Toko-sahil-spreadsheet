@@ -916,6 +916,37 @@ function focusSearchInput() {
   }, 50);
 }
 
+// --- MOBILE CHECKOUT PANEL ---
+function toggleMobileCheckout() {
+  const panel = document.getElementById('pos-right-section');
+  const overlay = document.getElementById('mobile-checkout-overlay');
+  if (!panel) return;
+  const isOpen = panel.classList.contains('mobile-panel-open');
+  if (isOpen) {
+    closeMobileCheckout();
+  } else {
+    panel.classList.add('mobile-panel-open');
+    if (overlay) overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeMobileCheckout() {
+  const panel = document.getElementById('pos-right-section');
+  const overlay = document.getElementById('mobile-checkout-overlay');
+  if (panel) panel.classList.remove('mobile-panel-open');
+  if (overlay) overlay.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function updateMobileCartBadge() {
+  const badge = document.getElementById('mobile-cart-badge');
+  if (!badge) return;
+  const totalQty = cart.reduce((sum, it) => sum + (it.qty || 0), 0);
+  badge.textContent = totalQty;
+  badge.style.display = totalQty > 0 ? 'flex' : 'none';
+}
+
 // Fokuskan kursor ke input Kulak
 function focusKulakSearch() {
   setTimeout(() => {
@@ -2949,6 +2980,7 @@ function renderCart() {
   highlightSelectedCartItem();
   
   calculateTotal();
+  updateMobileCartBadge();
 }
 
 let globalTotal = 0;
@@ -3032,6 +3064,7 @@ function calculateTotal() {
 // --- MODAL PEMBAYARAN (STEP 2) ---
 function openPaymentModal() {
   if (cart.length === 0) return;
+  closeMobileCheckout();
   
   document.getElementById('pay-total-amount').textContent = `Rp ${formatRupiah(globalTotal)}`;
   
