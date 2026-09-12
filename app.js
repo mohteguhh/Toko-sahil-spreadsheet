@@ -999,11 +999,11 @@ async function fetchFromGAS(action, postData = null) {
     return { status: 'offline', message: 'URL API belum disetel.' };
   }
 
-  // Setel timeout 30 detik karena spreadsheet dengan data besar butuh waktu memuat di Google
+  // Setel timeout 60 detik karena spreadsheet dengan data besar butuh waktu memuat di Google
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
-  }, 30000); 
+  }, 60000); 
 
   try {
     let response;
@@ -1037,7 +1037,7 @@ async function fetchFromGAS(action, postData = null) {
     
     let errMsg = error.toString();
     if (error.name === 'AbortError') {
-      errMsg = "Koneksi Timeout (Batas waktu 30 detik terlampaui). Spreadsheet Anda memiliki data yang cukup besar, coba gunakan local server.";
+      errMsg = "Koneksi Timeout (Batas waktu 60 detik terlampaui). Coba periksa koneksi internet Anda, lalu refresh halaman.";
     }
     return { status: 'error', message: errMsg };
   }
