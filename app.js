@@ -225,9 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Sinkronisasi otomatis jika perangkat online saat halaman dibuka
   if (navigator.onLine) {
-    processOfflineQueue();
-    syncFromCloud();
-    syncTransactionsFromCloud();
+    syncAllFromCloud();
   } else {
     updateSyncStatus('offline', `Offline (${offlineQueue.length} transaksi tertunda)`);
     initAnalyticsFilter();
@@ -237,32 +235,21 @@ document.addEventListener('DOMContentLoaded', () => {
   // Event listener untuk memicu sinkronisasi otomatis ketika laptop beralih dari offline ke online
   window.addEventListener('online', () => {
     console.log("Koneksi internet terdeteksi aktif. Memulai sinkronisasi otomatis ke cloud...");
-    if (gasUrl) {
-      processOfflineQueue().then(() => {
-        syncFromCloud();
-        syncTransactionsFromCloud();
-      });
-    }
+    if (gasUrl) syncAllFromCloud();
   });
 
   // Sinkronisasi otomatis saat pengguna kembali membuka tab/aplikasi (sangat berguna di HP)
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && navigator.onLine && gasUrl) {
       console.log("Aplikasi kembali aktif, menyinkronkan data dari cloud...");
-      processOfflineQueue().then(() => {
-        syncFromCloud();
-        syncTransactionsFromCloud();
-      });
+      syncAllFromCloud();
     }
   });
 
   // Sinkronisasi background berkala setiap 5 menit jika aplikasi dibiarkan menyala terus
   setInterval(() => {
     if (navigator.onLine && gasUrl) {
-      processOfflineQueue().then(() => {
-        syncFromCloud();
-        syncTransactionsFromCloud();
-      });
+      syncAllFromCloud();
     }
   }, 5 * 60 * 1000);
   
@@ -990,6 +977,29 @@ function updateSyncStatus(status, text) {
   if (statusEl && textEl) {
     statusEl.className = 'sync-status ' + status;
     textEl.textContent = text;
+  }
+}
+
+// --- SINKRONISASI BERURUTAN (Tidak paralel agar GAS tidak kewalahan) ---
+let isSyncing = false;
+async function syncAllFromCloud() {
+  if (isSyncing) {
+    console.log("Sinkronisasi masih berjalan, menunggu selesai...");
+    return;
+  }
+  isSyncing = true;
+  try {
+    // 1. Kirim transaksi offline yang belum terkirim
+    await processOfflineQueue();
+    // 2. Tarik data produk
+    await syncFromCloud();
+    // 3. Tarik data transaksi (setelah produk selesai)
+    await syncTransactionsFromCloud();
+  } catch (err) {
+    console.error("Error saat sinkronisasi:", err);
+    updateSyncStatus('offline', 'Gagal Sinkronisasi');
+  } finally {
+    isSyncing = false;
   }
 }
 

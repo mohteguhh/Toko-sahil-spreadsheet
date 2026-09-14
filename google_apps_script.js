@@ -151,6 +151,7 @@ function getProductsData() {
 }
 
 // Mendapatkan data riwayat transaksi untuk analisis penjualan di web kasir
+// Hanya mengambil 90 hari terakhir agar tidak terlalu besar
 function getTransactionsData() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transaksi");
   var lastRow = sheet.getLastRow();
@@ -162,13 +163,26 @@ function getTransactionsData() {
   var headers = rows[0];
   var transactions = [];
   
+  // Batas waktu: 90 hari ke belakang
+  var cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 90);
+  
   for (var i = 1; i < rows.length; i++) {
     var tx = {};
     for (var j = 0; j < headers.length; j++) {
-      var key = headers[j].toString().toLowerCase().replace(" ", "_");
+      // Fix: ganti SEMUA spasi dengan underscore (replaceAll)
+      var key = headers[j].toString().toLowerCase().split(" ").join("_");
       tx[key] = rows[i][j];
     }
-    transactions.push(tx);
+    
+    // Filter hanya transaksi dalam 90 hari terakhir
+    var txWaktu = tx["waktu"] ? new Date(tx["waktu"]) : null;
+    if (txWaktu && txWaktu >= cutoffDate) {
+      transactions.push(tx);
+    } else if (!txWaktu) {
+      // Jika tidak ada tanggal, tetap masukkan (aman)
+      transactions.push(tx);
+    }
   }
   
   return { status: "success", data: transactions };
