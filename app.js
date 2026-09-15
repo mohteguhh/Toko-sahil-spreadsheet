@@ -879,9 +879,6 @@ function switchTab(tabName) {
   } else if (tabName === 'analytics') {
     initAnalyticsFilter();
     updateAnalytics();
-    if (weeklyTrendData.length === 0) {
-      loadWeeklyTrendInBackground();
-    }
   } else if (tabName === 'kulak') {
     closeKulakForm();
     focusKulakSearch();
@@ -1007,7 +1004,7 @@ async function syncAllFromCloud() {
     updateSyncStatus('offline', 'Gagal Tarik Produk');
   }
 
-  // 3. Tarik data transaksi hari ini — selalu dijalankan meskipun langkah sebelumnya gagal
+  // 3. Tarik data transaksi — selalu dijalankan meskipun langkah sebelumnya gagal
   try {
     await syncTransactionsFromCloud();
   } catch (err) {
@@ -1016,79 +1013,56 @@ async function syncAllFromCloud() {
   }
 
   isSyncing = false;
-
-  // 4. Muat data 7 hari terakhir di background (diam-diam, 3 detik setelah app siap)
-  //    Tidak memblokir apapun — kasir sudah bisa langsung transaksi
-  if (gasUrl) {
-    setTimeout(() => {
-      loadWeeklyTrendInBackground();
-    }, 3000);
-  }
 }
 
 // --- KOMUNIKASI API GOOGLE APPS SCRIPT (CORS-Safe & dengan Timeout) ---
-async function fetchFromGAS(action, postData = null, maxRetries = 2) {
+async function fetchFromGAS(action, postData = null) {
   if (!gasUrl) {
     return { status: 'offline', message: 'URL API belum disetel.' };
   }
 
-  let lastErrorMsg = '';
+  // Setel timeout 60 detik karena spreadsheet dengan data besar butuh waktu memuat di Google
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, 60000); 
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    // Setel timeout 30 detik — request yang benar-benar berhasil selesai < 10 detik.
-    // Kalau lebih dari 30 detik, GAS sedang masalah dan lebih baik retry daripada menunggu.
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 30000);
-
-    try {
-      let response;
-      if (postData) {
-        response = await fetch(gasUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/plain'
-          },
-          body: JSON.stringify({ action, ...postData }),
-          signal: controller.signal
-        });
-      } else {
-        const preventCacheUrl = `${gasUrl}?action=${action}&_t=${Date.now()}`;
-        response = await fetch(preventCacheUrl, {
-          signal: controller.signal
-        });
-      }
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data; // Sukses, langsung kembalikan data
-      
-    } catch (error) {
-      clearTimeout(timeoutId);
-      console.warn(`Percobaan ${attempt} gagal untuk aksi ${action}:`, error);
-      
-      if (error.name === 'AbortError') {
-        lastErrorMsg = "Koneksi Timeout (Batas waktu 30 detik terlampaui). Coba periksa koneksi internet Anda.";
-      } else {
-        lastErrorMsg = error.toString();
-      }
-
-      // Jika masih ada sisa kesempatan retry, tunggu 3 detik sebelum mencoba lagi
-      if (attempt < maxRetries) {
-        await new Promise(r => setTimeout(r, 3000));
-      }
+  try {
+    let response;
+    if (postData) {
+      response = await fetch(gasUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify({ action, ...postData }),
+        signal: controller.signal
+      });
+    } else {
+      const preventCacheUrl = `${gasUrl}?action=${action}&_t=${Date.now()}`;
+      response = await fetch(preventCacheUrl, {
+        signal: controller.signal
+      });
     }
-  }
 
-  // Jika semua percobaan gagal
-  console.error("Kesalahan koneksi ke Google Sheets (Semua percobaan gagal):", lastErrorMsg);
-  return { status: 'error', message: lastErrorMsg };
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error("Kesalahan koneksi ke Google Sheets:", error);
+    
+    let errMsg = error.toString();
+    if (error.name === 'AbortError') {
+      errMsg = "Koneksi Timeout (Batas waktu 60 detik terlampaui). Coba periksa koneksi internet Anda, lalu refresh halaman.";
+    }
+    return { status: 'error', message: errMsg };
+  }
 }
 
 // Fungsi syncTransactionsFromCloud ada di bawah (baris ~2987) agar field piutang tidak hilang
@@ -1133,58 +1107,6 @@ function getLocalISODate(dateStrOrObj) {
   return new Date(date.getTime() - offset).toISOString();
 }
 
-function parseTxDateStr(waktu) {
-  if (!waktu) return '';
-  if (typeof waktu === 'string') {
-    const match = waktu.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (match) {
-      if (waktu.includes('T')) {
-        const d = new Date(waktu);
-        if (!isNaN(d)) return getLocalISODate(d).slice(0, 10);
-      }
-      return `${match[1]}-${match[2]}-${match[3]}`;
-    }
-    const slashMatch = waktu.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (slashMatch) {
-      const d = new Date(waktu);
-      if (!isNaN(d)) return getLocalISODate(d).slice(0, 10);
-      return `${slashMatch[3]}-${slashMatch[1].padStart(2, '0')}-${slashMatch[2].padStart(2, '0')}`;
-    }
-  }
-  const d = new Date(waktu);
-  if (!isNaN(d)) return getLocalISODate(d).slice(0, 10);
-  return String(waktu).slice(0, 10);
-}
-
-function getAllAvailableTransactions() {
-  const map = new Map();
-  if (Array.isArray(weeklyTrendData)) {
-    weeklyTrendData.forEach(tx => {
-      if (tx && (tx.id || tx.id_transaksi)) {
-        const id = String(tx.id || tx.id_transaksi).trim();
-        if (id) map.set(id, tx);
-      }
-    });
-  }
-  if (Array.isArray(analyticsTransactions)) {
-    analyticsTransactions.forEach(tx => {
-      if (tx && (tx.id || tx.id_transaksi)) {
-        const id = String(tx.id || tx.id_transaksi).trim();
-        if (id) map.set(id, tx);
-      }
-    });
-  }
-  if (Array.isArray(transactions)) {
-    transactions.forEach(tx => {
-      if (tx && (tx.id || tx.id_transaksi)) {
-        const id = String(tx.id || tx.id_transaksi).trim();
-        if (id) map.set(id, tx);
-      }
-    });
-  }
-  return Array.from(map.values());
-}
-
 // Inisialisasi filter analisis (hari ini by default)
 function initAnalyticsFilter() {
   const nowStr = getLocalISODate(new Date());
@@ -1218,221 +1140,22 @@ function onAnalyticsFilterTypeChange() {
   document.getElementById('analytics-filter-date-wrap').style.display = filterType === 'hari' ? 'flex' : 'none';
   document.getElementById('analytics-filter-month-wrap').style.display = filterType === 'bulan' ? 'flex' : 'none';
   document.getElementById('analytics-filter-year-wrap').style.display = filterType === 'tahun' ? 'flex' : 'none';
-  fetchAndUpdateAnalytics();
-}
-
-/// Buffer khusus analitik - tidak menimpa transactions (data hari ini)
-let analyticsTransactions = null; // null = pakai transactions lokal (hari ini)
-
-// Buffer khusus grafik 7 hari - diisi diam-diam di background
-let weeklyTrendData = []; // array gabungan: 6 hari lalu (cloud) + hari ini (lokal)
-
-// Dipanggil 3 detik setelah app siap — muat 6 hari lalu secara diam-diam untuk grafik tren
-async function loadWeeklyTrendInBackground() {
-  if (!gasUrl) return;
-
-  const today = new Date();
-
-  // Hitung tanggal 6 hari yang lalu (kecuali hari ini, sudah ada di `transactions`)
-  const sixDaysAgo = new Date(today);
-  sixDaysAgo.setDate(today.getDate() - 6);
-  const startDate = getLocalISODate(sixDaysAgo).slice(0, 10);
-  // Kemarin adalah batas akhir (hari ini sudah ada di lokal)
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const endDate = getLocalISODate(yesterday).slice(0, 10);
-
-  try {
-    const url = gasUrl
-      + '?action=searchTransactions'
-      + '&startDate=' + encodeURIComponent(startDate)
-      + '&endDate='   + encodeURIComponent(endDate);
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    const result = await response.json();
-
-    if (result && result.status === 'success' && result.data) {
-      // Parse data 6 hari lalu
-      const parsed = result.data
-        .filter(tx => (tx.id_transaksi || '').toString().trim() !== '')
-        .map(tx => {
-          let itemsList = [];
-          const itemsStr = tx.daftar_item || '';
-          if (itemsStr) {
-            itemsStr.split(', ').forEach(part => {
-              const match = part.match(/(.+) \((\d+)x @(\d+)\)/);
-              if (match) {
-                const nama = match[1].trim();
-                const qty  = parseInt(match[2]) || 1;
-                const harga = parseFloat(match[3]) || 0;
-                const prod = products.find(p => p.nama.toLowerCase() === nama.toLowerCase());
-                itemsList.push({
-                  id: prod ? prod.id : '',
-                  nama, harga,
-                  harga_beli: prod ? prod.harga_beli : Math.round(harga * 0.7),
-                  qty
-                });
-              }
-            });
-          }
-          const sisa = parseFloat(tx.sisa_piutang) || 0;
-          return {
-            id: (tx.id_transaksi || tx.id || '').toString(),
-            waktu: tx.waktu || '',
-            items: itemsList,
-            total: parseFloat(tx.total) || 0,
-            bayar: parseFloat(tx.uang_bayar) || parseFloat(tx.bayar) || 0,
-            kembalian: parseFloat(tx.kembalian) || 0,
-            metode_pembayaran: tx.metode_pembayaran || 'Tunai',
-            kasir: tx.kasir || 'Kasir Utama',
-            sisa_piutang: sisa,
-            nama_pelanggan: tx.nama_pelanggan || '',
-            status_pembayaran: sisa > 0 ? 'Bon' : (tx.status_pembayaran || 'Lunas')
-          };
-        });
-
-      // Gabungkan: 6 hari lalu (cloud) + hari ini (lokal)
-      weeklyTrendData = [...parsed, ...transactions];
-
-      // Refresh grafik tren saja (diam-diam, tanpa ganggu UI lain)
-      render7DayChart();
-
-      console.log(`[Weekly Trend] Berhasil dimuat: ${parsed.length} transaksi (6 hari lalu) + ${transactions.length} hari ini`);
-    }
-  } catch (err) {
-    // Gagal diam-diam, tidak tampilkan error ke user
-    console.warn('[Weekly Trend] Gagal memuat data background:', err.message);
-  }
-}
-
-// Dipanggil saat filter analitik berubah: tarik cloud jika perlu, lalu render
-async function fetchAndUpdateAnalytics() {
-  const todayStr = getLocalISODate(new Date()).slice(0, 10);
-  const filterType = document.getElementById('analytics-filter-type')?.value || 'hari';
-
-  let needCloud = false;
-  let startDate = '';
-  let endDate = '';
-
-  if (filterType === 'hari') {
-    const dateVal = document.getElementById('analytics-filter-date')?.value || todayStr;
-    if (dateVal !== todayStr) {
-      needCloud = true;
-      startDate = dateVal;
-      endDate = dateVal;
-    }
-  } else if (filterType === 'bulan') {
-    const monthVal = document.getElementById('analytics-filter-month')?.value || todayStr.slice(0, 7);
-    const isThisMonth = monthVal === todayStr.slice(0, 7);
-    if (!isThisMonth) {
-      needCloud = true;
-      startDate = monthVal + '-01';
-      // Hari terakhir bulan tersebut
-      const [y, m] = monthVal.split('-').map(Number);
-      const lastDay = new Date(y, m, 0).getDate();
-      endDate = monthVal + '-' + String(lastDay).padStart(2, '0');
-    }
-  } else if (filterType === 'tahun') {
-    const yearVal = document.getElementById('analytics-filter-year')?.value || String(new Date().getFullYear());
-    const isThisYear = yearVal === String(new Date().getFullYear());
-    if (!isThisYear) {
-      needCloud = true;
-      startDate = yearVal + '-01-01';
-      endDate = yearVal + '-12-31';
-    }
-  } else if (filterType === 'semua') {
-    needCloud = true;
-    startDate = '';
-    endDate = '';
-  }
-
-  if (needCloud && gasUrl) {
-    updateSyncStatus('syncing', 'Memuat data analitik...');
-
-    let url = gasUrl + '?action=searchTransactions&startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate);
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      const result = await response.json();
-
-      if (result && result.status === 'success' && result.data) {
-        analyticsTransactions = result.data
-          .filter(tx => (tx.id_transaksi || '').toString().trim() !== '')
-          .map(tx => {
-            let itemsList = [];
-            const itemsStr = tx.daftar_item || '';
-            if (itemsStr) {
-              itemsStr.split(', ').forEach(part => {
-                const match = part.match(/(.+) \((\d+)x @(\d+)\)/);
-                if (match) {
-                  const nama = match[1].trim();
-                  const qty = parseInt(match[2]) || 1;
-                  const harga = parseFloat(match[3]) || 0;
-                  const prod = products.find(p => p.nama.toLowerCase() === nama.toLowerCase());
-                  itemsList.push({
-                    id: prod ? prod.id : '',
-                    nama,
-                    harga,
-                    harga_beli: prod ? prod.harga_beli : Math.round(harga * 0.7),
-                    qty
-                  });
-                }
-              });
-            }
-            const txId = (tx.id_transaksi || tx.id || '').toString();
-            const sisa = parseFloat(tx.sisa_piutang) || 0;
-            return {
-              id: txId,
-              waktu: tx.waktu || '',
-              items: itemsList,
-              total: parseFloat(tx.total) || 0,
-              bayar: parseFloat(tx.uang_bayar) || parseFloat(tx.bayar) || 0,
-              kembalian: parseFloat(tx.kembalian) || 0,
-              metode_pembayaran: tx.metode_pembayaran || 'Tunai',
-              kasir: tx.kasir || 'Kasir Utama',
-              sisa_piutang: sisa,
-              nama_pelanggan: tx.nama_pelanggan || '',
-              status_pembayaran: sisa > 0 ? 'Bon' : (tx.status_pembayaran || 'Lunas')
-            };
-          });
-        updateSyncStatus('online', `Data analitik dimuat (${analyticsTransactions.length} transaksi)`);
-      } else {
-        analyticsTransactions = [];
-        updateSyncStatus('offline', 'Gagal memuat data analitik');
-      }
-    } catch (err) {
-      analyticsTransactions = [];
-      updateSyncStatus('offline', 'Koneksi Terputus');
-    }
-  } else {
-    // Hari ini atau tidak ada koneksi: pakai transactions lokal
-    analyticsTransactions = null;
-  }
-
   updateAnalytics();
 }
 
 function getAnalyticsFilteredTxs() {
-  // Gunakan buffer analitik jika ada (data historis dari cloud), atau transactions lokal (hari ini)
-  const source = analyticsTransactions !== null ? analyticsTransactions : transactions;
-
   const filterType = document.getElementById('analytics-filter-type')?.value || 'hari';
   if (filterType === 'hari') {
     const dateVal = document.getElementById('analytics-filter-date')?.value || getLocalISODate(new Date()).slice(0, 10);
-    return source.filter(tx => tx.waktu && parseTxDateStr(tx.waktu) === dateVal);
+    return transactions.filter(tx => tx.waktu && getLocalISODate(tx.waktu).slice(0, 10) === dateVal);
   } else if (filterType === 'bulan') {
     const monthVal = document.getElementById('analytics-filter-month')?.value || getLocalISODate(new Date()).slice(0, 7);
-    return source.filter(tx => tx.waktu && parseTxDateStr(tx.waktu).slice(0, 7) === monthVal);
+    return transactions.filter(tx => tx.waktu && getLocalISODate(tx.waktu).slice(0, 7) === monthVal);
   } else if (filterType === 'tahun') {
     const yearVal = document.getElementById('analytics-filter-year')?.value || String(new Date().getFullYear());
-    return source.filter(tx => tx.waktu && parseTxDateStr(tx.waktu).slice(0, 4) === yearVal);
+    return transactions.filter(tx => tx.waktu && getLocalISODate(tx.waktu).slice(0, 4) === yearVal);
   } else {
-    return [...source];
+    return [...transactions];
   }
 }
 
@@ -1709,19 +1432,17 @@ function render7DayChart() {
     const d = new Date(now);
     d.setDate(now.getDate() - i);
     days.push({
-      dateStr: getLocalISODate(d).slice(0, 10),
+      dateStr: d.toISOString().slice(0, 10),
       label: d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric' })
     });
   }
   
-  // Hitung total omzet per hari menggunakan seluruh data transaksi yang tersedia
-  const txSource = getAllAvailableTransactions();
-
+  // Hitung total omzet per hari
   const dailyTotals = days.map(day => {
     let total = 0;
-    txSource.forEach(tx => {
-      if (tx.waktu && parseTxDateStr(tx.waktu) === day.dateStr) {
-        total += (parseFloat(tx.total) || 0);
+    transactions.forEach(tx => {
+      if (tx.waktu && tx.waktu.slice(0, 10) === day.dateStr) {
+        total += tx.total;
       }
     });
     return { label: day.label, amount: total };
@@ -3360,36 +3081,6 @@ function calculateTotal() {
   }
   
   document.getElementById('btn-proceed').disabled = cart.length === 0;
-  updateMobileCartBadge();
-}
-
-function updateMobileCartBadge() {
-  const badgeEl = document.getElementById('mobile-cart-count-badge');
-  const totalEl = document.getElementById('mobile-cart-float-total');
-  
-  let totalItems = 0;
-  cart.forEach(item => {
-    totalItems += item.qty;
-  });
-  
-  if (badgeEl) badgeEl.textContent = totalItems;
-  if (totalEl) totalEl.textContent = `Rp ${formatRupiah(globalTotal)}`;
-}
-
-function toggleMobileCartSummary(forceState) {
-  const summarySec = document.querySelector('.pos-right-section');
-  if (!summarySec) return;
-  
-  if (typeof forceState === 'boolean') {
-    if (forceState) summarySec.classList.add('mobile-active');
-    else summarySec.classList.remove('mobile-active');
-  } else {
-    summarySec.classList.toggle('mobile-active');
-  }
-}
-
-function closeMobileCheckout() {
-  toggleMobileCartSummary(false);
 }
 
 // --- MODAL PEMBAYARAN (STEP 2) ---
@@ -3683,11 +3374,6 @@ async function processCheckout() {
   // 2. Simpan transaksi ke riwayat lokal untuk dashboard analisis
   transactions.push(transaction);
   saveTransactionsLocally();
-
-  // Sync ke weeklyTrendData agar grafik 7 hari tetap akurat secara real-time
-  if (weeklyTrendData.length > 0) {
-    weeklyTrendData.push(transaction);
-  }
   
   // 3. Tutup modal pembayaran & Kosongkan keranjang
   document.getElementById('payment-modal').classList.remove('active');
@@ -5666,73 +5352,6 @@ function renderTransactionsTable() {
   });
 }
 
-// Render tabel dari data sementara (hasil pencarian cloud) tanpa menimpa transactions lokal
-function renderTransactionsTableFromData(data) {
-  const tbody = document.getElementById('transactions-table-body');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-
-  const countHelpEl = document.getElementById('transaction-search-count');
-  const paginationEl = document.getElementById('transactions-pagination');
-  if (paginationEl) paginationEl.style.display = 'none';
-
-  if (!data || data.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Tidak ada transaksi ditemukan untuk pencarian ini.</td></tr>`;
-    if (countHelpEl) countHelpEl.textContent = 'Tidak ada transaksi ditemukan.';
-    return;
-  }
-
-  if (countHelpEl) countHelpEl.textContent = `Menampilkan ${data.length} hasil pencarian dari cloud.`;
-
-  const sortedData = [...data].sort((a, b) => new Date(b.waktu) - new Date(a.waktu));
-
-  sortedData.forEach(tx => {
-    const tr = document.createElement('tr');
-
-    let itemsDisplay = '';
-    if (Array.isArray(tx.items) && tx.items.length > 0) {
-      itemsDisplay = tx.items.map(item => `${item.nama} (${item.qty}x)`).join(', ');
-    } else {
-      itemsDisplay = tx.daftar_item || tx.items || '';
-    }
-
-    const timeStr = tx.waktu ? new Date(tx.waktu).toLocaleString('id-ID', { hour12: false }) : '-';
-
-    let statusBadge = '';
-    let changeOrDebtDisplay = '';
-    if (tx.status_pembayaran === 'Bon') {
-      statusBadge = `<span class="cat-btn" style="background-color: rgba(239,68,68,0.1); color: var(--color-danger); border-color: rgba(239,68,68,0.2); cursor: default; margin: 0; font-size: 0.75rem;">Bon</span>`;
-      changeOrDebtDisplay = `<span style="color: var(--color-danger); font-weight: 700;">Sisa: Rp ${formatRupiah(tx.sisa_piutang)}</span>`;
-    } else {
-      statusBadge = `<span class="cat-btn" style="background-color: rgba(16,185,129,0.1); color: var(--color-success); border-color: rgba(16,185,129,0.2); cursor: default; margin: 0; font-size: 0.75rem;">Lunas</span>`;
-      changeOrDebtDisplay = `<span style="color: var(--color-success); font-weight: 700;">Rp ${formatRupiah(tx.kembalian)}</span>`;
-    }
-
-    const customerDisplay = tx.nama_pelanggan
-      ? `<br><small style="color: var(--text-muted); font-size: 0.75rem;">Pelanggan: <strong>${tx.nama_pelanggan}</strong></small>`
-      : '';
-
-    tr.innerHTML = `
-      <td><strong>${tx.id}</strong>${customerDisplay}</td>
-      <td>${timeStr}</td>
-      <td><span style="font-weight: 600; font-size: 0.85rem;">${tx.kasir || 'Kasir Utama'}</span></td>
-      <td><span class="text-muted" style="font-size: 0.8rem;">${itemsDisplay}</span></td>
-      <td style="font-weight: 700;">Rp ${formatRupiah(tx.total)}</td>
-      <td><span style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.25rem;">${tx.metode_pembayaran || 'Tunai'} ${statusBadge}</span></td>
-      <td>Rp ${formatRupiah(tx.bayar)}</td>
-      <td>${changeOrDebtDisplay}</td>
-      <td>
-        <div style="display: flex; gap: 0.35rem;">
-          <button class="action-icon-btn btn-edit" onclick="reprintReceipt('${tx.id}')" title="Cetak Ulang Nota" style="color: var(--color-primary); background-color: rgba(202,138,4,0.1);">
-            <svg viewBox="0 0 24 24" class="icon-sm" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2m-10 0v4h8v-4"/></svg>
-          </button>
-        </div>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
 // Render tombol pagination untuk tabel transaksi
 function renderTxPagination(totalPages, currentPage) {
   const paginationEl = document.getElementById('transactions-pagination');
@@ -5804,24 +5423,9 @@ let txFilterTimeout = null;
 function filterTransactionsTable() {
   if (txFilterTimeout) clearTimeout(txFilterTimeout);
   txFilterTimeout = setTimeout(() => {
-    currentTxPage = 1;
-
-    const startDate = document.getElementById('tx-filter-start-date').value;
-    const endDate   = document.getElementById('tx-filter-end-date').value;
-    const keyword   = document.getElementById('transaction-list-search').value.trim();
-
-    // Cek apakah filter tanggal mengarah ke hari selain hari ini
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const isSearchingHistory = (startDate && startDate !== todayStr) || (endDate && endDate !== todayStr);
-
-    if (gasUrl && isSearchingHistory) {
-      // Panggil pencarian ke cloud (data lama tidak ada di lokal)
-      searchTransactionsFromCloud(startDate, endDate, keyword);
-    } else {
-      // Filter lokal biasa (transaksi hari ini sudah di-load)
-      renderTransactionsTable();
-    }
-  }, 600);
+    currentTxPage = 1; // Reset ke halaman pertama saat filter berubah
+    renderTransactionsTable();
+  }, 400); // 400ms debounce to prevent lag while typing
 }
 
 function deleteTransaction(txId) {
@@ -6394,10 +5998,10 @@ async function syncTransactionsToCloudBackground() {
 
 async function syncTransactionsFromCloud() {
   if (!gasUrl) return;
-
+  
   updateSyncStatus('syncing', 'Menarik transaksi...');
   const result = await fetchFromGAS('getTransactions');
-
+  
   if (result && result.status === 'success') {
     if (result.data) {
       // Simpan data lokal sebagai referensi untuk merge piutang
@@ -6501,87 +6105,8 @@ function clearTransactionFilters() {
   document.getElementById('transaction-list-search').value = '';
   document.getElementById('tx-filter-start-date').value = '';
   document.getElementById('tx-filter-end-date').value = '';
-
-  // Kembali ke mode hari ini: reload dari cloud jika ada koneksi
-  if (gasUrl) {
-    syncTransactionsFromCloud();
-  } else {
-    renderTransactionsTable();
-  }
+  renderTransactionsTable();
 }
-
-// Cari transaksi lama dari cloud berdasarkan rentang tanggal & kata kunci
-async function searchTransactionsFromCloud(startDate, endDate, keyword) {
-  if (!gasUrl) {
-    alert('Tidak ada koneksi ke Google Sheets. Hubungkan terlebih dahulu di Pengaturan.');
-    return;
-  }
-
-  updateSyncStatus('syncing', 'Mencari transaksi...');
-
-  // Bangun URL dengan parameter query
-  let url = gasUrl + '?action=searchTransactions';
-  if (startDate) url += '&startDate=' + encodeURIComponent(startDate);
-  if (endDate)   url += '&endDate='   + encodeURIComponent(endDate);
-  if (keyword)   url += '&keyword='   + encodeURIComponent(keyword);
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    const result = await response.json();
-
-    if (result && result.status === 'success' && result.data) {
-      // Parse dan tampilkan hasil pencarian sebagai data sementara (tidak replace transactions harian)
-      const searchResults = result.data
-        .filter(tx => (tx.id_transaksi || '').toString().trim() !== '')
-        .map(tx => {
-          let itemsList = [];
-          const itemsStr = tx.daftar_item || tx.items || '';
-          if (itemsStr) {
-            itemsStr.split(', ').forEach(part => {
-              const match = part.match(/(.+) \((\d+)x @(\d+)\)/);
-              if (match) {
-                const nama = match[1].trim();
-                const qty = parseInt(match[2]) || 1;
-                const harga = parseFloat(match[3]) || 0;
-                const prod = products.find(p => p.nama.toLowerCase() === nama.toLowerCase());
-                itemsList.push({ id: prod ? prod.id : '', nama, harga, harga_beli: prod ? prod.harga_beli : Math.round(harga * 0.7), qty });
-              }
-            });
-          }
-          const txId = (tx.id_transaksi || tx.id || '').toString();
-          const sisa = parseFloat(tx.sisa_piutang) || 0;
-          const status = sisa > 0 ? 'Bon' : (tx.status_pembayaran || 'Lunas');
-          return {
-            id: txId,
-            waktu: tx.waktu || '',
-            items: itemsList,
-            total: parseFloat(tx.total) || 0,
-            bayar: parseFloat(tx.uang_bayar) || parseFloat(tx.bayar) || 0,
-            kembalian: parseFloat(tx.kembalian) || 0,
-            metode_pembayaran: tx.metode_pembayaran || 'Tunai',
-            kasir: tx.kasir || 'Kasir Utama',
-            sisa_piutang: sisa,
-            nama_pelanggan: tx.nama_pelanggan || '',
-            status_pembayaran: status
-          };
-        });
-
-      // Tampilkan hasil pencarian di tabel (mode sementara)
-      renderTransactionsTableFromData(searchResults);
-      updateSyncStatus('online', `Ditemukan ${searchResults.length} transaksi`);
-    } else {
-      updateSyncStatus('offline', 'Pencarian gagal');
-      alert('Pencarian gagal: ' + (result ? result.message : 'Tidak ada respons dari server'));
-    }
-  } catch (err) {
-    updateSyncStatus('offline', 'Koneksi Terputus');
-    alert('Koneksi terputus saat mencari transaksi.');
-  }
-}
-
 
 function exportTransactionsToCSV() {
   const searchVal = document.getElementById('transaction-list-search').value.toLowerCase().trim();
@@ -7555,6 +7080,5 @@ function deleteHeldCart(index) {
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     updateHeldCartsUI();
-    loadWeeklyTrendInBackground();
-  }, 1000);
+  }, 500);
 });
