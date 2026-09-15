@@ -3714,3 +3714,205 @@ body.print-format-html #receipt-text-content {
   to { opacity: 1; transform: translateX(0); }
 }
 
+/* ==========================================================================
+   OPTIMASI RESPONSIF KHUSUS MODE MOBILE (< 768px)
+   ========================================================================== */
+.mobile-cart-float-btn {
+  display: none;
+}
+.mobile-checkout-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 998;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.mobile-checkout-backdrop.active {
+  display: block;
+  opacity: 1;
+}
+.mobile-summary-card-header {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* 1. Pendekkan Header Aplikasi di Mobile */
+  .navbar {
+    padding: 0.35rem 0.75rem !important;
+    min-height: 48px !important;
+    gap: 0.4rem !important;
+  }
+  .brand {
+    gap: 0.4rem !important;
+  }
+  .brand-text h1 {
+    font-size: 1.05rem !important;
+    line-height: 1.1 !important;
+  }
+  .sub-brand,
+  .time-display {
+    display: none !important;
+  }
+  #app-logo-container svg.icon-logo,
+  .navbar-logo-img {
+    width: 1.4rem !important;
+    height: 1.4rem !important;
+  }
+  .sync-status {
+    margin-left: 0.2rem !important;
+    padding: 0.15rem 0.45rem !important;
+    font-size: 0.72rem !important;
+  }
+  #btn-shift-status {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* 2. Buang Banner Carousel Produk Diskon di Mobile */
+  #promo-carousel-container,
+  .promo-carousel-container {
+    display: none !important;
+  }
+
+  /* 3. Sembunyikan Dialog Total Nominal Belanja Menjadi Icon Keranjang di Mobile */
+  .pos-layout {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  /* Floating Cart Icon Button */
+  .mobile-cart-float-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    position: fixed;
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 50px;
+    padding: 0.65rem 1.25rem;
+    box-shadow: 0 10px 25px -5px rgba(217, 119, 6, 0.4), 0 4px 10px rgba(0, 0, 0, 0.1);
+    z-index: 997;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  }
+  .mobile-cart-float-btn:active {
+    transform: scale(0.97);
+  }
+  .mobile-cart-icon-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mobile-cart-icon-wrap svg {
+    width: 1.4rem;
+    height: 1.4rem;
+    stroke: #ffffff;
+  }
+  .mobile-cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -10px;
+    background: #f43f5e;
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #b45309;
+    padding: 0 3px;
+  }
+  .mobile-cart-float-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex: 1;
+    line-height: 1.15;
+  }
+  .mobile-cart-float-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.9;
+    font-weight: 600;
+  }
+  .mobile-cart-float-val {
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .mobile-cart-chevron {
+    width: 1.2rem;
+    height: 1.2rem;
+    stroke: #ffffff;
+  }
+
+  /* Sheet Popup Dialog Total Nominal Belanja */
+  .pos-right-section {
+    position: fixed !important;
+    bottom: -100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    z-index: 999 !important;
+    transition: bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  .pos-right-section.mobile-panel-open {
+    bottom: 0 !important;
+  }
+  
+  .cart-summary-card {
+    border-radius: 24px 24px 0 0 !important;
+    border-bottom: none !important;
+    box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.25) !important;
+    padding: 1.25rem 1.25rem 1.75rem 1.25rem !important;
+    background: var(--bg-surface) !important;
+  }
+  
+  .mobile-summary-card-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.85rem;
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--text-main);
+  }
+  .close-mobile-summary-btn {
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-color);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+

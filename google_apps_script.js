@@ -13,16 +13,26 @@
 
 function doGet(e) {
   setupSheets();
-  var action = e.parameter.action;
-  
-  if (action === "getProducts") {
-    return handleResponse(getProductsData());
+  try {
+    var action = e ? e.parameter.action : "";
+    
+    if (action === "getProducts") {
+      return handleResponse(getProductsData());
+    }
+    if (action === "getTransactions") {
+      return handleResponse(getTransactionsData());
+    }
+    if (action === "searchTransactions") {
+      var startDate = e.parameter.startDate || "";
+      var endDate = e.parameter.endDate || "";
+      var keyword = e.parameter.keyword || "";
+      return handleResponse(searchTransactionsData(startDate, endDate, keyword));
+    }
+    
+    return handleResponse({ status: "error", message: "Aksi GET tidak dikenali" });
+  } catch (err) {
+    return handleResponse({ status: "error", message: "Terjadi kesalahan GET: " + err.toString() });
   }
-  if (action === "getTransactions") {
-    return handleResponse(getTransactionsData());
-  }
-  
-  return handleResponse({ status: "error", message: "Aksi GET tidak dikenali" });
 }
 
 function doPost(e) {
@@ -186,6 +196,93 @@ function getTransactionsData() {
   }
   
   return { status: "success", data: transactions };
+}
+
+// Mencari transaksi dari rentang tanggal dan/atau kata kunci (dipanggil saat user filter analitik)
+function searchTransactionsData(startDate, endDate, keyword) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transaksi");
+    if (!sheet) return { status: "success", data: [] };
+    var lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      return { status: "success", data: [] };
+    }
+
+    var dataRange = sheet.getRange(1, 1, lastRow, 11).getValues();
+    var headers = dataRange[0];
+
+    // Parse filter tanggal
+    var dtStart = null;
+    if (startDate) {
+      var sParts = startDate.split('-');
+      if (sParts.length === 3) {
+        dtStart = new Date(parseInt(sParts[0]), parseInt(sParts[1]) - 1, parseInt(sParts[2]), 0, 0, 0);
+      } else {
+        dtStart = new Date(startDate);
+      }
+    }
+
+    var dtEnd = null;
+    if (endDate) {
+      var eParts = endDate.split('-');
+      if (eParts.length === 3) {
+        dtEnd = new Date(parseInt(eParts[0]), parseInt(eParts[1]) - 1, parseInt(eParts[2]), 23, 59, 59);
+      } else {
+        dtEnd = new Date(endDate);
+      }
+    }
+
+    var kw = keyword ? keyword.toLowerCase() : "";
+    var LIMIT = 1000;
+    var transactions = [];
+
+    for (var i = 1; i < dataRange.length && transactions.length < LIMIT; i++) {
+      var row = dataRange[i];
+      var tx = {};
+      for (var j = 0; j < headers.length; j++) {
+        var key = (headers[j] || "").toString().toLowerCase().split(" ").join("_");
+        tx[key] = row[j];
+      }
+
+      var txId = (tx["id_transaksi"] || tx["id"] || "").toString().trim();
+      if (!txId) continue;
+
+      var rawWaktu = tx["waktu"];
+      var txWaktu = null;
+      if (rawWaktu) {
+        if (rawWaktu instanceof Date) {
+          txWaktu = rawWaktu;
+        } else {
+          txWaktu = new Date(rawWaktu);
+        }
+      }
+
+      if (txWaktu && !isNaN(txWaktu.getTime())) {
+        if (dtStart && txWaktu < dtStart) continue;
+        if (dtEnd   && txWaktu > dtEnd)   continue;
+      }
+
+      if (kw) {
+        var haystack = [
+          (tx["id_transaksi"] || "").toString().toLowerCase(),
+          (tx["daftar_item"]  || "").toString().toLowerCase(),
+          (tx["nama_pelanggan"] || "").toString().toLowerCase(),
+          (tx["kasir"] || "").toString().toLowerCase()
+        ].join(" ");
+        if (haystack.indexOf(kw) === -1) continue;
+      }
+
+      if (tx["waktu"] instanceof Date) {
+        tx["waktu"] = tx["waktu"].toISOString();
+      }
+
+      transactions.push(tx);
+    }
+
+    return { status: "success", data: transactions };
+  } catch (err) {
+    return { status: "error", message: err.toString(), data: [] };
+  }
 }
 
 // Menyimpan Transaksi dan Mengurangi Stok Produk

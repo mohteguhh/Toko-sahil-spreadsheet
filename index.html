@@ -456,8 +456,17 @@
           </div>
           
           <!-- Right Column: Summary Panel -->
-          <div class="pos-right-section">
+          <div class="pos-right-section" id="pos-right-section">
             <div class="cart-summary-card">
+              <!-- Mobile Header for Summary Card -->
+              <div class="mobile-summary-card-header">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <svg viewBox="0 0 24 24" class="icon" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                  <span>Total Nominal Belanja</span>
+                </div>
+                <button type="button" class="close-mobile-summary-btn" onclick="closeMobileCheckout()">&times;</button>
+              </div>
+
               <h2 style="display: none;">Ringkasan Belanja</h2>
               <div class="divider" style="display: none;"></div>
               
@@ -509,6 +518,25 @@
           </div>
           
         </div>
+
+        <!-- Floating Mobile Cart Button (Icon Keranjang Mobile) -->
+        <button id="mobile-cart-float-btn" class="mobile-cart-float-btn" onclick="toggleMobileCheckout()" aria-label="Buka Total Nominal Belanja">
+          <div class="mobile-cart-icon-wrap">
+            <svg viewBox="0 0 24 24" class="icon" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/>
+              <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+            </svg>
+            <span id="mobile-cart-float-badge" class="mobile-cart-badge">0</span>
+          </div>
+          <div class="mobile-cart-float-info">
+            <span class="mobile-cart-float-label">Total Belanja</span>
+            <span id="mobile-cart-float-total" class="mobile-cart-float-val">Rp 0</span>
+          </div>
+          <svg viewBox="0 0 24 24" class="icon-sm mobile-cart-chevron" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 15-6-6-6 6"/></svg>
+        </button>
+
+        <!-- Backdrop Overlay for Mobile Summary Dialog -->
+        <div id="mobile-checkout-overlay" class="mobile-checkout-backdrop" onclick="closeMobileCheckout()"></div>
       </section>
       
       <!-- TAB TRANSAKSI: RIWAYAT TRANSAKSI -->

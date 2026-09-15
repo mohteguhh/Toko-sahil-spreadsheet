@@ -931,10 +931,20 @@ function closeMobileCheckout() {
 
 function updateMobileCartBadge() {
   const badge = document.getElementById('mobile-cart-badge');
-  if (!badge) return;
+  const floatBadge = document.getElementById('mobile-cart-float-badge');
+  const floatTotal = document.getElementById('mobile-cart-float-total');
+  
   const totalQty = cart.reduce((sum, it) => sum + (it.qty || 0), 0);
-  badge.textContent = totalQty;
-  badge.style.display = totalQty > 0 ? 'flex' : 'none';
+  if (badge) {
+    badge.textContent = totalQty;
+    badge.style.display = totalQty > 0 ? 'flex' : 'none';
+  }
+  if (floatBadge) {
+    floatBadge.textContent = totalQty;
+  }
+  if (floatTotal) {
+    floatTotal.textContent = `Rp ${formatRupiah(globalTotal || 0)}`;
+  }
 }
 
 // Fokuskan kursor ke input Kulak
@@ -1355,14 +1365,22 @@ async function fetchAndUpdateAnalytics() {
     let url = gasUrl + '?action=searchTransactions&startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate);
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
       const response = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
-      const result = await response.json();
 
-      if (result && result.status === 'success' && result.data) {
+      const responseText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (jsonErr) {
+        console.error('[Analytics] Respon server bukan JSON:', responseText.slice(0, 200));
+        throw new Error('Respon server Google Sheets tidak valid JSON');
+      }
+
+      if (result && result.status === 'success' && Array.isArray(result.data)) {
         analyticsTransactions = result.data
-          .filter(tx => (tx.id_transaksi || '').toString().trim() !== '')
+          .filter(tx => (tx.id_transaksi || tx.id || '').toString().trim() !== '')
           .map(tx => {
             let itemsList = [];
             const itemsStr = tx.daftar_item || '';
@@ -1402,12 +1420,14 @@ async function fetchAndUpdateAnalytics() {
           });
         updateSyncStatus('online', `Data analitik dimuat (${analyticsTransactions.length} transaksi)`);
       } else {
-        analyticsTransactions = [];
-        updateSyncStatus('offline', 'Gagal memuat data analitik');
+        console.warn('[Analytics] Gagal memuat data cloud:', result);
+        analyticsTransactions = null;
+        updateSyncStatus('offline', result && result.message ? result.message : 'Gagal memuat data analitik (memakai data lokal)');
       }
     } catch (err) {
-      analyticsTransactions = [];
-      updateSyncStatus('offline', 'Koneksi Terputus');
+      console.error('[Analytics] Error:', err);
+      analyticsTransactions = null;
+      updateSyncStatus('offline', 'Koneksi Terputus (memakai data lokal)');
     }
   } else {
     // Hari ini atau tidak ada koneksi: pakai transactions lokal
