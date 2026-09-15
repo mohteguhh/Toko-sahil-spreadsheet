@@ -879,6 +879,9 @@ function switchTab(tabName) {
   } else if (tabName === 'analytics') {
     initAnalyticsFilter();
     updateAnalytics();
+    if (weeklyTrendData.length === 0) {
+      loadWeeklyTrendInBackground();
+    }
   } else if (tabName === 'kulak') {
     closeKulakForm();
     focusKulakSearch();
@@ -1130,6 +1133,58 @@ function getLocalISODate(dateStrOrObj) {
   return new Date(date.getTime() - offset).toISOString();
 }
 
+function parseTxDateStr(waktu) {
+  if (!waktu) return '';
+  if (typeof waktu === 'string') {
+    const match = waktu.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      if (waktu.includes('T')) {
+        const d = new Date(waktu);
+        if (!isNaN(d)) return getLocalISODate(d).slice(0, 10);
+      }
+      return `${match[1]}-${match[2]}-${match[3]}`;
+    }
+    const slashMatch = waktu.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (slashMatch) {
+      const d = new Date(waktu);
+      if (!isNaN(d)) return getLocalISODate(d).slice(0, 10);
+      return `${slashMatch[3]}-${slashMatch[1].padStart(2, '0')}-${slashMatch[2].padStart(2, '0')}`;
+    }
+  }
+  const d = new Date(waktu);
+  if (!isNaN(d)) return getLocalISODate(d).slice(0, 10);
+  return String(waktu).slice(0, 10);
+}
+
+function getAllAvailableTransactions() {
+  const map = new Map();
+  if (Array.isArray(weeklyTrendData)) {
+    weeklyTrendData.forEach(tx => {
+      if (tx && (tx.id || tx.id_transaksi)) {
+        const id = String(tx.id || tx.id_transaksi).trim();
+        if (id) map.set(id, tx);
+      }
+    });
+  }
+  if (Array.isArray(analyticsTransactions)) {
+    analyticsTransactions.forEach(tx => {
+      if (tx && (tx.id || tx.id_transaksi)) {
+        const id = String(tx.id || tx.id_transaksi).trim();
+        if (id) map.set(id, tx);
+      }
+    });
+  }
+  if (Array.isArray(transactions)) {
+    transactions.forEach(tx => {
+      if (tx && (tx.id || tx.id_transaksi)) {
+        const id = String(tx.id || tx.id_transaksi).trim();
+        if (id) map.set(id, tx);
+      }
+    });
+  }
+  return Array.from(map.values());
+}
+
 // Inisialisasi filter analisis (hari ini by default)
 function initAnalyticsFilter() {
   const nowStr = getLocalISODate(new Date());
@@ -1177,16 +1232,15 @@ async function loadWeeklyTrendInBackground() {
   if (!gasUrl) return;
 
   const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
 
   // Hitung tanggal 6 hari yang lalu (kecuali hari ini, sudah ada di `transactions`)
   const sixDaysAgo = new Date(today);
   sixDaysAgo.setDate(today.getDate() - 6);
-  const startDate = sixDaysAgo.toISOString().slice(0, 10);
+  const startDate = getLocalISODate(sixDaysAgo).slice(0, 10);
   // Kemarin adalah batas akhir (hari ini sudah ada di lokal)
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  const endDate = yesterday.toISOString().slice(0, 10);
+  const endDate = getLocalISODate(yesterday).slice(0, 10);
 
   try {
     const url = gasUrl
@@ -1289,6 +1343,10 @@ async function fetchAndUpdateAnalytics() {
       startDate = yearVal + '-01-01';
       endDate = yearVal + '-12-31';
     }
+  } else if (filterType === 'semua') {
+    needCloud = true;
+    startDate = '';
+    endDate = '';
   }
 
   if (needCloud && gasUrl) {
@@ -1366,13 +1424,13 @@ function getAnalyticsFilteredTxs() {
   const filterType = document.getElementById('analytics-filter-type')?.value || 'hari';
   if (filterType === 'hari') {
     const dateVal = document.getElementById('analytics-filter-date')?.value || getLocalISODate(new Date()).slice(0, 10);
-    return source.filter(tx => tx.waktu && getLocalISODate(tx.waktu).slice(0, 10) === dateVal);
+    return source.filter(tx => tx.waktu && parseTxDateStr(tx.waktu) === dateVal);
   } else if (filterType === 'bulan') {
     const monthVal = document.getElementById('analytics-filter-month')?.value || getLocalISODate(new Date()).slice(0, 7);
-    return source.filter(tx => tx.waktu && getLocalISODate(tx.waktu).slice(0, 7) === monthVal);
+    return source.filter(tx => tx.waktu && parseTxDateStr(tx.waktu).slice(0, 7) === monthVal);
   } else if (filterType === 'tahun') {
     const yearVal = document.getElementById('analytics-filter-year')?.value || String(new Date().getFullYear());
-    return source.filter(tx => tx.waktu && getLocalISODate(tx.waktu).slice(0, 4) === yearVal);
+    return source.filter(tx => tx.waktu && parseTxDateStr(tx.waktu).slice(0, 4) === yearVal);
   } else {
     return [...source];
   }
@@ -1651,27 +1709,19 @@ function render7DayChart() {
     const d = new Date(now);
     d.setDate(now.getDate() - i);
     days.push({
-      dateStr: d.toISOString().slice(0, 10),
+      dateStr: getLocalISODate(d).slice(0, 10),
       label: d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric' })
     });
   }
   
-  // Hitung total omzet per hari
-  // Prioritas: weeklyTrendData (background load 7 hari) > analyticsTransactions (filter manual) > transactions (hari ini)
-  let txSource;
-  if (weeklyTrendData.length > 0) {
-    txSource = weeklyTrendData;
-  } else if (analyticsTransactions !== null) {
-    txSource = analyticsTransactions;
-  } else {
-    txSource = transactions;
-  }
+  // Hitung total omzet per hari menggunakan seluruh data transaksi yang tersedia
+  const txSource = getAllAvailableTransactions();
 
   const dailyTotals = days.map(day => {
     let total = 0;
     txSource.forEach(tx => {
-      if (tx.waktu && tx.waktu.slice(0, 10) === day.dateStr) {
-        total += tx.total;
+      if (tx.waktu && parseTxDateStr(tx.waktu) === day.dateStr) {
+        total += (parseFloat(tx.total) || 0);
       }
     });
     return { label: day.label, amount: total };
@@ -7475,5 +7525,6 @@ function deleteHeldCart(index) {
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     updateHeldCartsUI();
-  }, 500);
+    loadWeeklyTrendInBackground();
+  }, 1000);
 });
