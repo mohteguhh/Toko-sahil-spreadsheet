@@ -988,31 +988,19 @@ async function syncAllFromCloud() {
     return;
   }
   isSyncing = true;
-
-  // 1. Kirim transaksi offline yang belum terkirim (independen)
   try {
+    // 1. Kirim transaksi offline yang belum terkirim
     await processOfflineQueue();
-  } catch (err) {
-    console.error("Error saat kirim offline queue:", err);
-  }
-
-  // 2. Tarik data produk (independen)
-  try {
+    // 2. Tarik data produk
     await syncFromCloud();
-  } catch (err) {
-    console.error("Error saat tarik data produk:", err);
-    updateSyncStatus('offline', 'Gagal Tarik Produk');
-  }
-
-  // 3. Tarik data transaksi — selalu dijalankan meskipun langkah sebelumnya gagal
-  try {
+    // 3. Tarik data transaksi (setelah produk selesai)
     await syncTransactionsFromCloud();
   } catch (err) {
-    console.error("Error saat tarik data transaksi:", err);
-    updateSyncStatus('offline', 'Gagal Tarik Transaksi');
+    console.error("Error saat sinkronisasi:", err);
+    updateSyncStatus('offline', 'Gagal Sinkronisasi');
+  } finally {
+    isSyncing = false;
   }
-
-  isSyncing = false;
 }
 
 // --- KOMUNIKASI API GOOGLE APPS SCRIPT (CORS-Safe & dengan Timeout) ---
