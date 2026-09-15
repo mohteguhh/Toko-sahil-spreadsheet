@@ -3360,6 +3360,36 @@ function calculateTotal() {
   }
   
   document.getElementById('btn-proceed').disabled = cart.length === 0;
+  updateMobileCartBadge();
+}
+
+function updateMobileCartBadge() {
+  const badgeEl = document.getElementById('mobile-cart-count-badge');
+  const totalEl = document.getElementById('mobile-cart-float-total');
+  
+  let totalItems = 0;
+  cart.forEach(item => {
+    totalItems += item.qty;
+  });
+  
+  if (badgeEl) badgeEl.textContent = totalItems;
+  if (totalEl) totalEl.textContent = `Rp ${formatRupiah(globalTotal)}`;
+}
+
+function toggleMobileCartSummary(forceState) {
+  const summarySec = document.querySelector('.pos-right-section');
+  if (!summarySec) return;
+  
+  if (typeof forceState === 'boolean') {
+    if (forceState) summarySec.classList.add('mobile-active');
+    else summarySec.classList.remove('mobile-active');
+  } else {
+    summarySec.classList.toggle('mobile-active');
+  }
+}
+
+function closeMobileCheckout() {
+  toggleMobileCartSummary(false);
 }
 
 // --- MODAL PEMBAYARAN (STEP 2) ---

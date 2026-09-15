@@ -3714,3 +3714,169 @@ body.print-format-html #receipt-text-content {
   to { opacity: 1; transform: translateX(0); }
 }
 
+/* =========================================
+   MOBILE POS FLOATING CART & CHECKOUT SHEET
+   ========================================= */
+.mobile-summary-header {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Hilangkan Carousel Produk Sedang Diskon khusus mode mobile */
+  #promo-carousel-container {
+    display: none !important;
+  }
+
+  /* Floating Cart Button di Mobile */
+  .mobile-cart-float-btn {
+    display: flex !important;
+    position: fixed;
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+    background: linear-gradient(135deg, var(--color-primary, #d97706) 0%, #b45309 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 16px;
+    padding: 0.75rem 1.15rem;
+    box-shadow: 0 8px 25px rgba(217, 119, 6, 0.4);
+    align-items: center;
+    justify-content: space-between;
+    z-index: 999;
+    cursor: pointer;
+    font-family: var(--font-main);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .mobile-cart-float-btn:active {
+    transform: scale(0.98);
+  }
+  .mobile-cart-float-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .mobile-cart-icon-wrap {
+    position: relative;
+    background: rgba(255, 255, 255, 0.2);
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mobile-cart-icon-wrap svg {
+    width: 1.3rem;
+    height: 1.3rem;
+  }
+  .mobile-cart-count-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ffffff;
+    color: var(--color-primary, #d97706);
+    font-size: 0.75rem;
+    font-weight: 800;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  }
+  .mobile-cart-float-text {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+  }
+  .mobile-cart-float-label {
+    font-size: 0.68rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .mobile-cart-float-total {
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+  .mobile-cart-float-action {
+    font-size: 0.88rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.25);
+    padding: 0.4rem 0.85rem;
+    border-radius: 10px;
+  }
+
+  /* Sembunyikan pos-right-section di Mobile kecuali dibuka via klik tombol icon keranjang */
+  .pos-right-section {
+    display: none;
+  }
+  .pos-right-section.mobile-active {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    padding: 1rem;
+    align-items: flex-end;
+    justify-content: center;
+    animation: fadeInModal 0.25s ease;
+  }
+  .pos-right-section.mobile-active .cart-summary-card {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+    border-radius: 24px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    background: var(--bg-surface);
+  }
+  .mobile-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .mobile-summary-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text-main);
+  }
+  .mobile-close-summary-btn {
+    background: var(--bg-surface-elevated);
+    border: none;
+    font-size: 1.4rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+  }
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (min-width: 769px) {
+  .mobile-cart-float-btn {
+    display: none !important;
+  }
+}
+
