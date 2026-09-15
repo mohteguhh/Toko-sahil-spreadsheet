@@ -21,6 +21,12 @@ function doGet(e) {
   if (action === "getTransactions") {
     return handleResponse(getTransactionsData());
   }
+  if (action === "searchTransactions") {
+    var startDate = e.parameter.startDate || "";
+    var endDate = e.parameter.endDate || "";
+    var keyword = e.parameter.keyword || "";
+    return handleResponse(searchTransactionsData(startDate, endDate, keyword));
+  }
   
   return handleResponse({ status: "error", message: "Aksi GET tidak dikenali" });
 }
@@ -150,41 +156,99 @@ function getProductsData() {
   return { status: "success", data: products };
 }
 
-// Mendapatkan data riwayat transaksi untuk analisis penjualan di web kasir
-// Hanya mengambil 90 hari terakhir agar tidak terlalu besar
+// Mendapatkan transaksi HARI INI saja untuk tampilan awal kasir (ringan & cepat)
 function getTransactionsData() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transaksi");
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) {
     return { status: "success", data: [] };
   }
-  
-  var rows = sheet.getDataRange().getValues();
-  var headers = rows[0];
+
+  // Baca semua data ke memori sekaligus agar tidak timeout
+  var dataRange = sheet.getRange(1, 1, lastRow, 11).getValues();
+  var headers = dataRange[0];
+
+  // Batas: hanya hari ini
+  var now = new Date();
+  var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+  var todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
   var transactions = [];
-  
-  // Batas waktu: 90 hari ke belakang
-  var cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - 90);
-  
-  for (var i = 1; i < rows.length; i++) {
+
+  // Baca dari belakang (terbaru ke atas) — berhenti jika sudah lewat hari ini
+  for (var i = lastRow - 1; i >= 1; i--) {
+    var row = dataRange[i];
     var tx = {};
     for (var j = 0; j < headers.length; j++) {
-      // Fix: ganti SEMUA spasi dengan underscore (replaceAll)
       var key = headers[j].toString().toLowerCase().split(" ").join("_");
-      tx[key] = rows[i][j];
+      tx[key] = row[j];
     }
-    
-    // Filter hanya transaksi dalam 90 hari terakhir
+
     var txWaktu = tx["waktu"] ? new Date(tx["waktu"]) : null;
-    if (txWaktu && txWaktu >= cutoffDate) {
-      transactions.push(tx);
-    } else if (!txWaktu) {
-      // Jika tidak ada tanggal, tetap masukkan (aman)
+    if (!txWaktu) continue;
+
+    // Sudah lebih lama dari hari ini, hentikan loop
+    if (txWaktu < todayStart) break;
+
+    // Hanya ambil yang di dalam rentang hari ini
+    if (txWaktu >= todayStart && txWaktu <= todayEnd) {
       transactions.push(tx);
     }
   }
-  
+
+  return { status: "success", data: transactions };
+}
+
+// Mencari transaksi dari rentang tanggal dan/atau kata kunci (dipanggil saat user cari)
+function searchTransactionsData(startDate, endDate, keyword) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transaksi");
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return { status: "success", data: [] };
+  }
+
+  var dataRange = sheet.getRange(1, 1, lastRow, 11).getValues();
+  var headers = dataRange[0];
+
+  // Parse filter tanggal
+  var dtStart = startDate ? new Date(startDate + "T00:00:00") : null;
+  var dtEnd   = endDate   ? new Date(endDate   + "T23:59:59") : null;
+  var kw = keyword ? keyword.toLowerCase() : "";
+
+  var LIMIT = 500;
+  var transactions = [];
+
+  for (var i = 1; i < dataRange.length && transactions.length < LIMIT; i++) {
+    var row = dataRange[i];
+    var tx = {};
+    for (var j = 0; j < headers.length; j++) {
+      var key = headers[j].toString().toLowerCase().split(" ").join("_");
+      tx[key] = row[j];
+    }
+
+    // Skip baris kosong
+    var txId = (tx["id_transaksi"] || "").toString().trim();
+    if (!txId) continue;
+
+    // Filter tanggal
+    var txWaktu = tx["waktu"] ? new Date(tx["waktu"]) : null;
+    if (dtStart && txWaktu && txWaktu < dtStart) continue;
+    if (dtEnd   && txWaktu && txWaktu > dtEnd)   continue;
+
+    // Filter kata kunci (cari di ID, daftar item, nama pelanggan)
+    if (kw) {
+      var haystack = [
+        (tx["id_transaksi"] || "").toString().toLowerCase(),
+        (tx["daftar_item"]  || "").toString().toLowerCase(),
+        (tx["nama_pelanggan"] || "").toString().toLowerCase(),
+        (tx["kasir"] || "").toString().toLowerCase()
+      ].join(" ");
+      if (haystack.indexOf(kw) === -1) continue;
+    }
+
+    transactions.push(tx);
+  }
+
   return { status: "success", data: transactions };
 }
 
@@ -221,11 +285,13 @@ function saveTransaction(tx) {
   
   for (var i = 0; i < tx.items.length; i++) {
     var soldItem = tx.items[i];
-    var soldId = soldItem.id.toString().toLowerCase();
+    var soldId = (soldItem.id || "").toString().trim().toLowerCase();
     var soldQty = soldItem.isBox ? (soldItem.qty * (soldItem.isiBox || 12)) : soldItem.qty;
     
+    if (!soldId) continue;
+    
     for (var j = 1; j < prodRows.length; j++) {
-      var prodId = prodRows[j][0].toString().toLowerCase();
+      var prodId = (prodRows[j][0] || "").toString().trim().toLowerCase();
       if (prodId === soldId) {
         var currentStock = Number(prodRows[j][5]); // F: Stok (index 5)
         var newStock = Math.max(0, currentStock - soldQty);
@@ -353,8 +419,11 @@ function upsertProduct(p) {
   ];
   
   var found = false;
+  var pId = (p.id || "").toString().trim().toLowerCase();
+  
   for (var i = 1; i < rows.length; i++) {
-    if (rows[i][0].toString().trim().toLowerCase() === p.id.toString().trim().toLowerCase()) {
+    var rowId = (rows[i][0] || "").toString().trim().toLowerCase();
+    if (rowId === pId && pId !== "") {
       sheet.getRange(i + 1, 1, 1, rowData.length).setValues([rowData]);
       found = true;
       break;
@@ -374,8 +443,12 @@ function deleteProduct(productId) {
   var sheet = ss.getSheetByName("Produk");
   var rows = sheet.getDataRange().getValues();
   
+  var pId = (productId || "").toString().trim().toLowerCase();
+  if (!pId) return { status: "error", message: "ID Produk tidak valid." };
+  
   for (var i = 1; i < rows.length; i++) {
-    if (rows[i][0].toString().toLowerCase() === productId.toString().toLowerCase()) {
+    var rowId = (rows[i][0] || "").toString().trim().toLowerCase();
+    if (rowId === pId) {
       sheet.deleteRow(i + 1);
       return { status: "success", message: "Produk berhasil dihapus." };
     }

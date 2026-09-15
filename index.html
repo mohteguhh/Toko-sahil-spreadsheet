@@ -110,13 +110,13 @@
               </select>
             </div>
             <div id="analytics-filter-date-wrap" style="display:flex; align-items:center;">
-              <input type="date" id="analytics-filter-date" value="" oninput="updateAnalytics()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-size: 0.85rem; background: var(--bg-card); color: var(--text-main);">
+              <input type="date" id="analytics-filter-date" value="" oninput="fetchAndUpdateAnalytics()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-size: 0.85rem; background: var(--bg-card); color: var(--text-main);">
             </div>
             <div id="analytics-filter-month-wrap" style="display:none; align-items:center; gap:0.35rem;">
-              <input type="month" id="analytics-filter-month" value="" oninput="updateAnalytics()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-size: 0.85rem; background: var(--bg-card); color: var(--text-main);">
+              <input type="month" id="analytics-filter-month" value="" oninput="fetchAndUpdateAnalytics()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-size: 0.85rem; background: var(--bg-card); color: var(--text-main);">
             </div>
             <div id="analytics-filter-year-wrap" style="display:none; align-items:center; gap:0.35rem;">
-              <select id="analytics-filter-year" onchange="updateAnalytics()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-size: 0.85rem; background: var(--bg-card); color: var(--text-main); cursor:pointer;">
+              <select id="analytics-filter-year" onchange="fetchAndUpdateAnalytics()" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); font-family: var(--font-main); font-size: 0.85rem; background: var(--bg-card); color: var(--text-main); cursor:pointer;">
               </select>
             </div>
             <button class="btn btn-primary btn-sm" onclick="printDailyReport()">
@@ -544,7 +544,7 @@
             <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; width: 100%;">
               <div class="search-bar" style="flex: 1; min-width: 250px;">
                 <svg viewBox="0 0 24 24" class="icon-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                <input type="text" id="transaction-list-search" placeholder="Cari ID transaksi, nama produk..." oninput="filterTransactionsTable()">
+                <input type="text" id="transaction-list-search" placeholder="Cari ID transaksi, nama produk, pelanggan..." oninput="filterTransactionsTable()">
               </div>
               <div style="display: flex; gap: 0.5rem; align-items: center; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); flex-wrap: wrap;">
                 <span>Dari:</span>
@@ -560,7 +560,7 @@
                 <button class="btn btn-secondary btn-sm" onclick="clearTransactionFilters()" style="padding: 0.35rem 0.65rem;">Reset</button>
               </div>
             </div>
-            <span class="help-text" id="transaction-search-count">Menampilkan data transaksi.</span>
+            <span class="help-text" id="transaction-search-count">Menampilkan transaksi hari ini. Pilih tanggal lain untuk mencari riwayat dari cloud.</span>
           </div>
           
           <div class="table-wrapper">
