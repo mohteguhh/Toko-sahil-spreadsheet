@@ -236,7 +236,8 @@ function searchTransactionsData(startDate, endDate, keyword) {
     var LIMIT = 1000;
     var transactions = [];
 
-    for (var i = 1; i < dataRange.length && transactions.length < LIMIT; i++) {
+    // Optimasi: Scanning dari BARIS TERBAWAH (transaksi terbaru) ke atas
+    for (var i = dataRange.length - 1; i >= 1 && transactions.length < LIMIT; i--) {
       var row = dataRange[i];
       var tx = {};
       for (var j = 0; j < headers.length; j++) {
@@ -258,8 +259,12 @@ function searchTransactionsData(startDate, endDate, keyword) {
       }
 
       if (txWaktu && !isNaN(txWaktu.getTime())) {
-        if (dtStart && txWaktu < dtStart) continue;
-        if (dtEnd   && txWaktu > dtEnd)   continue;
+        if (dtEnd && txWaktu > dtEnd) continue;
+        // Jika pembacaan dari terbaru ke lama sudah melewati dtStart, hentikan loop jika tanpa kata kunci
+        if (dtStart && txWaktu < dtStart) {
+          if (!kw) break; // Berhenti karena data sebelumnya pasti lebih lama dari dtStart
+          continue;
+        }
       }
 
       if (kw) {
@@ -291,13 +296,58 @@ function saveTransaction(tx) {
   var sheetTx = ss.getSheetByName("Transaksi");
   
   // Format items ke string terbaca
-  var itemsString = tx.items.map(function(item) {
-    var sub = item.subtotal !== undefined ? item.subtotal : (item.harga * item.qty);
-    var pInfo = item.promoInfo ? " [" + item.promoInfo + "]" : "";
-    var unitP = item.qty > 0 ? Math.round(sub / item.qty) : item.harga;
-    return item.nama + pInfo + " (" + item.qty + "x @" + unitP + ")";
-  }).join(", ");
-  
+  var itemsString = "";
+  if (Array.isArray(tx.items)) {
+    itemsString = tx.items.map(function(item) {
+      var sub = item.subtotal !== undefined ? item.subtotal : (item.harga * item.qty);
+      var pInfo = item.promoInfo ? " [" + item.promoInfo + "]" : "";
+      var unitP = item.qty > 0 ? Math.round(sub / item.qty) : item.harga;
+      return item.nama + pInfo + " (" + item.qty + "x @" + unitP + ")";
+    }).join(", ");
+  } else if (tx.daftar_item || tx.items) {
+    itemsString = tx.daftar_item || tx.items;
+  }
+
+  // --- CEGAH DUPLIKASI (PERKETAT): Cek berdasarkan ID ATAU (Menit:Detik + Daftar Item + Total) ---
+  var lastRow = sheetTx.getLastRow();
+  if (lastRow > 1) {
+    // Ambil Kolom A (ID), B (Waktu), C (Item), D (Total)
+    var existingData = sheetTx.getRange(2, 1, lastRow - 1, 4).getValues();
+    
+    // Ambil menit & detik dari transaksi baru
+    var newWaktuStr = tx.waktu || "";
+    var newMntDtk = "";
+    if (newWaktuStr) {
+      var dNew = (newWaktuStr instanceof Date) ? newWaktuStr : new Date(newWaktuStr);
+      if (!isNaN(dNew.getTime())) {
+        newMntDtk = dNew.getMinutes().toString().padStart(2, "0") + ":" + dNew.getSeconds().toString().padStart(2, "0");
+      }
+    }
+
+    for (var k = 0; k < existingData.length; k++) {
+      var exId = existingData[k][0] ? existingData[k][0].toString().trim() : "";
+      var exWaktu = existingData[k][1];
+      var exItem = existingData[k][2] ? existingData[k][2].toString().trim() : "";
+      var exTotal = Number(existingData[k][3]) || 0;
+
+      // 1. Cek duplikasi ID
+      if (tx.id && exId === tx.id.toString().trim()) {
+        return { status: "success", message: "Transaksi sudah ada (ID sama, duplikasi dicegah)." };
+      }
+
+      // 2. Cek duplikasi Konten (Waktu menit:detik sama + Item sama + Total sama)
+      if (newMntDtk && exWaktu) {
+        var dEx = (exWaktu instanceof Date) ? exWaktu : new Date(exWaktu);
+        if (!isNaN(dEx.getTime())) {
+          var exMntDtk = dEx.getMinutes().toString().padStart(2, "0") + ":" + dEx.getSeconds().toString().padStart(2, "0");
+          if (newMntDtk === exMntDtk && itemsString === exItem && Number(tx.total || 0) === exTotal) {
+            return { status: "success", message: "Transaksi sudah ada (Menit:Detik & Produk sama, duplikasi dicegah)." };
+          }
+        }
+      }
+    }
+  }
+
   sheetTx.appendRow([
     tx.id,
     tx.waktu || new Date().toISOString(),
@@ -526,4 +576,111 @@ function updateTransactions(transactionsList) {
   
   sheet.getRange(2, 1, values.length, 11).setValues(values);
   return { status: "success", message: "Sinkronisasi transaksi (" + transactionsList.length + " data) sukses secara instan!" };
+}
+
+/**
+ * ============================================================
+ *  UTILITAS: Hapus Transaksi Dobel (Jalankan Sekali dari Editor)
+ * ============================================================
+ * Cara pakai:
+ *   1. Buka Google Apps Script Editor
+ *   2. Di dropdown fungsi, pilih "removeDuplicateTransactions"
+ *   3. Klik tombol ▶ Run
+ *   4. Lihat hasilnya di Logger (View > Logs)
+ *
+ * Transaksi dianggap DOBEL jika:
+ *   - Menit & detik waktu transaksi SAMA (format HH:MM:SS)
+ *   - Daftar item (nama produk) SAMA persis
+ *
+ * Yang dipertahankan: baris pertama yang ditemukan (ID terkecil / paling atas)
+ * Yang dihapus     : baris duplikat setelahnya
+ * ============================================================
+ */
+function removeDuplicateTransactions() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Transaksi");
+  if (!sheet) {
+    Logger.log("Sheet 'Transaksi' tidak ditemukan.");
+    return;
+  }
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    Logger.log("Sheet kosong, tidak ada yang perlu dihapus.");
+    return;
+  }
+
+  // Baca semua data sekaligus (lebih efisien)
+  var data = sheet.getRange(2, 1, lastRow - 1, 11).getValues();
+  // Kolom: 0=ID, 1=Waktu, 2=Daftar Item, 3=Total, dst.
+
+  var seen = {};       // key unik → baris pertama yang ditemukan
+  var rowsToDelete = []; // nomor baris (1-indexed) yang akan dihapus
+
+  for (var i = 0; i < data.length; i++) {
+    var rawWaktu = data[i][1];
+    var items    = (data[i][2] || "").toString().trim();
+
+    // Ekstrak menit:detik dari waktu (HH:MM:SS atau ISO string)
+    var mntDtk = "";
+    if (rawWaktu) {
+      var d = (rawWaktu instanceof Date) ? rawWaktu : new Date(rawWaktu);
+      if (!isNaN(d.getTime())) {
+        // Format MM:SS (menit dan detik lokal)
+        var mnt = d.getMinutes().toString().padStart(2, "0");
+        var dtk = d.getSeconds().toString().padStart(2, "0");
+        mntDtk = mnt + ":" + dtk;
+      } else {
+        // Fallback: coba ambil pola MM:SS dari string
+        var matchTime = rawWaktu.toString().match(/(\d{2}):(\d{2})(?::\d{2})?/);
+        mntDtk = matchTime ? matchTime[1] + ":" + matchTime[2] : rawWaktu.toString();
+      }
+    }
+
+    // Kunci unik: kombinasi menit:detik + daftar item
+    var key = mntDtk + "|" + items;
+
+    if (key === "|") {
+      // Baris kosong / tidak valid, lewati
+      continue;
+    }
+
+    if (seen[key] === undefined) {
+      // Pertama kali ditemukan — simpan sebagai referensi
+      seen[key] = i + 2; // nomor baris di sheet (header di baris 1, data mulai baris 2)
+    } else {
+      // Duplikat ditemukan — tandai untuk dihapus
+      rowsToDelete.push(i + 2);
+      Logger.log(
+        "DOBEL ditemukan — Baris " + (i + 2) +
+        " | ID: " + (data[i][0] || "-") +
+        " | Waktu menit:detik: " + mntDtk +
+        " | Item: " + items.substring(0, 60) + (items.length > 60 ? "..." : "")
+      );
+    }
+  }
+
+  if (rowsToDelete.length === 0) {
+    Logger.log("Tidak ada transaksi dobel ditemukan. Sheet sudah bersih.");
+    return;
+  }
+
+  // Hapus dari bawah ke atas agar nomor baris tidak bergeser
+  rowsToDelete.sort(function(a, b) { return b - a; });
+  for (var r = 0; r < rowsToDelete.length; r++) {
+    sheet.deleteRow(rowsToDelete[r]);
+  }
+
+  Logger.log(
+    "Selesai! " + rowsToDelete.length + " transaksi dobel berhasil dihapus. " +
+    "Sisa transaksi unik: " + (data.length - rowsToDelete.length) + " baris."
+  );
+
+  // Tampilkan notifikasi di spreadsheet
+  SpreadsheetApp.getUi().alert(
+    "✅ Selesai!\n\n" +
+    rowsToDelete.length + " transaksi dobel berhasil dihapus.\n" +
+    "Sisa transaksi unik: " + (data.length - rowsToDelete.length) + " baris.\n\n" +
+    "Lihat detail di: View > Logs"
+  );
 }

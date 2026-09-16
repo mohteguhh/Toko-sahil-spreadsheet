@@ -63,10 +63,12 @@ let appConfig = JSON.parse(localStorage.getItem('kasir_app_config')) || {
   allowZeroStock: true,
   customerMode: false,
   enablePromo: false,
-  showDiscountPos: false
+  showDiscountPos: false,
+  showPromoBanner: true
 };
 if (appConfig.enablePromo === undefined) appConfig.enablePromo = false;
 if (appConfig.showDiscountPos === undefined) appConfig.showDiscountPos = false;
+if (appConfig.showPromoBanner === undefined) appConfig.showPromoBanner = true;
 
 // Pengaturan Nota / Struk Toko (Default)
 let receiptSettings = JSON.parse(localStorage.getItem('kasir_receipt_settings')) || {
@@ -469,6 +471,12 @@ function saveAppConfig() {
   appConfig.customerMode = document.getElementById('chk-customer-mode').checked;
   appConfig.enablePromo = document.getElementById('chk-enable-promo').checked;
   appConfig.showDiscountPos = document.getElementById('chk-show-discount').checked;
+  
+  const chkPromoBanner = document.getElementById('chk-show-promo-banner');
+  if (chkPromoBanner) {
+    appConfig.showPromoBanner = chkPromoBanner.checked;
+  }
+  
   localStorage.setItem('kasir_app_config', JSON.stringify(appConfig));
   
   const promoContainer = document.getElementById('promo-fields-container');
@@ -482,6 +490,7 @@ function saveAppConfig() {
   }
   
   calculateTotal(); // Update POS discount visibility
+  checkPromoBanner(); // Update visibilitas banner carousel promo
   
   alert('Pengaturan Sistem Aplikasi berhasil disimpan!');
 }
@@ -494,6 +503,9 @@ function loadAppConfig() {
   
   const chkDiscount = document.getElementById('chk-show-discount');
   if (chkDiscount) chkDiscount.checked = appConfig.showDiscountPos;
+
+  const chkPromoBanner = document.getElementById('chk-show-promo-banner');
+  if (chkPromoBanner) chkPromoBanner.checked = appConfig.showPromoBanner !== false;
   
   const discountRowWrapper = document.getElementById('discount-row-wrapper');
   if (discountRowWrapper) {
@@ -509,6 +521,8 @@ function loadAppConfig() {
   if (shiftWrapper) {
     shiftWrapper.style.display = appConfig.strictShift ? 'flex' : 'none';
   }
+
+  checkPromoBanner();
 }
 
 function applyReceiptSettings() {
@@ -1037,6 +1051,13 @@ async function syncAllFromCloud() {
 }
 
 // --- KOMUNIKASI API GOOGLE APPS SCRIPT (CORS-Safe & dengan Timeout) ---
+
+// Membersihkan gasUrl dari trailing ?, & atau spasi agar tidak menghasilkan URL rusak
+function cleanGasUrl(url) {
+  if (!url) return url;
+  return url.replace(/[?&\s]+$/, '');
+}
+
 async function fetchFromGAS(action, postData = null, maxRetries = 2) {
   if (!gasUrl) {
     return { status: 'offline', message: 'URL API belum disetel.' };
@@ -1064,7 +1085,7 @@ async function fetchFromGAS(action, postData = null, maxRetries = 2) {
           signal: controller.signal
         });
       } else {
-        const preventCacheUrl = `${gasUrl}?action=${action}&_t=${Date.now()}`;
+        const preventCacheUrl = `${cleanGasUrl(gasUrl)}?action=${action}&_t=${Date.now()}`;
         response = await fetch(preventCacheUrl, {
           signal: controller.signal
         });
@@ -1253,7 +1274,7 @@ async function loadWeeklyTrendInBackground() {
   const endDate = getLocalISODate(yesterday).slice(0, 10);
 
   try {
-    const url = gasUrl
+    const url = cleanGasUrl(gasUrl)
       + '?action=searchTransactions'
       + '&startDate=' + encodeURIComponent(startDate)
       + '&endDate='   + encodeURIComponent(endDate);
@@ -1360,9 +1381,27 @@ async function fetchAndUpdateAnalytics() {
   }
 
   if (needCloud && gasUrl) {
+    // 1. Cek Cache Lokal terlebih dahulu
+    const cacheKey = `kasir_analytics_cache_${startDate}_${endDate}`;
+    const cachedData = localStorage.getItem(cacheKey);
+    if (cachedData) {
+      try {
+        const parsedCache = JSON.parse(cachedData);
+        // Jika cache kurang dari 10 menit, langsung pakai dari memori
+        if (Date.now() - (parsedCache.timestamp || 0) < 10 * 60 * 1000 && Array.isArray(parsedCache.data)) {
+          analyticsTransactions = parsedCache.data;
+          updateSyncStatus('online', `Data analitik dimuat dari cache (${analyticsTransactions.length} transaksi)`);
+          updateAnalytics();
+          return;
+        }
+      } catch (e) {
+        localStorage.removeItem(cacheKey);
+      }
+    }
+
     updateSyncStatus('syncing', 'Memuat data analitik...');
 
-    let url = gasUrl + '?action=searchTransactions&startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate);
+    let url = cleanGasUrl(gasUrl) + '?action=searchTransactions&startDate=' + encodeURIComponent(startDate) + '&endDate=' + encodeURIComponent(endDate);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 45000);
@@ -1418,6 +1457,17 @@ async function fetchAndUpdateAnalytics() {
               status_pembayaran: sisa > 0 ? 'Bon' : (tx.status_pembayaran || 'Lunas')
             };
           });
+
+        // Simpan Hasil ke Cache Lokal (berlaku 10 menit)
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            timestamp: Date.now(),
+            data: analyticsTransactions
+          }));
+        } catch (storageErr) {
+          console.warn('[Analytics] Gagal menyimpan cache:', storageErr);
+        }
+
         updateSyncStatus('online', `Data analitik dimuat (${analyticsTransactions.length} transaksi)`);
       } else {
         console.warn('[Analytics] Gagal memuat data cloud:', result);
@@ -3108,6 +3158,12 @@ function checkPromoBanner() {
   const marqueeContent = document.getElementById('promo-marquee-content');
   if (!container || !marqueeContent) return;
   
+  if (appConfig.showPromoBanner === false) {
+    container.style.display = 'none';
+    marqueeContent.innerHTML = '';
+    return;
+  }
+  
   // Beli X Gratis Y selalu tampil meskipun enablePromo off
   const promos = products.filter(p => {
     const hasBuyGet = (parseInt(p.promo_beli_x) || 0) > 0 && (parseInt(p.promo_gratis_y) || 0) > 0;
@@ -3578,9 +3634,19 @@ function setQuickCash(amount) {
 }
 
 // --- PROSES CHECKOUT TRANSAKSI ---
+let isCheckingOut = false; // Flag untuk mencegah klik ganda pada tombol bayar
+
 async function processCheckout() {
   if (cart.length === 0) return;
-  
+  // Cegah double-submit jika tombol diklik dua kali cepat
+  if (isCheckingOut) return;
+  isCheckingOut = true;
+
+  // Disable tombol submit selama proses
+  const btnSubmit = document.getElementById('btn-checkout-submit');
+  if (btnSubmit) btnSubmit.disabled = true;
+
+  try {
   const method = document.getElementById('payment-method-select').value;
   const status = document.getElementById('payment-status-select').value;
   const customerName = document.getElementById('customer-name-input').value.trim();
@@ -3674,6 +3740,15 @@ async function processCheckout() {
   transactions.push(transaction);
   saveTransactionsLocally();
 
+  // Bersihkan cache analitik lokal agar data analitik terbaru langsung diperbarui
+  try {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('kasir_analytics_cache_')) {
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (e) {}
+
   // Sync ke weeklyTrendData agar grafik 7 hari tetap akurat secara real-time
   if (weeklyTrendData.length > 0) {
     weeklyTrendData.push(transaction);
@@ -3694,6 +3769,16 @@ async function processCheckout() {
   
   // 5. Kirim ke Google Sheets
   syncTransactionToCloud(transaction);
+
+  } catch (err) {
+    console.error('[Checkout] Error tidak terduga:', err);
+    alert('Terjadi kesalahan saat memproses pembayaran. Silakan coba lagi.');
+  } finally {
+    // Reset flag dan aktifkan kembali tombol setelah proses selesai
+    isCheckingOut = false;
+    const btnSubmitFinal = document.getElementById('btn-checkout-submit');
+    if (btnSubmitFinal) btnSubmitFinal.disabled = false;
+  }
 }
 
 // (Logika Countdown Struk Belanja Dihilangkan)
@@ -4030,13 +4115,22 @@ async function syncTransactionToCloud(tx) {
   
   if (result && result.status === 'success') {
     updateSyncStatus('online', 'Tersinkronisasi');
-    processOfflineQueue();
+    // Proses queue hanya jika tidak sedang berjalan
+    if (!isProcessingOfflineQueue) {
+      processOfflineQueue();
+    }
   } else {
     queueOfflineTransaction(tx);
   }
 }
 
 function queueOfflineTransaction(tx) {
+  // Cegah duplikasi: jangan tambahkan ID yang sudah ada di queue
+  const alreadyQueued = offlineQueue.some(q => q.id === tx.id);
+  if (alreadyQueued) {
+    console.warn('[OfflineQueue] Transaksi sudah ada di antrean, dilewati:', tx.id);
+    return;
+  }
   offlineQueue.push(tx);
   saveOfflineQueue();
   updateSyncStatus('offline', `Offline (${offlineQueue.length} transaksi tertunda)`);
@@ -4046,8 +4140,14 @@ function saveOfflineQueue() {
   localStorage.setItem('kasir_offline_queue', JSON.stringify(offlineQueue));
 }
 
+// Flag untuk mencegah processOfflineQueue berjalan paralel (race condition)
+let isProcessingOfflineQueue = false;
+
 async function processOfflineQueue() {
   if (offlineQueue.length === 0 || !gasUrl) return;
+  // Cegah eksekusi paralel
+  if (isProcessingOfflineQueue) return;
+  isProcessingOfflineQueue = true;
   
   updateSyncStatus('syncing', `Mengirim ${offlineQueue.length} antrean...`);
   
@@ -4066,6 +4166,7 @@ async function processOfflineQueue() {
   
   offlineQueue.splice(0, successCount);
   saveOfflineQueue();
+  isProcessingOfflineQueue = false;
   
   if (offlineQueue.length === 0) {
     updateSyncStatus('online', 'Tersinkronisasi');
@@ -6510,7 +6611,7 @@ async function searchTransactionsFromCloud(startDate, endDate, keyword) {
   updateSyncStatus('syncing', 'Mencari transaksi...');
 
   // Bangun URL dengan parameter query
-  let url = gasUrl + '?action=searchTransactions';
+  let url = cleanGasUrl(gasUrl) + '?action=searchTransactions';
   if (startDate) url += '&startDate=' + encodeURIComponent(startDate);
   if (endDate)   url += '&endDate='   + encodeURIComponent(endDate);
   if (keyword)   url += '&keyword='   + encodeURIComponent(keyword);
