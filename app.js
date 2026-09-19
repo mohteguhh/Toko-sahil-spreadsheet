@@ -1288,7 +1288,7 @@ async function loadWeeklyTrendInBackground() {
     if (result && result.status === 'success' && result.data) {
       // Parse data 6 hari lalu
       const parsed = result.data
-        .filter(tx => (tx.id_transaksi || '').toString().trim() !== '')
+        .filter(tx => (tx.id_transaksi || tx.id || '').toString().trim() !== '')
         .map(tx => {
           let itemsList = [];
           const itemsStr = tx.daftar_item || '';
@@ -1488,8 +1488,8 @@ async function fetchAndUpdateAnalytics() {
 }
 
 function getAnalyticsFilteredTxs() {
-  // Gunakan buffer analitik jika ada (data historis dari cloud), atau transactions lokal (hari ini)
-  const source = analyticsTransactions !== null ? analyticsTransactions : transactions;
+  // Gunakan buffer analitik jika ada (data historis dari cloud), atau transactions lokal
+  const source = (analyticsTransactions !== null && analyticsTransactions !== undefined) ? analyticsTransactions : transactions;
 
   const filterType = document.getElementById('analytics-filter-type')?.value || 'hari';
   if (filterType === 'hari') {
@@ -5950,8 +5950,11 @@ function deleteTransaction(txId) {
     renderProductsTable();
     updateAnalytics();
     
-    // Sinkronkan ke cloud
-    syncTransactionsToCloudBackground();
+    // Hapus dari cloud secara aman (tanpa menimpa sheet massal)
+    if (gasUrl) {
+      updateSyncStatus('syncing', 'Menghapus transaksi dari cloud...');
+      fetchFromGAS('deleteTransaction', { transactionId: txId }).catch(err => console.error(err));
+    }
     
     if (gasUrl) {
       updateSyncStatus('syncing', 'Menyimpan perubahan stok...');
@@ -6433,7 +6436,7 @@ function saveEditedTransaction() {
   renderProductsTable();
   updateAnalytics();
   
-  syncTransactionsToCloudBackground();
+  syncSingleTransactionToCloud(tx);
   
   if (gasUrl && allProductIds && allProductIds.size > 0) {
     updateSyncStatus('syncing', 'Menyimpan perubahan stok...');
@@ -6472,10 +6475,10 @@ async function syncTransactionsToCloud() {
   }
 }
 
-async function syncTransactionsToCloudBackground() {
-  if (!gasUrl) return;
-  updateSyncStatus('syncing', 'Menyinkronkan transaksi...');
-  const result = await fetchFromGAS('updateTransactions', { transactions: transactions });
+async function syncSingleTransactionToCloud(tx) {
+  if (!gasUrl || !tx) return;
+  updateSyncStatus('syncing', 'Menyimpan transaksi ke cloud...');
+  const result = await fetchFromGAS('addTransaction', { transaction: tx });
   if (result && result.status === 'success') {
     updateSyncStatus('online', 'Tersinkronisasi');
   } else {
@@ -7220,7 +7223,7 @@ function submitSettleDebt() {
   updateAnalytics();
   
   // Sinkronkan ke cloud
-  syncTransactionsToCloudBackground();
+  syncSingleTransactionToCloud(tx);
 }
 
 // --- MODUL SHIFT KASIR ---

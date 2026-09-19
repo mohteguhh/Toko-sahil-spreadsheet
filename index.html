@@ -35,7 +35,7 @@
           <span class="sub-brand">POS & Inventaris</span>
         </div>
         <!-- Moved Sync and Clock to header next to store name -->
-        <div class="sync-status offline" id="sync-status" style="margin-left: 1rem;">
+        <div class="sync-status offline" id="sync-status" onclick="syncAllFromCloud()" title="Klik untuk Sinkronisasi / Tarik Data Terbaru dari Cloud" style="margin-left: 1rem; cursor: pointer;">
           <span class="indicator-dot"></span>
           <span class="indicator-text" id="sync-text">Belum Terhubung</span>
         </div>
@@ -1453,10 +1453,10 @@
               <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/AKfycbwbJCQIxhqOFu2iGSMzoL2YrJf7pvLoGVm2B6qs2DUQ2vIIrBlZBJO-vP557agNvlhNzg/exec" style="font-family: monospace; font-size: 0.9rem;">
             </div>
             
-            <div class="settings-actions">
+            <div class="settings-actions" style="flex-wrap: wrap; gap: 0.5rem;">
               <button class="btn btn-primary" onclick="saveGASUrl()">Simpan URL</button>
               <button class="btn btn-secondary" onclick="testConnection()">Uji Koneksi</button>
-              <button class="btn btn-accent" onclick="syncFromCloud()">Tarik Data dari Sheets</button>
+              <button class="btn btn-accent" onclick="syncAllFromCloud()">🔄 Sinkronkan Semua Data dari Cloud</button>
             </div>
           </div>
           

@@ -56,6 +56,9 @@ function doPost(e) {
     if (action === "deleteProduct") {
       return handleResponse(deleteProduct(data.productId));
     }
+    if (action === "deleteTransaction") {
+      return handleResponse(deleteSingleTransaction(data.transactionId));
+    }
     
     return handleResponse({ status: "error", message: "Aksi POST tidak dikenali" });
   } catch (error) {
@@ -260,11 +263,7 @@ function searchTransactionsData(startDate, endDate, keyword) {
 
       if (txWaktu && !isNaN(txWaktu.getTime())) {
         if (dtEnd && txWaktu > dtEnd) continue;
-        // Jika pembacaan dari terbaru ke lama sudah melewati dtStart, hentikan loop jika tanpa kata kunci
-        if (dtStart && txWaktu < dtStart) {
-          if (!kw) break; // Berhenti karena data sebelumnya pasti lebih lama dari dtStart
-          continue;
-        }
+        if (dtStart && txWaktu < dtStart) continue;
       }
 
       if (kw) {
@@ -530,25 +529,32 @@ function deleteProduct(productId) {
   return { status: "success", message: "Produk tidak ditemukan." };
 }
 
-// Menambahkan atau memperbarui transaksi secara massal (mass-overwrite)
+// Memperbarui transaksi secara aman tanpa menghapus transaksi lama yang tidak ada di list
 function updateTransactions(transactionsList) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName("Transaksi");
-  
-  // Bersihkan data lama mulai baris kedua ke bawah
-  var lastRow = sheet.getLastRow();
-  if (lastRow > 1) {
-    sheet.getRange(2, 1, lastRow - 1, 11).clearContent();
-  }
+  if (!sheet) return { status: "error", message: "Sheet Transaksi tidak ditemukan." };
   
   if (!transactionsList || transactionsList.length === 0) {
-    return { status: "success", message: "Tabel transaksi dikosongkan." };
+    return { status: "success", message: "Tidak ada transaksi dikirim." };
   }
   
-  // Siapkan baris data massal
-  var values = [];
+  var lastRow = sheet.getLastRow();
+  var existingIdsMap = {};
+  if (lastRow > 1) {
+    var existingData = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var r = 0; r < existingData.length; r++) {
+      var idStr = (existingData[r][0] || "").toString().trim().toLowerCase();
+      if (idStr) {
+        existingIdsMap[idStr] = r + 2; // Simpan posisi baris di sheet
+      }
+    }
+  }
+  
   for (var i = 0; i < transactionsList.length; i++) {
     var tx = transactionsList[i];
+    var txId = (tx.id || tx.id_transaksi || "").toString().trim();
+    if (!txId) continue;
     
     var itemsString = "";
     if (Array.isArray(tx.items)) {
@@ -559,8 +565,8 @@ function updateTransactions(transactionsList) {
       itemsString = tx.daftar_item || tx.items;
     }
     
-    values.push([
-      tx.id || tx.id_transaksi || "",
+    var rowValues = [
+      txId,
       tx.waktu || "",
       itemsString,
       Number(tx.total) || 0,
@@ -571,11 +577,36 @@ function updateTransactions(transactionsList) {
       tx.status_pembayaran || "Lunas",
       tx.nama_pelanggan || "",
       Number(tx.sisa_piutang) || 0
-    ]);
+    ];
+    
+    var targetRow = existingIdsMap[txId.toLowerCase()];
+    if (targetRow) {
+      // Update baris transaksi yang sudah ada
+      sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+    } else {
+      // Tambah baris baru jika belum ada
+      sheet.appendRow(rowValues);
+    }
   }
   
-  sheet.getRange(2, 1, values.length, 11).setValues(values);
-  return { status: "success", message: "Sinkronisasi transaksi (" + transactionsList.length + " data) sukses secara instan!" };
+  return { status: "success", message: "Transaksi berhasil diperbarui secara aman!" };
+}
+
+// Menghapus SATU transaksi secara spesifik tanpa menimpa seluruh sheet
+function deleteSingleTransaction(txId) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Transaksi");
+  if (!sheet) return { status: "error", message: "Sheet Transaksi tidak ditemukan." };
+  
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    var rowId = (rows[i][0] || "").toString().trim().toLowerCase();
+    if (rowId === txId.toString().trim().toLowerCase()) {
+      sheet.deleteRow(i + 1);
+      return { status: "success", message: "Transaksi berhasil dihapus dari cloud." };
+    }
+  }
+  return { status: "success", message: "Transaksi tidak ditemukan di cloud." };
 }
 
 /**
